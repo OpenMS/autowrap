@@ -1,0 +1,5 @@
+
+def testImport():
+    import autowrap
+
+
