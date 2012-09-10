@@ -1,7 +1,7 @@
 *.py[co]
 
 # gvim
-.*.swp
+.*.sw[ijklmnop]
 
 # Packages
 *.egg
