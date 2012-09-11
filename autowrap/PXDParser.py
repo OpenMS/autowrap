@@ -14,11 +14,23 @@ import os
 from collections import defaultdict
 
 
+class IdentityMap(dict):
+    """ every get and __getitem__ returns key as value """
+
+    def __getitem__(self, k):
+        return k
+
+
 def parse_class_annotations(node, lines):
+    """ parses wrap-instructions inside comments below class def """
     start_at_line = node.pos[1]
     return _parse_multiline_annotations(lines[start_at_line:])
 
+
 def _parse_multiline_annotations(lines):
+    """ does the hard work for parse_class_annotations, and is
+        better testable than this.
+    """
     it = iter(lines)
     result = defaultdict(list)
     while it:
@@ -27,7 +39,6 @@ def _parse_multiline_annotations(lines):
             continue
         if line.startswith("#"):
             key = line[1:].strip().rstrip(":")
-            values = []
             line = it.next().strip()
             while line.startswith("#   "):
                 value = line[1:].strip()
@@ -36,9 +47,15 @@ def _parse_multiline_annotations(lines):
         else:
             break
     return result
-            
+
+
 
 def parse_line_annotations(node, lines):
+    """
+       parses comments at end of line, in most cases the lines of
+       method declarations
+    """
+
     parts = lines[node.pos[1] - 1].split("#", 1)
     result = dict()
     if len(parts)==2:
@@ -47,31 +64,24 @@ def parse_line_annotations(node, lines):
         for f in fields:
             if ":" in f:
                 key, value = f.partition(":")
-            else:    
+            else:
                 key, value = f, None
         result[key] = value
     return result
 
 
-class ClassRegistry(object):
+class EnumOrClassDecl(object):
+        pass
 
-    dd = dict()
 
-    @staticmethod
-    def register(alias, basename, targs):
-        ClassRegistry.dd[basename, targs] = alias
-
-    def get_alias(basename, targs):
-        return ClassRegistry.dd[base_type, targs]
-
-        
-class Enum(object):
+class Enum(EnumOrClassDecl):
 
     def __init__(self, name, items, annotations):
         self.name = name
         self.items = items
         self.annotations = annotations
         self.wrap_ignore = annotations.get("wrap-ignore", False)
+        self.template_parameters = None
 
     @classmethod
     def fromTree(cls, node, lines):
@@ -93,15 +103,14 @@ class Enum(object):
         return res
 
 
-class CppClassDecl(object):
+class CppClassDecl(EnumOrClassDecl):
 
-    def __init__(self, instance_name, cpp_class_name, targs, methods, annotations):
-        self.instance_name = instance_name
-        self.cpp_class_name = cpp_class_name
-
-        self.targs = targs
+    def __init__(self, name, template_parameters, methods, annotations):
+        self.name = name
+        self.template_parameters = template_parameters
         self.methods = methods
         self.annotations = annotations
+        self.wrap_ignore = annotations.get("wrap-ignore", False)
 
     @classmethod
     def fromTree(cls, node, lines):
@@ -111,45 +120,29 @@ class CppClassDecl(object):
             for stat in node.stats:
                 if isinstance(stat, CTypeDefNode):
                     alias = stat.base_type.name
-                    basetype = stat.declarator.base.name
+                    base_type = stat.declarator.base.name
                     args = [ CppType(decl.name) for decl in stat.declarator.dimension.args ]
-                    typedefs[alias] = CppType(basetype, template_args=args)
+                    typedefs[alias] = CppType(base_type, template_args=args)
                 elif isinstance(stat, CppClassNode):
                     node = stat
                     break
                 else:
                     print "ignore node", stat
 
-        cpp_class_name = node.name
+        name = node.name
         class_annotations = parse_class_annotations(node, lines)
 
-        instances = []
-
-        targs = None
-        if node.templates is not None:
-            instance_decls = class_annotations.get("wrap-instances", [])
-            for instance_decl in instance_decls:
-                instance_name, template_decl = re.match("(\w+)(\[.*\])?", instance_decl).groups()
-                if template_decl is None:
-                    template_args = None
-                else:
-                    template_args = [ f.strip() for f in template_decl[1:-1].split(",") ]
-            instances.append((instance_name, template_args))
-        else:
-            instances = [ (cpp_class_name, None) ]
-
+        template_parameters = node.templates
         methods = defaultdict(list)
-
         for att in node.attributes:
-            meth = CppMethodDecl.fromTree(att, lines, instances)
+            meth = CppMethodDecl.fromTree(att, lines)
             if meth is not None:
                 methods[meth.name].append(meth)
 
-        return [cls(instance_name, cpp_class_name, targs, methods, class_annotations)\
-                for (instance_name, targs) in instances ]
-        
+        return cls(name, template_parameters, methods, class_annotations)
+
     def __str__(self):
-        rv = ["class %s(_%s): " % (self.instance_name, self.cpp_class_name)]
+        rv = ["class %s(_%s): " % (self.instance_name, self.name)]
         for meth_list in self.methods.values():
             rv += ["     " + str(method) for method in meth_list]
         return "\n".join(rv)
@@ -157,9 +150,9 @@ class CppClassDecl(object):
 
 def extract_type(base_type, decl):
     """ extracts type information from node in parse tree """
-    targs = None
+    template_parameters = None
     if isinstance(base_type, TemplatedTypeNode):
-        targs = []
+        template_parameters = []
         for arg in base_type.positional_args:
             if isinstance(arg, CComplexBaseTypeNode):
                 decl = arg.declarator
@@ -167,10 +160,10 @@ def extract_type(base_type, decl):
                 is_ref = isinstance(decl, CReferenceDeclaratorNode)
                 name = arg.base_type.name
                 ttype = CppType(name, is_ptr, is_ref)
-                targs.append(ttype)
+                template_parameters.append(ttype)
             elif isinstance(arg, NameNode):
                 name = arg.name
-                targs.append(CppType(name))
+                template_parameters.append(CppType(name))
             elif isinstance(arg, IndexNode): # nested template !
                 # only handles one nesting level !
                 name = arg.base.name
@@ -179,7 +172,7 @@ def extract_type(base_type, decl):
                 else:
                     args = [ CppType(arg.index.name) ]
                 tt = CppType(name, template_args=args)
-                targs.append(tt)
+                template_parameters.append(tt)
             else:
                 raise Exception("can not handle template arg %r" % arg)
 
@@ -188,7 +181,8 @@ def extract_type(base_type, decl):
     is_ptr = isinstance(decl, CPtrDeclaratorNode)
     is_ref = isinstance(decl, CReferenceDeclaratorNode)
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
-    return CppType(base_type.name, is_ptr, is_ref, is_unsigned, targs)
+    return CppType(base_type.name, is_ptr, is_ref, is_unsigned,
+            template_parameters)
 
 
 class CppMethodDecl(object):
@@ -201,13 +195,18 @@ class CppMethodDecl(object):
         self.annotations = annotations
         self.wrap = not self.annotations.get("ignore", False)
 
+    def transformDecl(self, typemap):
+        result_type = self.result_type.transform(typemap)
+        args = [ (n, t.transform(typemap)) for n, t in self.args ]
+        return CppMethodDecl(result_type, self.name, args, self.annotations)
+
+
     @classmethod
-    def fromTree(cls, node, lines, instances):
+    def fromTree(cls, node, lines):
 
         annotations = parse_line_annotations(node, lines)
-        #import pdb
-        #pdb.set_trace()
-        
+        #import pdb; pdb.set_trace()
+
         if isinstance(node, CppClassNode):
             return None # nested classes only can be delcared in pxd
 
@@ -235,7 +234,7 @@ class CppMethodDecl(object):
                 argname = argdecl.name
             tt = extract_type(arg.base_type, argdecl)
             args.append((argname,tt))
-                              
+
         return cls(result_type, name, args, annotations)
 
     def __str__(self):
@@ -272,7 +271,7 @@ def parse(path):
         body = tree.body.body
     else:
         return None
-       
+
     lines = open(path).readlines()
 
     if isinstance(body, CEnumDefNode):

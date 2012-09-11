@@ -1,21 +1,21 @@
+import autowrap.PXDParser
+import os
+
+from  autowrap.Types import CppType as CppType
+
+def _parse(pxdFileName):
+    test_file = os.path.join(os.path.dirname(__file__),
+                             'test_files',
+                             pxdFileName)
+    return autowrap.PXDParser.parse(test_file)
 
 def testNull():
-    import autowrap.PXDParser
-    import os
-    test_file = os.path.join(os.path.dirname(__file__), 'test_files', 'null.pxd')
-    assert autowrap.PXDParser.parse(test_file) is None
+    assert _parse("null.pxd") is None
 
 def testMinimal():
-    import autowrap.PXDParser
-    from  autowrap.Types import CppType as CppType
-    import os
-    test_file = os.path.join(os.path.dirname(__file__), 'test_files', 'minimal.pxd')
-    class_decls = autowrap.PXDParser.parse(test_file)
-    assert len(class_decls) == 1, class_decls
-    cld = class_decls[0]
-    assert cld.instance_name == "Minimal"
-    assert cld.cpp_class_name == "Minimal"
-    assert cld.targs  == None
+    cld = _parse("minimal.pxd")
+    assert cld.name == "Minimal"
+    assert cld.template_parameters  == None
 
     assert len(cld.methods["Minimal"]) == 1
     assert len(cld.methods["getA"]) == 1
@@ -48,6 +48,4 @@ def testMinimal():
         assert meth.result_type == CppType("void")
         args.append(meth.args)
     assert args == [[ (u"inp", CppType("int"))], [(u"inp", CppType("float"))]]
-
-    
 

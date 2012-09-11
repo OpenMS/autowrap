@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-import os, sys
 
 version = '0.1'
 
@@ -11,13 +10,13 @@ setup(name="autowrap",
       zip_safe=False,
       test_suite='nose.collector',
       tests_require=['nose'],
-      entry_points = {
-            'console_scripts' : 
-            [
-                'autowrap = autowrap.Main:main',
-            ]
+      entry_points={
+           'console_scripts':
+           [
+               'autowrap = autowrap.Main:main',
+           ]
       },
-      install_requires = ["cython",],
-      setup_requires = ["nose",],
-    
+      install_requires=["cython", ],
+      setup_requires=["nose", ],
+
      )
