@@ -10,7 +10,7 @@ def _parse(*pxdFileNames):
         test_file = os.path.join(os.path.dirname(__file__),
                                 'test_files',
                                 pxdFileName)
-        class_decls.append(autowrap.PXDParser.parse(test_file))
+        class_decls.extend(autowrap.PXDParser.parse(test_file))
     return class_decls
 
 def test_simple():
@@ -211,7 +211,7 @@ cdef extern from "A.h":
 def test_non_template_class_with_annotation():
     from autowrap.PXDParser import parse_str
     from autowrap.InstanceGenerator import transform
-    decl = parse_str("""
+    decl, = parse_str("""
 cdef extern from "A.h":
     cdef cppclass A:
         # wrap-instances:

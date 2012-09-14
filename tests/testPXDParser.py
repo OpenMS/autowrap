@@ -11,7 +11,7 @@ def _parse(pxdFileName):
 
 
 def testMinimal():
-    cld = _parse("minimal.pxd")
+    cld, = _parse("minimal.pxd")
     assert cld.name == "Minimal"
     assert cld.template_parameters  == None
 

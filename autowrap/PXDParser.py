@@ -314,22 +314,27 @@ def parse(path):
     pipeline = Pipeline.create_pyx_pipeline(context, options, result)
     tree = pipeline[0](source)  # only parser
 
-    if hasattr(tree.body, "stats"):
-        for s in tree.body.stats:
-            if isinstance(s, CDefExternNode):
-                body = s.body
-                break
-    elif hasattr(tree.body, "body"):
-        body = tree.body.body
-    else:
-        raise Exception("parse failed: no valied .pxd file !")
+    def get_bodies(tree):
+        if hasattr(tree.body, "stats"):
+            for s in tree.body.stats:
+                if isinstance(s, CDefExternNode):
+                    body = s.body
+                    yield body
+        elif hasattr(tree.body, "body"):
+            body = tree.body.body
+            yield body
+        else:
+            raise Exception("parse failed: no valied .pxd file !")
 
     lines = open(path).readlines()
 
-    if isinstance(body, CEnumDefNode):
-            return EnumDecl.fromTree(body, lines)
+    result = []
+    for body in get_bodies(tree):
+        if isinstance(body, CEnumDefNode):
+                result.append(EnumDecl.fromTree(body, lines))
 
-    return CppClassDecl.fromTree(body, lines)
+        result.append(CppClassDecl.fromTree(body, lines))
+    return result
 
 if __name__ == "__main__":
 
