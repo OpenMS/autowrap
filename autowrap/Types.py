@@ -1,14 +1,14 @@
 #encoding: utf-8
 import copy
+import re
 
 class CppType(object):
 
     CTYPES = ["int", "long", "double", "float", "char", "void"]
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
-    def __init__(self, base_type, is_ptr=False, is_ref=False,
-                       is_unsigned = False,
-                       template_args=None, is_enum=False):
+    def __init__(self, base_type, template_args = None, is_ptr=False, is_ref=False,
+                       is_unsigned = False, is_enum=False):
         self.base_type =  "void" if base_type is None else base_type
         self.is_ptr = is_ptr
         self.is_ref = is_ref
@@ -18,14 +18,13 @@ class CppType(object):
 
     def transform(self, typemap):
         base_type = typemap.get(self.base_type, self.base_type)
-        #import pdb; pdb.set_trace()
         if self.template_args:
             template_args = [ t.transform(typemap) for t in self.template_args ]
         else:
             template_args = self.template_args
 
-        return CppType(base_type, self.is_ptr, self.is_ref, self.is_unsigned,
-                       template_args, self.is_enum)
+        return CppType(base_type, template_args, self.is_ptr, self.is_ref,
+                       self.is_unsigned, self.is_enum)
 
     def __hash__(self):
 
@@ -44,6 +43,21 @@ class CppType(object):
         rv = copy.copy(self)
         rv.is_ref = False
         return rv
+
+    def __str__(self):
+        unsigned = "unsigned" if self.is_unsigned else ""
+        ptr  = "*" if self.is_ptr else ""
+        ref  = "&" if self.is_ref else ""
+        if ptr and ref:
+            raise NotImplementedError("can not handel ref and ptr together")
+        if self.template_args is not None:
+            inner = "[%s]" % (",".join(str(t) for t in self.template_args))
+        else:
+            inner = ""
+        result = "%s %s%s%s" % (unsigned, self.base_type, inner, ptr or ref)
+        return result.lstrip() # if unsigned is "" -> lstrip
+
+        
 
     def matches(self, base_type, **kw):
 
@@ -73,9 +87,17 @@ class CppType(object):
 
         return True
 
+    @staticmethod
+    def parseDeclaration(as_string):
+        base_type, t_str = re.match("(\w+)(\[.*\])?", as_string).groups()
+        if t_str is None:
+            return CppType(base_type)
+        t_args = t_str[1:-1].split(",")
+        t_types = [ CppType.parseDeclaration(t.strip()) for t in t_args ]
+        return CppType(base_type, t_types)
 
 
-def cy_repr(type_):
+def __cy_repr(type_):
     """ returns cython type representation """
 
     if type_.is_enum:
@@ -120,12 +142,12 @@ def __cpp_repr(type_):
     return rv
 
 
-def py_name(type_):
+def __py_name(type_):
     """ returns Python representation, that is the name the module
         will expose to its users """
     return type_.base_type
 
-def py_type_for_cpp_type(type_):
+def __py_type_for_cpp_type(type_):
 
     if type_.matches("char", is_ptr=True):
             return CppType("str")
@@ -163,7 +185,7 @@ def py_type_for_cpp_type(type_):
 
     return type_
 
-def cy_decl(type_):
+def __cy_decl(type_):
 
     type_ = py_type_for_cpp_type(type_)
     if type_ is None: return
@@ -173,7 +195,7 @@ def cy_decl(type_):
     return ("unsigned " if type_.is_unsigned else "")  + type_.base_type + ("*" if type_.is_ptr  else "")
 
 
-def pysig_for_cpp_type(type_):
+def __pysig_for_cpp_type(type_):
 
     pybase = py_type_for_cpp_type(type_).base_type
     if type_.template_args is None:

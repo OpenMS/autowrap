@@ -9,8 +9,6 @@ def _parse(pxdFileName):
                              pxdFileName)
     return autowrap.PXDParser.parse(test_file)
 
-def testNull():
-    assert _parse("null.pxd") is None
 
 def testMinimal():
     cld = _parse("minimal.pxd")

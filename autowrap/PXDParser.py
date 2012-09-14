@@ -11,7 +11,7 @@ from Types import CppType
 import re
 import os
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 
 class IdentityMap(dict):
@@ -34,20 +34,27 @@ def _parse_multiline_annotations(lines):
     it = iter(lines)
     result = defaultdict(list)
     while it:
-        line = it.next().strip()
+        try:
+            line = it.next().strip()
+        except StopIteration:
+            break
         if not line:
             continue
         if line.startswith("#"):
-            key = line[1:].strip().rstrip(":")
-            line = it.next().strip()
-            while line.startswith("#   "):
-                value = line[1:].strip()
-                result[key].append(value)
+            line = line[1:].strip()
+            if line.endswith(":"):
+                key = line.rstrip(":")
                 line = it.next().strip()
+                while line.startswith("#  "):
+                    value = line[1:].strip()
+                    result[key].append(value)
+                    line = it.next().strip()
+            else:
+                key = line
+                result[key] = True
         else:
             break
     return result
-
 
 
 def parse_line_annotations(node, lines):
@@ -63,9 +70,9 @@ def parse_line_annotations(node, lines):
         fields = [ f.strip() for f in parts[1].split(" ") ]
         for f in fields:
             if ":" in f:
-                key, value = f.partition(":")
+                key, value = f.split(":", 1)
             else:
-                key, value = f, None
+                key, value = f, 1
         result[key] = value
     return result
 
@@ -74,7 +81,7 @@ class EnumOrClassDecl(object):
         pass
 
 
-class Enum(EnumOrClassDecl):
+class EnumDecl(EnumOrClassDecl):
 
     def __init__(self, name, items, annotations):
         self.name = name
@@ -98,7 +105,7 @@ class Enum(EnumOrClassDecl):
         return cls(name, items, annotations)
 
     def __str__(self):
-        res = "enum %s : " % self.name
+        res = "EnumDecl %s : " % self.name
         res += ", ".join("%s: %d" % (i, v) for (i, v) in self.items)
         return res
 
@@ -110,42 +117,68 @@ class CppClassDecl(EnumOrClassDecl):
         self.template_parameters = template_parameters
         self.methods = methods
         self.annotations = annotations
-        self.wrap_ignore = annotations.get("wrap-ignore", False)
 
     @classmethod
     def fromTree(cls, node, lines):
 
         if hasattr(node, "stats"): # more than just class def
             raise Exception("unhandled case")
+            """
             for stat in node.stats:
                 if isinstance(stat, CTypeDefNode):
                     alias = stat.base_type.name
                     base_type = stat.declarator.base.name
-                    args = [ CppType(decl.name) for decl in stat.declarator.dimension.args ]
-                    typedefs[alias] = CppType(base_type, template_args=args)
+                    args_node = stat.declarator.dimension.args
+                    args = [ CppType(decl.name) for decl in args_node]
+                    typedefs[alias] = CppType(base_type, args)
                 elif isinstance(stat, CppClassNode):
                     node = stat
                     break
                 else:
                     print "ignore node", stat
+            """
 
         name = node.name
         class_annotations = parse_class_annotations(node, lines)
 
         template_parameters = node.templates
-        methods = defaultdict(list)
+        methods = OrderedDict()
         for att in node.attributes:
             meth = CppMethodDecl.fromTree(att, lines)
             if meth is not None:
-                methods[meth.name].append(meth)
+                # an OrderedDefaultDict(list) would be nice here:
+                methods.setdefault(meth.name,[]).append(meth)
 
         return cls(name, template_parameters, methods, class_annotations)
 
     def __str__(self):
-        rv = ["class %s(_%s): " % (self.instance_name, self.name)]
+        rv = ["cppclass %s: " % (self.name, )]
         for meth_list in self.methods.values():
             rv += ["     " + str(method) for method in meth_list]
         return "\n".join(rv)
+
+    def get_transformed_methods(self, mapping):
+        result = dict()
+        for mdcl in self.get_method_decls():
+            result.setdefault(mdcl.name, []).append(mdcl.transformed(mapping))
+        return result
+
+    def get_method_decls(self):
+        for name, method_decls in self.methods.items():
+            for method_decl in method_decls:
+                yield method_decl
+
+    def has_method(self, other_decl):
+        with_same_name = self.methods.get(other_decl.name)
+        if with_same_name is None:
+            return False
+        return any(decl.matches(other_decl) for decl in with_same_name)
+
+    def attach_base_methods(self, dd):
+        for name, decls in dd.items():
+            for decl in decls:
+                if not self.has_method(decl):
+                    self.methods.setdefault(decl.name,[]).append(decl)
 
 
 def extract_type(base_type, decl):
@@ -159,7 +192,7 @@ def extract_type(base_type, decl):
                 is_ptr = isinstance(decl, CPtrDeclaratorNode)
                 is_ref = isinstance(decl, CReferenceDeclaratorNode)
                 name = arg.base_type.name
-                ttype = CppType(name, is_ptr, is_ref)
+                ttype = CppType(name, None, is_ptr, is_ref)
                 template_parameters.append(ttype)
             elif isinstance(arg, NameNode):
                 name = arg.name
@@ -171,7 +204,7 @@ def extract_type(base_type, decl):
                     args = [ CppType(a.name) for a in arg.index.args ]
                 else:
                     args = [ CppType(arg.index.name) ]
-                tt = CppType(name, template_args=args)
+                tt = CppType(name, args)
                 template_parameters.append(tt)
             else:
                 raise Exception("can not handle template arg %r" % arg)
@@ -181,8 +214,8 @@ def extract_type(base_type, decl):
     is_ptr = isinstance(decl, CPtrDeclaratorNode)
     is_ref = isinstance(decl, CReferenceDeclaratorNode)
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
-    return CppType(base_type.name, is_ptr, is_ref, is_unsigned,
-            template_parameters)
+    return CppType(base_type.name, template_parameters, is_ptr, is_ref,
+                   is_unsigned)
 
 
 class CppMethodDecl(object):
@@ -195,10 +228,20 @@ class CppMethodDecl(object):
         self.annotations = annotations
         self.wrap = not self.annotations.get("ignore", False)
 
-    def transformDecl(self, typemap):
+    def transformed(self, typemap):
         result_type = self.result_type.transform(typemap)
         args = [ (n, t.transform(typemap)) for n, t in self.args ]
         return CppMethodDecl(result_type, self.name, args, self.annotations)
+
+
+    def matches(self, other):
+        """ only checks method name signature,
+            does not consider argument names"""
+        if self.name != other.name:
+            return False
+        self_key = [ self.result_type ] + [ t for (a,t) in self.args ]
+        other_key = [ other.result_type ] + [ t for (a,t) in other.args ]
+        return self_key == other_key
 
 
     @classmethod
@@ -244,9 +287,18 @@ class CppMethodDecl(object):
         return rv + "(" + ", ".join(argl) + ")"
 
 
+def parse_str(what):
+    import tempfile
+
+    with tempfile.NamedTemporaryFile() as fp:
+        fp.write(what)
+        fp.flush()
+        return parse(fp.name)
+
 def parse(path):
 
     """ reads pxd file and extracts *SINGLE* class """
+    #TODO: multiple classes in one files, makes testing easier !
 
     options, sources = parse_command_line(["--cplus", path])
 
@@ -270,15 +322,16 @@ def parse(path):
     elif hasattr(tree.body, "body"):
         body = tree.body.body
     else:
-        return None
+        raise Exception("parse failed: no valied .pxd file !")
 
     lines = open(path).readlines()
 
     if isinstance(body, CEnumDefNode):
-            return Enum.fromTree(body, lines)
+            return EnumDecl.fromTree(body, lines)
 
     return CppClassDecl.fromTree(body, lines)
 
 if __name__ == "__main__":
+
     import sys
     print parse(sys.argv[1])
