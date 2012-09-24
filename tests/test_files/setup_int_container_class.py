@@ -6,14 +6,14 @@ from setuptools import setup, Extension
 from Cython.Compiler.Main import compile, default_options
 
 default_options["cplus"]= 1
-r = compile("itertest.pyx")
+r = compile("int_container_class.pyx")
 assert r.num_errors == 0
 
-ext = Extension("itertest", sources = [ "itertest.cpp"], language="c++",
+ext = Extension("int_container_class", sources = [ "int_container_class.cpp"], language="c++",
         extra_compile_args = [])
 
 setup(#cmdclass = {'build_ext' : build_ext},
-      name="itertest",
+      name="int_container_class",
       version="0.0.1",
       ext_modules = [ext]
      )
