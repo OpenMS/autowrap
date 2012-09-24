@@ -122,8 +122,6 @@ class CppClassDecl(EnumOrClassDecl):
     def fromTree(cls, node, lines):
 
         if hasattr(node, "stats"): # more than just class def
-            raise Exception("unhandled case")
-            """
             for stat in node.stats:
                 if isinstance(stat, CTypeDefNode):
                     alias = stat.base_type.name
@@ -132,11 +130,11 @@ class CppClassDecl(EnumOrClassDecl):
                     args = [ CppType(decl.name) for decl in args_node]
                     typedefs[alias] = CppType(base_type, args)
                 elif isinstance(stat, CppClassNode):
+                    raise Exception("should not happen")
                     node = stat
                     break
                 else:
                     print "ignore node", stat
-            """
 
         name = node.name
         class_annotations = parse_class_annotations(node, lines)
@@ -319,7 +317,12 @@ def parse(path):
             for s in tree.body.stats:
                 if isinstance(s, CDefExternNode):
                     body = s.body
-                    yield body
+                    if hasattr(body, "stats"):
+                        for node in body.stats:
+                            if isinstance(node, CppClassNode):
+                                yield node
+                    else:
+                        yield body
         elif hasattr(tree.body, "body"):
             body = tree.body.body
             yield body
