@@ -16,7 +16,7 @@ __doc__ = """
     below:
 
     in pxd files inheritance is declared with 'wrap-inherits' annotations.
-    python class names are declared with 'wrap-as' annotations.
+    python class names are declared with 'wrap-instances' annotations.
 
     eg
 
@@ -25,7 +25,7 @@ __doc__ = """
             #    C[U]
             #    D
             #
-            # wrap-as:
+            # wrap-instances:
             #    B_int_float[int, float]
             #    B_pure[int, int]
 
@@ -36,7 +36,7 @@ __doc__ = """
     and a Python class B_pure which wraps B[int,int].
 
     If you wrap a C++ class without template parameters you can ommit the
-    'wrap-as' annotation. In this case the name of the Python class is the
+    'wrap-instances' annotation. In this case the name of the Python class is the
     same as the name of the C++ class.
 
 """
@@ -228,12 +228,12 @@ def create_class_instances(class_decls):
     """
     generates concrete names of python classes.
 
-    names are declared with 'wrap-as' annotations.
+    names are declared with 'wrap-instances' annotations.
 
     eg
 
         cdef cppclass B[U,V]:
-            # wrap-as:
+            # wrap-instances:
             #    B_int_float[int, float]
             #    B_pure[int, int]
 
@@ -250,6 +250,8 @@ def create_class_instances(class_decls):
             if mdcl.annotations.get("wrap-ignore"):
                 continue
             inst = create_method_instance(mdcl, registry, t_param_mapping)
+            if inst.name == class_decl.name:
+                inst.name = alias
             methods.append(inst)
         resolved_classes.append(ClassInstance(alias, methods, class_decl))
     return resolved_classes
@@ -271,7 +273,10 @@ def create_method_instance(method_decl, registry, t_param_mapping):
 
 def resolve_alias(cpp_type, registry, t_param_mapping):
     cpp_type = cpp_type.transform(t_param_mapping)
-    alias = registry.get(str(cpp_type))
+    key = str(cpp_type)
+    if key.endswith("&"):
+        key = key[:-1]
+    alias = registry.get(key)
     if alias is None:
         return cpp_type
     return alias[0]
@@ -282,7 +287,7 @@ def create_alias_registry(class_decls):
         classes.
 
         cdef cppclass A[U]:
-            #wrap-instance:
+            #wrap-instances:
             #  AA[int]
 
         generates an entry  'A[int]' : ( 'AA', cldA, {'U': 'int'} )
@@ -297,7 +302,7 @@ def create_alias_registry(class_decls):
         inst_annotations = cdcl.annotations.get("wrap-instances")
 
         if cdcl.template_parameters is None and not inst_annotations:
-            # missing "wrap-instance" annotation works for non-template class:
+            # missing "wrap-instances" annotation works for non-template class:
             # instance name of python class equals c++ class name
             instance_decl_str = cdcl.name
             register_alias(cdcl, instance_decl_str, r)
