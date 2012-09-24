@@ -47,3 +47,11 @@ def testMinimal():
         args.append(meth.args)
     assert args == [[ (u"inp", CppType("int"))], [(u"inp", CppType("float"))]]
 
+
+def testIntContainerPXDParsing():
+    cld1, cld2 = _parse("int_container_class.pxd")
+    print cld1.name
+    assert cld1.name == "X"
+    print cld2.name
+    assert cld2.name == "XContainer"
+

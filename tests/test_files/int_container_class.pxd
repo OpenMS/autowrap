@@ -9,12 +9,13 @@ cdef extern from "int_container_class.hpp":
         X(T i)
         X(X[T] &)       # wrap-ignore
         X[T] operator+(X[T] & other)
-        T operator ()(X[T] &) # wrap-rename:getValue
+        T operator ()(X[T] &) # wrap-as:getValue
 
 
     cdef cppclass XContainer[T]:
         # wrap-instances:
         #    XContainerInt[int]
+        XContainer()
         void push_back(X[T] val)
         int  size()
 

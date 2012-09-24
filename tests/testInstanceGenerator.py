@@ -35,7 +35,7 @@ def test_singular():
                              'TemplatesInt'], res0_restypes
 
     res0_names =  map(lambda m: m.name, res0.methods)
-    assert res0_names ==  ["Templates", "getA", "getB", "toA",
+    assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
     first_arg_names= map(lambda m: None if len(m.arguments) == 0 else
@@ -67,7 +67,7 @@ def test_singular():
                              'TemplatesMixed'], res1_restypes
 
     res1_names =  map(lambda m: m.name, res1.methods)
-    assert res1_names ==  ["Templates", "getA", "getB", "toA",
+    assert res1_names ==  ["TemplatesMixed", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res1_names
 
     first_arg_names= map(lambda m: None if len(m.arguments) == 0 else
@@ -222,6 +222,15 @@ cdef extern from "A.h":
     assert instance.name == "B"
 
 
+def testIntContainer():
+    clds  = _parse("int_container_class.pxd")
+    resolved = autowrap.InstanceGenerator.transform(clds)
+    assert resolved[0].name == "Xint"
+    assert [ m.name for m in resolved[0].methods] == ["Xint", "operator+",
+    "getValue"]
+    assert resolved[1].name == "XContainerInt"
+    assert [ m.name for m in resolved[1].methods] == ["XContainerInt",
+            "push_back", "size",]
 
 
 
