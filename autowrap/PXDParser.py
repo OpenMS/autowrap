@@ -78,20 +78,23 @@ def parse_line_annotations(node, lines):
 
 
 class EnumOrClassDecl(object):
-        pass
+
+    def __init__(self, name, annotations, template_parameters, pxd_path):
+        self.name = name
+        self.annotations = annotations
+        self.template_parameters = template_parameters
+        self.pxd_path = pxd_path
+
 
 
 class EnumDecl(EnumOrClassDecl):
 
-    def __init__(self, name, items, annotations):
-        self.name = name
+    def __init__(self, name, items, annotations, pxd_path):
+        super(EnumDecl, self).__init__(name, annotations, None, pxd_path)
         self.items = items
-        self.annotations = annotations
-        self.wrap_ignore = annotations.get("wrap-ignore", False)
-        self.template_parameters = None
 
     @classmethod
-    def fromTree(cls, node, lines):
+    def fromTree(cls, node, lines, pxd_path):
         name = node.name
         items = []
         annotations = parse_line_annotations(node, lines)
@@ -102,7 +105,7 @@ class EnumDecl(EnumOrClassDecl):
             items.append((item.name, current_value))
             current_value += 1
 
-        return cls(name, items, annotations)
+        return cls(name, items, annotations, pxd_path)
 
     def __str__(self):
         res = "EnumDecl %s : " % self.name
@@ -112,14 +115,14 @@ class EnumDecl(EnumOrClassDecl):
 
 class CppClassDecl(EnumOrClassDecl):
 
-    def __init__(self, name, template_parameters, methods, annotations):
-        self.name = name
-        self.template_parameters = template_parameters
+    def __init__(self, name, template_parameters, methods, annotations,
+                 pxd_path):
+        super(CppClassDecl, self).__init__(name, annotations,
+                                           template_parameters, pxd_path)
         self.methods = methods
-        self.annotations = annotations
 
     @classmethod
-    def fromTree(cls, node, lines):
+    def fromTree(cls, node, lines, pxd_path):
 
         if hasattr(node, "stats"): # more than just class def
             for stat in node.stats:
@@ -147,7 +150,8 @@ class CppClassDecl(EnumOrClassDecl):
                 # an OrderedDefaultDict(list) would be nice here:
                 methods.setdefault(meth.name,[]).append(meth)
 
-        return cls(name, template_parameters, methods, class_annotations)
+        return cls(name, template_parameters, methods, class_annotations,
+                   pxd_path)
 
     def __str__(self):
         rv = ["cppclass %s: " % (self.name, )]
@@ -334,9 +338,9 @@ def parse(path):
     result = []
     for body in get_bodies(tree):
         if isinstance(body, CEnumDefNode):
-                result.append(EnumDecl.fromTree(body, lines))
+                result.append(EnumDecl.fromTree(body, lines, path))
 
-        result.append(CppClassDecl.fromTree(body, lines))
+        result.append(CppClassDecl.fromTree(body, lines, path))
     return result
 
 if __name__ == "__main__":
