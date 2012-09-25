@@ -11,7 +11,6 @@ cdef extern from "int_container_class.hpp":
         X[T] operator+(X[T] & other)
         T operator ()(X[T] &) # wrap-as:getValue
 
-
     cdef cppclass XContainer[T]:
         # wrap-instances:
         #    XContainerInt[int]
