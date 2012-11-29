@@ -1,0 +1,8 @@
+OPEN_MS_SRC="/home/uschmitt/develop/Release1.9pyOpenMS"
+OPEN_MS_BUILD_DIR="/home/uschmitt/develop/Release1.9pyOpenMS_Build"
+OPEN_MS_CONTRIB_BUILD_DIRS="/home/uschmitt/develop/Release1.9pyOpenMS/contrib;/opt/local;/usr/local;"
+QT_HEADERS_DIR="/usr/include/qt4"
+QT_LIBRARY_DIR="/usr/lib/x86_64-linux-gnu"
+QT_QTCORE_INCLUDE_DIR="/usr/include/qt4/QtCore"
+MSVCR90DLL=""
+OPEN_MS_LIB="/home/uschmitt/develop/Release1.9pyOpenMS_Build/lib/libOpenMS.so"
