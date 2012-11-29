@@ -18,12 +18,14 @@ def testNull():
     from autowrap.CodeGenerator import CodeGenerator
     clds  = _parse("int_container_class.pxd")
     resolved = autowrap.InstanceGenerator.transform(clds)
-    here = os.path.join(os.path.dirname("__file__"))
+    here = os.path.dirname(__file__)
     target = os.path.join(here, "int_container_class_wrapped.pyx")
     gen = CodeGenerator(resolved, target)
     gen.create_pyx_file(debug=True)
-    wrapped = autowrap.Utils.compile_and_import(target, None, "test_files")
-    print wrapped
+    include_path = os.path.join(here, "test_files")
+    wrapped = autowrap.Utils.compile_and_import(target, None, include_path,
+            debug=True)
+    assert wrapped.__name__ == "int_container_class_wrapped"
 
 
 

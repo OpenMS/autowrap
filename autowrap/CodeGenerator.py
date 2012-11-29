@@ -102,6 +102,9 @@ class CodeGenerator(object):
             with stdout_redirect(fp):
                 self.create_cimports()
 
+                print "cdef class X:"
+                print "    pass"
+
     def create_cimports(self):
         self.create_std_cimports()
         for class_instance in self.class_instances:

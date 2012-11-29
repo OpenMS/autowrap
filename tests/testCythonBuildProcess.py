@@ -17,7 +17,9 @@ def testSimplePyx():
                                                   "VIRTUAL ENV !!!"
     test_files = os.path.join(os.path.dirname(__file__), 'test_files')
     pyx_file = os.path.join(test_files, "int_container_class.pyx")
-    ics = autowrap.Utils.compile_and_import(pyx_file)
+    here = os.path.dirname(__file__)
+    include_path = os.path.join(here, "test_files")
+    ics = autowrap.Utils.compile_and_import(pyx_file, None, include_path)
     print ics.__file__
     assert (ics.Xint(3) + ics.Xint(4)).getValue() == 7
 
