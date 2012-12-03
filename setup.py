@@ -1,3 +1,10 @@
+# the following  import fixes some nostests issue
+# see http://bugs.python.org/issue15881
+try:
+    import multiprocessing
+except ImportError:
+    pass
+
 from setuptools import setup, find_packages
 
 version = '0.1'

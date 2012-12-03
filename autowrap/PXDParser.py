@@ -292,10 +292,12 @@ class CppMethodDecl(object):
 def parse_str(what):
     import tempfile
 
-    with tempfile.NamedTemporaryFile() as fp:
+    with tempfile.NamedTemporaryFile(delete=False) as fp:
         fp.write(what)
         fp.flush()
-        return parse(fp.name)
+        result = parse(fp.name)
+	return result
+   
 
 def parse(path):
 
