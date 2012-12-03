@@ -1,9 +1,12 @@
 # the following  import fixes some nostests issue
 # see http://bugs.python.org/issue15881
+
 try:
     import multiprocessing
 except ImportError:
     pass
+
+# the follwing is standard setup.py for a single package 'autowrap'
 
 from setuptools import setup, find_packages
 
