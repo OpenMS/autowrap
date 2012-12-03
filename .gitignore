@@ -2,6 +2,7 @@
 
 # gvim
 .*.sw[ijklmnop]
+*~
 
 # Packages
 *.egg
