@@ -7,10 +7,11 @@ def _parse(pxdFileName):
     test_file = os.path.join(os.path.dirname(__file__),
                              'test_files',
                              pxdFileName)
-    return autowrap.PXDParser.parse(test_file)
+    return autowrap.PXDParser.parse_pxd_file(test_file)
 
 
 def testMinimal():
+    print _parse("minimal.pxd")
     cld, = _parse("minimal.pxd")
     assert cld.name == "Minimal"
     assert cld.template_parameters  == None
@@ -54,4 +55,25 @@ def testIntContainerPXDParsing():
     assert cld1.name == "X"
     print cld2.name
     assert cld2.name == "XContainer"
+
+def test_multi_decls_in_one_file():
+    inst1, inst2 = autowrap.PXDParser.parse_str("""
+cdef extern from "A.h":
+    cdef cppclass A[B,C] :
+        # wrap-instances:
+        #   A[int,int]
+        void run()
+
+    cdef cppclass C[E] :
+        # wrap-instances:
+        #   C[float]
+        pass
+
+    """)
+    assert inst1.name == u"A"
+    assert inst1.template_parameters == [ u"B", u"C" ]
+    assert inst1.methods.keys() == ["run"]
+    assert inst2.name == u"C"
+    assert inst2.template_parameters == [ u"E", ]
+    assert len(inst2.methods) == 0
 

@@ -11,6 +11,8 @@ from Types import CppType
 import re
 import os
 
+    # wrap-instances:
+        #   A[int,int]
 from collections import defaultdict, OrderedDict
 
 """
@@ -72,7 +74,7 @@ def parse_line_annotations(node, lines):
     parts = lines[node.pos[1] - 1].split("#", 1)
     result = dict()
     if len(parts)==2:
-        # parse python statements in comments
+        # parse_pxd_file python statements in comments
         fields = [ f.strip() for f in parts[1].split(" ") ]
         for f in fields:
             if ":" in f:
@@ -130,6 +132,8 @@ class CppClassDecl(EnumOrClassDecl):
     @classmethod
     def fromTree(cls, node, lines, pxd_path):
 
+        result = []
+
         if hasattr(node, "stats"): # more than just class def
             for stat in node.stats:
                 if isinstance(stat, CTypeDefNode):
@@ -139,16 +143,18 @@ class CppClassDecl(EnumOrClassDecl):
                     args = [ CppType(decl.name) for decl in args_node]
                     typedefs[alias] = CppType(base_type, args)
                 elif isinstance(stat, CppClassNode):
-                    raise Exception("should not happen")
-                    node = stat
-                    break
+                    result.append(cls._createClassDecl(stat, lines, pxd_path))
                 else:
                     print "ignore node", stat
+        else:
+            result.append(cls._createClassDecl(node, lines, pxd_path))
+        return result
 
+    @classmethod
+    def _createClassDecl(cls, node, lines, pxd_path):
         name = node.name
-        class_annotations = parse_class_annotations(node, lines)
-
         template_parameters = node.templates
+        class_annotations = parse_class_annotations(node, lines)
         methods = OrderedDict()
         for att in node.attributes:
             meth = CppMethodDecl.fromTree(att, lines)
@@ -190,7 +196,7 @@ class CppClassDecl(EnumOrClassDecl):
 
 
 def extract_type(base_type, decl):
-    """ extracts type information from node in parse tree """
+    """ extracts type information from node in parse_pxd_file tree """
     template_parameters = None
     if isinstance(base_type, TemplatedTypeNode):
         template_parameters = []
@@ -303,11 +309,11 @@ def parse_str(what):
         fp.write(what)
         fp.flush()
         fp.close() # needed for reading it on win
-        result = parse(fp.name)
+        result = parse_pxd_file(fp.name)
 	return result
    
 
-def parse(path):
+def parse_pxd_file(path):
 
     """ reads pxd file and extracts *SINGLE* class """
     #TODO: multiple classes in one files, makes testing easier !
@@ -341,7 +347,7 @@ def parse(path):
             body = tree.body.body
             yield body
         else:
-            raise Exception("parse failed: no valied .pxd file !")
+            raise Exception("parse_pxd_file failed: no valied .pxd file !")
 
     lines = open(path).readlines()
 
@@ -350,10 +356,10 @@ def parse(path):
         if isinstance(body, CEnumDefNode):
                 result.append(EnumDecl.fromTree(body, lines, path))
 
-        result.append(CppClassDecl.fromTree(body, lines, path))
+        result.extend(CppClassDecl.fromTree(body, lines, path))
     return result
 
 if __name__ == "__main__":
 
     import sys
-    print parse(sys.argv[1])
+    print parse_pxd_file(sys.argv[1])

@@ -72,3 +72,29 @@ def compile_and_import(pyx_file, name=None, *include_dirs, **kws):
     sys.path = sys.path[2:]
     os.chdir(now)
     return result
+
+
+def find_cycle(graph_as_dict):
+    """ modified version of
+    http://neopythonic.blogspot.de/2009/01/detecting-cycles-in-directed-graph.html
+    """
+
+    nodes = graph_as_dict.keys()
+    for n in graph_as_dict.values():
+        nodes.extend(n)
+    todo = list(set(nodes))
+    while todo:
+        node = todo.pop()
+        stack = [node]
+        while stack:
+            top = stack[-1]
+            for node in graph_as_dict.get(top, []):
+                if node in stack:
+                    return stack[stack.index(node):]
+                if node in todo:
+                    stack.append(node)
+                    todo.remove(node)
+                    break
+            else:
+                node = stack.pop()
+    return None

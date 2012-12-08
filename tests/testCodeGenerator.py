@@ -1,4 +1,4 @@
-import autowrap.InstanceGenerator
+import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
 import autowrap.Utils
@@ -7,7 +7,7 @@ import os
 
 def _resolve(*names):
     root = os.path.join(os.path.dirname(__file__), "test_files")
-    return autowrap.InstanceGenerator.transform_files(*names, root=root)
+    return autowrap.DeclResolver.resolve_decls_from_files(*names, root=root)
 
 def testNull():
     from autowrap.CodeGenerator import CodeGenerator
