@@ -13,6 +13,12 @@ import os
 
 from collections import defaultdict, OrderedDict
 
+"""
+Methods in this module use Cythons Parser to build an Cython syntax tree
+from the annotated .pxd files and creates a represenation of the
+included classes and methods.
+"""
+
 
 class IdentityMap(dict):
     """ every get and __getitem__ returns key as value """
@@ -292,9 +298,11 @@ class CppMethodDecl(object):
 def parse_str(what):
     import tempfile
 
+    # delete=False keeps file after closing it !
     with tempfile.NamedTemporaryFile(delete=False) as fp:
         fp.write(what)
         fp.flush()
+        fp.close() # needed for reading it on win
         result = parse(fp.name)
 	return result
    

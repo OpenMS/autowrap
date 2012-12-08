@@ -1,43 +1,41 @@
 # encoding: utf-8
-from PXDParser import EnumOrClassDecl
+from PXDParser import EnumOrClassDecl, parse, parse_str
 import re
+import os
 from collections import OrderedDict, defaultdict
 
 
 __doc__ = """
 
-    the methods in this module take the class declarations created by calling
-    PXDParser.parse and generates a list of instantiated class declarations.
-    'instanciated' means that all template parameters are resolved  and
-    inherited methods are resolved from super classes.
+    the methods in this module take the class declarations created by
+    calling PXDParser.parse and generates a list of instantiated class
+    declarations.  'instanciated' means that all template parameters are
+    resolved  and inherited methods are resolved from super classes.
 
 
-    some preliminaries which you should have in mind to understand the code
-    below:
+    some preliminaries which you should have in mind to understand the
+    code below:
 
-    in pxd files inheritance is declared with 'wrap-inherits' annotations.
-    python class names are declared with 'wrap-instances' annotations.
+    in pxd files inheritance is declared with 'wrap-inherits'
+    annotations.  python class names are declared with 'wrap-instances'
+    annotations.
 
     eg
 
         cdef cppclass B[U,V]:
-            # wrap-inherits:
-            #    C[U]
-            #    D
+            # wrap-inherits: C[U] D
             #
-            # wrap-instances:
-            #    B_int_float[int, float]
-            #    B_pure[int, int]
+            # wrap-instances: B_int_float[int, float] B_pure[int, int]
 
 
     So B[U,V] gets additional methods from C[U] and from D.
 
-    In the end we get a Python class B_int_float which wraps B[int, float]
-    and a Python class B_pure which wraps B[int,int].
+    In the end we get a Python class B_int_float which wraps B[int,
+    float] and a Python class B_pure which wraps B[int,int].
 
-    If you wrap a C++ class without template parameters you can ommit the
-    'wrap-instances' annotation. In this case the name of the Python class is the
-    same as the name of the C++ class.
+    If you wrap a C++ class without template parameters you can ommit
+    the 'wrap-instances' annotation. In this case the name of the Python
+    class is the same as the name of the C++ class.
 
 """
 
@@ -116,8 +114,19 @@ class MethodInstance(object):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
         return "%s %s(%s)" % (self.result_type, self.name, ", ".join(args))
 
+def transform_files(*pathes, **kw):
+    root = kw.get("root", ".")
+    decls = []
+    for path in pathes:
+        full_path = os.path.join(root, path)
+        decls.extend(parse(full_path))
+    return _transform(decls)
 
-def transform(class_decls):
+def transform_string(pxd_in_a_string):
+    return _transform(parse_str(pxd_in_a_string))
+
+
+def _transform(class_decls):
     """
     input:
         class_decls ist list of innstances of PXDParser.EnumOrClassDecl.

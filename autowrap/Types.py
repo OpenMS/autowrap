@@ -7,8 +7,8 @@ class CppType(object):
     CTYPES = ["int", "long", "double", "float", "char", "void"]
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
-    def __init__(self, base_type, template_args = None, is_ptr=False, is_ref=False,
-                       is_unsigned = False, is_enum=False):
+    def __init__(self, base_type, template_args = None, is_ptr=False,
+                 is_ref=False, is_unsigned = False, is_enum=False):
         self.base_type =  "void" if base_type is None else base_type
         self.is_ptr = is_ptr
         self.is_ref = is_ref
@@ -19,7 +19,7 @@ class CppType(object):
     def transform(self, typemap):
         base_type = typemap.get(self.base_type, self.base_type)
         if self.template_args:
-            template_args = [ t.transform(typemap) for t in self.template_args ]
+            template_args = [t.transform(typemap) for t in self.template_args]
         else:
             template_args = self.template_args
 
@@ -29,8 +29,9 @@ class CppType(object):
     def __hash__(self):
 
         # this one is recursive if we have template_args !
-        return hash( (self.base_type, self.is_ptr, self.is_ref,
-                     self.is_unsigned, self.is_enum, hash(self.template_args) ) )
+        return hash((self.base_type, self.is_ptr, self.is_ref,
+                    self.is_unsigned, self.is_enum, hash(self.template_args)))
+
     def __eq__(self, other):
         """ for using Types as dict keys """
         # this one is recursive if we have template_args !
@@ -57,7 +58,6 @@ class CppType(object):
         result = "%s %s%s%s" % (unsigned, self.base_type, inner, ptr or ref)
         return result.lstrip() # if unsigned is "" -> lstrip
 
-        
 
     def matches(self, base_type, **kw):
 

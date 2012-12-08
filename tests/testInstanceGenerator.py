@@ -1,28 +1,20 @@
-import autowrap.InstanceGenerator
+import autowrap.InstanceGenerator as InstanceGenerator
 import autowrap.PXDParser
 import os
 
 #TODO: use parse_str so that the pxd code is next to the testing code
 
-def _parse(*pxdFileNames):
-    class_decls = []
-    for pxdFileName in pxdFileNames:
-        test_file = os.path.join(os.path.dirname(__file__),
-                                'test_files',
-                                pxdFileName)
-        class_decls.extend(autowrap.PXDParser.parse(test_file))
-    return class_decls
+
+def _resolve(*names):
+    root = os.path.join(os.path.dirname(__file__), "test_files")
+    return autowrap.InstanceGenerator.transform_files(*names, root=root)
 
 def test_simple():
-    print "testSimple"
-    singleDecl, = _parse("minimal.pxd")
-    resolved = autowrap.InstanceGenerator.transform([singleDecl])
-    assert len(resolved) == 1, len(resolved)
+    dcls = _resolve("minimal.pxd")
+    assert len(dcls) == 1, len(dcls)
 
 def test_singular():
-    print "testSingular"
-    singleDecl, = _parse("templates.pxd")
-    resolved = autowrap.InstanceGenerator.transform([singleDecl])
+    resolved = _resolve("templates.pxd")
 
     assert len(resolved) == 2, len(resolved)
     res0, res1 = resolved
@@ -92,10 +84,9 @@ def test_singular():
                                 "list[float]&", None, None, None,
                                 "float"], second_arg_types
 
-
 def test_multi_inherit():
-    decls = _parse("A.pxd", "B.pxd", "C.pxd", "D.pxd")
-    resolved = autowrap.InstanceGenerator.transform(decls)
+    resolved = _resolve("A.pxd", "B.pxd", "C.pxd", "D.pxd")
+
     data = dict()
     for class_instance in resolved:
         mdata = []
@@ -104,9 +95,6 @@ def test_multi_inherit():
             li += [ str(t) for n, t in m.arguments ]
             mdata.append(li)
         data[class_instance.name] = mdata
-
-    #import pprint
-    #print pprint.pprint(data)
 
     assert data == {'D1': [['void', u'Afun', 'int', 'int'],
                             ['void', u'Afun', 'float', 'int'],
@@ -137,21 +125,18 @@ def expect_exception(fun):
 
 @expect_exception
 def test_cycle_detection_in_class_hierarchy0():
-    decls = _parse("Cycle0.pxd", "Cycle1.pxd", "Cycle2.pxd")
-    autowrap.InstanceGenerator.transform(decls)
+    _resolve("Cycle0.pxd", "Cycle1.pxd", "Cycle2.pxd")
 
 @expect_exception
 def test_cycle_detection_in_class_hierarchy1():
-    decls = _parse("Cycle1.pxd", "Cycle2.pxd", "Cycle0.pxd")
-    autowrap.InstanceGenerator.transform(decls)
+    _resolve("Cycle1.pxd", "Cycle2.pxd", "Cycle0.pxd")
 
 @expect_exception
 def test_cycle_detection_in_class_hierarchy2():
-    decls = _parse("Cycle2.pxd", "Cycle0.pxd", "Cycle1.pxd")
-    autowrap.InstanceGenerator.transform(decls)
+    _resolve("Cycle2.pxd", "Cycle0.pxd", "Cycle1.pxd")
 
 def test_hierarchy_detector0():
-    from  autowrap.InstanceGenerator import find_cycle
+    from autowrap.InstanceGenerator import find_cycle
 
     dd = dict()
     dd[1] = [2]
@@ -193,38 +178,27 @@ def test_hierarchy_detector3():
 
 
 
+@expect_exception
 def test_template_class_without_wrapas():
-    from autowrap.PXDParser import parse_str
-    from autowrap.InstanceGenerator import transform
-    decl = parse_str("""
+    InstanceGenerator.transform_string("""
 cdef extern from "A.h":
     cdef cppclass A[U]:
             A()
-    """)
-    try:
-        transform([decl])
-    except:
-        pass
-    else:
-        assert False, "expected exception"
+                   """)
 
 def test_non_template_class_with_annotation():
-    from autowrap.PXDParser import parse_str
-    from autowrap.InstanceGenerator import transform
-    decl, = parse_str("""
+    instance, = InstanceGenerator.transform_string("""
 cdef extern from "A.h":
     cdef cppclass A:
         # wrap-instances:
         #  B
         pass
     """)
-    instance, = transform([decl])
     assert instance.name == "B"
 
 
 def testIntContainer():
-    clds  = _parse("int_container_class.pxd")
-    resolved = autowrap.InstanceGenerator.transform(clds)
+    resolved  = _resolve("int_container_class.pxd")
     assert resolved[0].name == "Xint"
     assert [ m.name for m in resolved[0].methods] == ["Xint", "operator+",
     "getValue"]

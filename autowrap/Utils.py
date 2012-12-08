@@ -1,5 +1,3 @@
-
-
 template = """
 
 from distutils.core import setup, Extension
@@ -58,9 +56,6 @@ def compile_and_import(pyx_file, name=None, *include_dirs, **kws):
 
     import sys
     sys.path.insert(0, tempdir)
-    #sys.path.insert(0, os.path.dirname(pyx_file))
-    #sys.path.insert(0, "/home/uschmitt/develop/autowrap")
-    #sys.path.insert(0, "/home/uschmitt/develop/autowrap/tests/test_files")
     if debug:
         print
         print "-"*70
@@ -77,8 +72,3 @@ def compile_and_import(pyx_file, name=None, *include_dirs, **kws):
     sys.path = sys.path[2:]
     os.chdir(now)
     return result
-
-
-
-
-

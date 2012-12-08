@@ -5,21 +5,15 @@ import autowrap.Utils
 
 import os
 
-def _parse(*pxdFileNames):
-    class_decls = []
-    for pxdFileName in pxdFileNames:
-        test_file = os.path.join(os.path.dirname(__file__),
-                                'test_files',
-                                pxdFileName)
-        class_decls.extend(autowrap.PXDParser.parse(test_file))
-    return class_decls
+def _resolve(*names):
+    root = os.path.join(os.path.dirname(__file__), "test_files")
+    return autowrap.InstanceGenerator.transform_files(*names, root=root)
 
 def testNull():
     from autowrap.CodeGenerator import CodeGenerator
-    clds  = _parse("int_container_class.pxd")
-    resolved = autowrap.InstanceGenerator.transform(clds)
+    resolved  = _resolve("int_container_class.pxd")
     here = os.path.dirname(__file__)
-    target = os.path.join(here, "int_container_class_wrapped.pyx")
+    target = os.path.join(here, "test_files", "int_container_class_wrapped.pyx")
     gen = CodeGenerator(resolved, target)
     gen.create_pyx_file(debug=True)
     include_path = os.path.join(here, "test_files")
