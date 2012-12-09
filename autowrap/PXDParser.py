@@ -20,13 +20,6 @@ included classes and methods.
 """
 
 
-class IdentityMap(dict):
-    """ every get and __getitem__ returns key as value """
-
-    def __getitem__(self, k):
-        return k
-
-
 def parse_class_annotations(node, lines):
     """ parses wrap-instructions inside comments below class def """
     start_at_line = node.pos[1]

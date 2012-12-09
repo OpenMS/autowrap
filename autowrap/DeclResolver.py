@@ -9,10 +9,9 @@ import autowrap.Utils
 __doc__ = """
 
     the methods in this module take the class declarations created by
-    calling PXDParser.parse and generates a list of instantiated class
-    declarations.  'instanciated' means that all template parameters are
+    calling PXDParser.parse and generates a list of resolved class
+    declarations.  'resolved' means that all template parameters are
     resolved  and inherited methods are resolved from super classes.
-
 
     some preliminaries which you should have in mind to understand the
     code below:
@@ -55,8 +54,8 @@ def _split_targs(decl_str):
 
 class ResolvedClass(object):
     """ contains all info for generating wrapping code of
-        instanciated class.
-        "Instance" means that template parameters are resolved.
+        resolved class.
+        "Resolved" means that template parameters are resolved.
     """
 
     def __init__(self, name, methods, decl=None):
@@ -71,8 +70,8 @@ class ResolvedClass(object):
 class ResolvedMethod(object):
 
     """ contains all info for generating wrapping code of
-        instanciated class.
-        "Instance" means that template parameters are resolved.
+        resolved class.
+        "resolved" means that template parameters are resolved.
     """
 
     def __init__(self, name, result_type, arguments):
@@ -99,10 +98,10 @@ def resolve_decls_from_string(pxd_in_a_string):
 def _transform(class_decls):
     """
     input:
-        class_decls ist list of innstances of PXDParser.EnumOrClassDecl.
+        class_decls ist list of instances of PXDParser.EnumOrClassDecl.
         (contains annotations
-            - about instance names for template parameterized classes
-            - about inheritance of methods from other classes in class_decls
+          - about instance names for template parameterized classes
+          - about inheritance of methods from other classes in class_decls
         )
     output:
         list of instances of ResolvedClass
@@ -110,8 +109,7 @@ def _transform(class_decls):
     assert all(isinstance(d, PXDParser.EnumOrClassDecl) for d in class_decls)
 
     class_decls = _resolve_all_inheritances(class_decls)
-    instances = _resolve_classes(class_decls)
-    return instances
+    return _resolve_templated_classes(class_decls)
 
 
 def _resolve_all_inheritances(class_decls):
@@ -203,7 +201,7 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     cdcl.attach_base_methods(transformed_methods)
 
 
-def _resolve_classes(class_decls):
+def _resolve_templated_classes(class_decls):
     """
     generates concrete names of python classes.
 
