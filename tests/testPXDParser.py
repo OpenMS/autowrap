@@ -48,28 +48,40 @@ def test_minimal():
     assert args == [[ (u"inp", CppType("int"))], [(u"inp", CppType("float"))]]
 
 
-def testIntContainerPXDParsing():
+def test_int_container_pxd_parsing():
     cld1, cld2 = _parse("int_container_class.pxd")
-    print cld1.name
     assert cld1.name == "X"
-    print cld2.name
     assert cld2.name == "XContainer"
 
 def test_enum():
-    autowrap.PXDParser.parse_str("""
+    E, = autowrap.PXDParser.parse_str("""
 cdef extern from "":
     cdef enum E:
                 A, B, C
             """)
 
 def test_multi_enum():
-    autowrap.PXDParser.parse_str("""
+    E, F = autowrap.PXDParser.parse_str("""
+cdef extern from "":
+    cdef enum E:
+                A, B, C
+
+    cdef enum F:
+                X, Y=4, Z
+
+            """)
+
+def test_multi_mixed():
+    E, F, X = autowrap.PXDParser.parse_str("""
 cdef extern from "":
     cdef enum E:
                 A, B, C
 
     cdef enum F:
                 X, Y, Z
+
+    cdef cppclass X:
+         void fun(int)
 
             """)
 
