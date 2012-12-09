@@ -11,7 +11,7 @@ def _parse(pxdFileName):
 
 
 def test_minimal():
-    cld, = autowrap.PXDParser.parse_str_("""
+    cld, = autowrap.PXDParser.parse_str("""
 cdef extern from "Minimal.hpp":
 
     cdef cppclass Minimal:
@@ -67,12 +67,20 @@ def test_int_container_pxd_parsing():
     assert cld1.name == "X"
     assert cld2.name == "XContainer"
 
+
 def test_enum():
     E, = autowrap.PXDParser.parse_str("""
 cdef extern from "":
     cdef enum E:
                 A, B, C
             """)
+
+    assert E.name == "E"
+    A, B, C = E.items
+    assert A == ("A", 0)
+    assert B == ("B", 1)
+    assert C == ("C", 2)
+
 
 def test_multi_enum():
     E, F = autowrap.PXDParser.parse_str("""
@@ -85,6 +93,19 @@ cdef extern from "":
 
             """)
 
+    assert E.name == "E"
+    A, B, C = E.items
+    assert A == ("A", 0)
+    assert B == ("B", 1)
+    assert C == ("C", 2)
+
+    assert F.name == "F"
+    X, Y, Z = F.items
+    assert X == ("X", 0)
+    assert Y == ("Y", 4)
+    assert Z == ("Z", 5)
+
+
 def test_multi_mixed():
     E, F, X = autowrap.PXDParser.parse_str("""
 cdef extern from "":
@@ -92,18 +113,35 @@ cdef extern from "":
                 A, B, C
 
     cdef enum F:
-                X, Y, Z
+                G, H=4, I
 
     cdef cppclass X:
          void fun(int)
 
             """)
 
-if __name__ == "__main__":
+    assert E.name == "E"
+    A, B, C = E.items
+    assert A == ("A", 0)
+    assert B == ("B", 1)
+    assert C == ("C", 2)
 
-    test_multi_enum()
+    assert F.name == "F"
+    G, H, I = F.items
+    assert G == ("G", 0)
+    assert H == ("H", 4)
+    assert I == ("I", 5)
 
-def test_multi_decls_in_one_file():
+    assert X.name == "X", X
+    (fun,),  = X.methods.values()
+    assert fun.result_type == CppType("void"), fun.result_type
+    assert fun.name == "fun"
+    (arg_name, type_), = fun.args
+    assert arg_name == ""
+    assert type_ == CppType("int")
+
+
+def test_multi_classes_in_one_file():
     inst1, inst2 = autowrap.PXDParser.parse_str("""
 cdef extern from "A.h":
     cdef cppclass A[B,C] :
@@ -123,4 +161,3 @@ cdef extern from "A.h":
     assert inst2.name == u"C"
     assert inst2.template_parameters == [ u"E", ]
     assert len(inst2.methods) == 0
-

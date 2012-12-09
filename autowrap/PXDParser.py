@@ -11,8 +11,6 @@ from Types import CppType
 import re
 import os
 
-    # wrap-instances:
-        #   A[int,int]
 from collections import defaultdict, OrderedDict
 
 """
@@ -83,6 +81,44 @@ def parse_line_annotations(node, lines):
                 key, value = f, 1
         result[key] = value
     return result
+
+
+def _extract_type(base_type, decl):
+    """ extracts type information from node in parse_pxd_file tree """
+
+    template_parameters = None
+    if isinstance(base_type, TemplatedTypeNode):
+        template_parameters = []
+        for arg in base_type.positional_args:
+            if isinstance(arg, CComplexBaseTypeNode):
+                decl = arg.declarator
+                is_ptr = isinstance(decl, CPtrDeclaratorNode)
+                is_ref = isinstance(decl, CReferenceDeclaratorNode)
+                name = arg.base_type.name
+                ttype = CppType(name, None, is_ptr, is_ref)
+                template_parameters.append(ttype)
+            elif isinstance(arg, NameNode):
+                name = arg.name
+                template_parameters.append(CppType(name))
+            elif isinstance(arg, IndexNode): # nested template !
+                # only handles one nesting level !
+                name = arg.base.name
+                if hasattr(arg.index, "args"):
+                    args = [ CppType(a.name) for a in arg.index.args ]
+                else:
+                    args = [ CppType(arg.index.name) ]
+                tt = CppType(name, args)
+                template_parameters.append(tt)
+            else:
+                raise Exception("can not handle template arg %r" % arg)
+
+        base_type = base_type.base_type_node
+
+    is_ptr = isinstance(decl, CPtrDeclaratorNode)
+    is_ref = isinstance(decl, CReferenceDeclaratorNode)
+    is_unsigned = hasattr(base_type, "signed") and not base_type.signed
+    return CppType(base_type.name, template_parameters, is_ptr, is_ref,
+                   is_unsigned)
 
 
 class EnumOrClassDecl(object):
@@ -174,47 +210,9 @@ class CppClassDecl(EnumOrClassDecl):
                     self.methods.setdefault(decl.name,[]).append(decl)
 
 
-def extract_type(base_type, decl):
-    """ extracts type information from node in parse_pxd_file tree """
-    template_parameters = None
-    if isinstance(base_type, TemplatedTypeNode):
-        template_parameters = []
-        for arg in base_type.positional_args:
-            if isinstance(arg, CComplexBaseTypeNode):
-                decl = arg.declarator
-                is_ptr = isinstance(decl, CPtrDeclaratorNode)
-                is_ref = isinstance(decl, CReferenceDeclaratorNode)
-                name = arg.base_type.name
-                ttype = CppType(name, None, is_ptr, is_ref)
-                template_parameters.append(ttype)
-            elif isinstance(arg, NameNode):
-                name = arg.name
-                template_parameters.append(CppType(name))
-            elif isinstance(arg, IndexNode): # nested template !
-                # only handles one nesting level !
-                name = arg.base.name
-                if hasattr(arg.index, "args"):
-                    args = [ CppType(a.name) for a in arg.index.args ]
-                else:
-                    args = [ CppType(arg.index.name) ]
-                tt = CppType(name, args)
-                template_parameters.append(tt)
-            else:
-                raise Exception("can not handle template arg %r" % arg)
-
-        base_type = base_type.base_type_node
-
-    is_ptr = isinstance(decl, CPtrDeclaratorNode)
-    is_ref = isinstance(decl, CReferenceDeclaratorNode)
-    is_unsigned = hasattr(base_type, "signed") and not base_type.signed
-    return CppType(base_type.name, template_parameters, is_ptr, is_ref,
-                   is_unsigned)
-
-
 class CppMethodDecl(object):
 
     def __init__(self, result_type,  name, args, annotations):
-
         self.result_type = result_type
         self.name = name
         self.args = args
@@ -226,7 +224,6 @@ class CppMethodDecl(object):
         args = [ (n, t.transform(typemap)) for n, t in self.args ]
         return CppMethodDecl(result_type, self.name, args, self.annotations)
 
-
     def matches(self, other):
         """ only checks method name signature,
             does not consider argument names"""
@@ -236,17 +233,14 @@ class CppMethodDecl(object):
         other_key = [ other.result_type ] + [ t for (a,t) in other.args ]
         return self_key == other_key
 
-
     @classmethod
     def fromTree(cls, node, lines):
-
         annotations = parse_line_annotations(node, lines)
-
         if isinstance(node, CppClassNode):
             return None # nested classes only can be delcared in pxd
 
         decl = node.declarators[0]
-        result_type = extract_type(node.base_type, decl)
+        result_type = _extract_type(node.base_type, decl)
 
         if isinstance(decl, CNameDeclaratorNode):
             if re.match("^operator\W*\(\)$", decl.name):
@@ -267,7 +261,7 @@ class CppMethodDecl(object):
                 argname = argdecl.base.name
             else:
                 argname = argdecl.name
-            tt = extract_type(arg.base_type, argdecl)
+            tt = _extract_type(arg.base_type, argdecl)
             args.append((argname,tt))
 
         return cls(result_type, name, args, annotations)
@@ -288,8 +282,8 @@ def parse_str(what):
         fp.flush()
         fp.close() # needed for reading it on win
         result = parse_pxd_file(fp.name)
-	return result
-   
+        return result
+
 
 def parse_pxd_file(path):
 
