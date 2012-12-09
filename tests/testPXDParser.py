@@ -10,8 +10,7 @@ def _parse(pxdFileName):
     return autowrap.PXDParser.parse_pxd_file(test_file)
 
 
-def testMinimal():
-    print _parse("minimal.pxd")
+def test_minimal():
     cld, = _parse("minimal.pxd")
     assert cld.name == "Minimal"
     assert cld.template_parameters  == None
@@ -55,6 +54,28 @@ def testIntContainerPXDParsing():
     assert cld1.name == "X"
     print cld2.name
     assert cld2.name == "XContainer"
+
+def test_enum():
+    autowrap.PXDParser.parse_str("""
+cdef extern from "":
+    cdef enum E:
+                A, B, C
+            """)
+
+def test_multi_enum():
+    autowrap.PXDParser.parse_str("""
+cdef extern from "":
+    cdef enum E:
+                A, B, C
+
+    cdef enum F:
+                X, Y, Z
+
+            """)
+
+if __name__ == "__main__":
+
+    test_multi_enum()
 
 def test_multi_decls_in_one_file():
     inst1, inst2 = autowrap.PXDParser.parse_str("""

@@ -131,27 +131,6 @@ class CppClassDecl(EnumOrClassDecl):
 
     @classmethod
     def fromTree(cls, node, lines, pxd_path):
-
-        result = []
-
-        if hasattr(node, "stats"): # more than just class def
-            for stat in node.stats:
-                if isinstance(stat, CTypeDefNode):
-                    alias = stat.base_type.name
-                    base_type = stat.declarator.base.name
-                    args_node = stat.declarator.dimension.args
-                    args = [ CppType(decl.name) for decl in args_node]
-                    typedefs[alias] = CppType(base_type, args)
-                elif isinstance(stat, CppClassNode):
-                    result.append(cls._createClassDecl(stat, lines, pxd_path))
-                else:
-                    print "ignore node", stat
-        else:
-            result.append(cls._createClassDecl(node, lines, pxd_path))
-        return result
-
-    @classmethod
-    def _createClassDecl(cls, node, lines, pxd_path):
         name = node.name
         template_parameters = node.templates
         class_annotations = parse_class_annotations(node, lines)
@@ -262,7 +241,6 @@ class CppMethodDecl(object):
     def fromTree(cls, node, lines):
 
         annotations = parse_line_annotations(node, lines)
-        #import pdb; pdb.set_trace()
 
         if isinstance(node, CppClassNode):
             return None # nested classes only can be delcared in pxd
@@ -332,7 +310,7 @@ def parse_pxd_file(path):
     pipeline = Pipeline.create_pyx_pipeline(context, options, result)
     tree = pipeline[0](source)  # only parser
 
-    def get_bodies(tree):
+    def iter_bodies(tree):
         if hasattr(tree.body, "stats"):
             for s in tree.body.stats:
                 if isinstance(s, CDefExternNode):
@@ -352,11 +330,17 @@ def parse_pxd_file(path):
     lines = open(path).readlines()
 
     result = []
-    for body in get_bodies(tree):
+    for body in iter_bodies(tree):
         if isinstance(body, CEnumDefNode):
-                result.append(EnumDecl.fromTree(body, lines, path))
-
-        result.extend(CppClassDecl.fromTree(body, lines, path))
+            result.append(EnumDecl.fromTree(body, lines, path))
+        elif isinstance(body, CppClassNode):
+            result.append(CppClassDecl.fromTree(body, lines, path))
+        elif hasattr(body, "stats"):
+            for node in body.stats:
+                if isinstance(node, CEnumDefNode):
+                    result.append(EnumDecl.fromTree(node, lines, path))
+                elif isinstance(node, CppClassNode):
+                    result.append(CppClassDecl.fromTree(node, lines, path))
     return result
 
 if __name__ == "__main__":
