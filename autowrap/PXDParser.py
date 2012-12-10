@@ -5,7 +5,6 @@ from Cython.Compiler import Pipeline
 from Cython.Compiler.Scanning import FileSourceDescriptor
 from Cython.Compiler.Nodes import *
 from Cython.Compiler.ExprNodes import *
-from Cython.Compiler import Errors
 
 from Types import CppType
 
@@ -149,6 +148,9 @@ class EnumDecl(EnumOrClassDecl):
         res = "EnumDecl %s : " % self.name
         res += ", ".join("%s: %d" % (i, v) for (i, v) in self.items)
         return res
+
+    def get_method_decls(self):
+        return []
 
 
 class CppClassDecl(EnumOrClassDecl):

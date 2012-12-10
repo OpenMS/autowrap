@@ -52,7 +52,7 @@ def _split_targs(decl_str):
 
 
 
-class ResolvedClass(object):
+class ResolvedClassOrEnum(object):
     """ contains all info for generating wrapping code of
         resolved class.
         "Resolved" means that template parameters are resolved.
@@ -62,6 +62,7 @@ class ResolvedClass(object):
         self.name = name
         self.methods = methods
         self.decl = decl
+        self.items = getattr(decl, "items", [])
 
     def __str__(self):
         return "\n   ".join([self.name] + map(str, self.methods))
@@ -104,7 +105,7 @@ def _transform(class_decls):
           - about inheritance of methods from other classes in class_decls
         )
     output:
-        list of instances of ResolvedClass
+        list of instances of ResolvedClassOrEnum
     """
     assert all(isinstance(d, PXDParser.EnumOrClassDecl) for d in class_decls)
 
@@ -221,16 +222,16 @@ def _resolve_templated_classes(class_decls):
 
     registry = _create_alias_registry(class_decls)
     resolved_classes = []
-    for alias, class_decl, t_param_mapping in registry.values():
+    for alias, decl, t_param_mapping in registry.values():
         methods = []
-        for mdcl in class_decl.get_method_decls():
+        for mdcl in decl.get_method_decls():
             if mdcl.annotations.get("wrap-ignore"):
                 continue
             inst = _resolve_method(mdcl, registry, t_param_mapping)
-            if inst.name == class_decl.name:
+            if inst.name == decl.name:
                 inst.name = alias
             methods.append(inst)
-        resolved_classes.append(ResolvedClass(alias, methods, class_decl))
+        resolved_classes.append(ResolvedClassOrEnum(alias, methods, decl))
     return resolved_classes
 
 
@@ -287,9 +288,10 @@ def _create_alias_registry(class_decls):
             for instance_decl_str in inst_annotations:
                 _register_alias(cdcl, instance_decl_str, r)
         else:
-            raise Exception("templated class has no 'wrap-instances' "
+            raise Exception("templated class %s in %s has no 'wrap-instances'"
                             "annotations. declare instances or supress "
-                            "wrapping with 'wrap-ignore' annotation")
+                            "wrapping with 'wrap-ignore' annotation" % (
+                                cdcl.name, cdcl.pxd_path))
     return r
 
 

@@ -156,7 +156,7 @@ cdef extern from "A.h":
     assert instance.name == "B"
 
 def test_multi_decls_in_one_file():
-    inst1, inst2 = DeclResolver.resolve_decls_from_string("""
+    inst1, inst2, enum = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     cdef cppclass A[B,C] :
         # wrap-instances:
@@ -168,12 +168,25 @@ cdef extern from "A.h":
         #   C[float]
         pass
 
+    cdef enum F:
+            G, H=4, I
     """)
+    assert inst1.name == "A"
+    T1, T2 =  inst1.decl.template_parameters
+    assert T1 == "B", T1
+    assert T2 == "C", T2
+    assert len(inst1.methods) == 0
 
-if __name__ == "__main__":
-    test_multi_decls_in_one_file()
+    assert inst2.name == "C"
+    T1, =  inst2.decl.template_parameters
+    assert T1 == "E", T1
+    assert len(inst2.methods) == 0
 
-
+    assert enum.name == "F"
+    G, H, I = enum.items
+    assert G == ("G", 0)
+    assert H == ("H", 4)
+    assert I == ("I", 5)
 
 
 def testIntContainer():
@@ -184,6 +197,4 @@ def testIntContainer():
     assert resolved[1].name == "XContainerInt"
     assert [ m.name for m in resolved[1].methods] == ["XContainerInt",
             "push_back", "size",]
-
-
 
