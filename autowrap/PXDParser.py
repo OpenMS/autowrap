@@ -5,6 +5,7 @@ from Cython.Compiler import Pipeline
 from Cython.Compiler.Scanning import FileSourceDescriptor
 from Cython.Compiler.Nodes import *
 from Cython.Compiler.ExprNodes import *
+from Cython.Compiler import Errors
 
 from Types import CppType
 
@@ -280,9 +281,6 @@ def parse_str(what):
 
 def parse_pxd_file(path):
 
-    """ reads pxd file and extracts *SINGLE* class """
-    #TODO: multiple classes in one files, makes testing easier !
-
     options, sources = parse_command_line(["--cplus", path])
 
     path = os.path.abspath(path)
@@ -295,7 +293,8 @@ def parse_pxd_file(path):
 
     context = options.create_context()
     pipeline = Pipeline.create_pyx_pipeline(context, options, result)
-    tree = pipeline[0](source)  # only parser
+    context.setup_errors(options, result)
+    root = pipeline[0](source)  # only parser
 
     def iter_bodies(tree):
         if hasattr(tree.body, "stats"):
@@ -317,7 +316,7 @@ def parse_pxd_file(path):
     lines = open(path).readlines()
 
     result = []
-    for body in iter_bodies(tree):
+    for body in iter_bodies(root):
         if isinstance(body, CEnumDefNode):
             result.append(EnumDecl.fromTree(body, lines, path))
         elif isinstance(body, CppClassNode):
