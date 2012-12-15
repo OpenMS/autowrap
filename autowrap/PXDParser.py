@@ -176,7 +176,7 @@ class CppClassDecl(EnumOrClassDecl):
         return cls(name, template_parameters, methods, class_annotations,
                    pxd_path)
 
-    def as_cpp_decl(self):
+    def as_cython_decl(self):
         if not self.template_parameters:
             return self.name
         return "%s[%s]" % (self.name, ", ".join(self.template_parameters))

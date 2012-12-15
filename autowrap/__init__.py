@@ -4,13 +4,13 @@ import CodeGenerator
 def parse(*files, **kw):
     return DeclResolver.resolve_decls_from_files(*files, **kw)
 
-def generate_code(decls, target):
+def generate_code(decls, target, **kw):
     gen = CodeGenerator.CodeGenerator(decls, target)
-    gen.create_pyx_file()
+    debug = kw.get("debug", False)
+    gen.create_pyx_file(debug)
 
 def parse_and_generate_code(*files, **kw):
-    target = kw["target"]
-    generate_code(parse(*files, **kw), target)
+    generate_code(parse(*files, **kw), **kw)
 
 
 

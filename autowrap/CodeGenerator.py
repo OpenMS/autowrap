@@ -1,11 +1,20 @@
 from contextlib import contextmanager
 import os.path, sys
 
+import ToCppConverters
+
+import Code
+
 @contextmanager
 def stdout_redirect(stream):
     sys.stdout = stream
     yield
     sys.stdout = sys.__stdout__
+
+
+def input_arg_names(method):
+    return [n if (n and n != "self") else "in_%d" % i\
+            for i, (n, t) in enumerate(method.arguments)]
 
 
 class Tee(object):
@@ -71,7 +80,6 @@ def cimport_path(pxd_path, target_dir):
     parts = [base_pxd]
     current_dir = pxd_dir
     while _has_module_marker(current_dir):
-        #print current_dir, target_dir, _diff(current_dir, target_dir)
         parts.append(os.path.split(current_dir)[1])
         current_dir, _ = os.path.split(current_dir)
 
@@ -85,6 +93,8 @@ class CodeGenerator(object):
         self.decls = decls
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
+        self.conv_provider = ToCppConverters.ConversionInfoProvider()
+        self.code = Code.Code()
 
     def create_cimport_paths(self):
         for decl in self.decls:
@@ -95,38 +105,75 @@ class CodeGenerator(object):
 
     def create_pyx_file(self, debug=False):
         self.create_cimport_paths()
+        self.create_cimports()
+        for decl in self.decls:
+            if decl.items:
+                self.create_wrapper_for_enumd(decl)
+            else:
+                self.create_wrapper_for_class(decl)
+
+        code = self.code.render()
+        if debug:
+            print code
         with open(self.target_path, "w") as fp:
-            if debug:
-                fp = Tee(fp, sys.stdout)
-            with stdout_redirect(fp):
-                self.create_cimports()
-                for decl in self.decls:
-                    self.create_wrapper_for(decl)
+            print >> fp, code
 
-    def create_wrapper_for(self, decl):
-        if decl.items:
-            # enum
-            pass
+
+    def create_wrapper_for_enum(self, decl):
+        raise Exception("enums not implemented yet")
+
+    def create_wrapper_for_class(self, decl):
+        self.code.add("cdef class $name:", name=decl.name)
+        self.code.add("    cdef _$cy_type * inst",
+                                 cy_type= decl.cpp_decl.as_cython_decl())
+
+        for (name, methods) in decl.methods.items():
+            if name == decl.name:
+                self.create_wrapper_for_constructor(decl, methods)
+            else:
+                self.create_wrapper_for_method(decl, name, methods)
+
+    def create_wrapper_for_method(self, decl, name, methods):
+        if len(methods) == 1:
+            method = methods[0]
+            meth_code = Code.Code()
+
+            all_args = input_arg_names(method)
+            py_args = ["self"] + all_args
+            py_args_str = ", ".join(py_args)
+            cinfos = []
+            for (__, t), n in zip(method.arguments, all_args):
+                cinfo = self.conv_provider.get(t, n)
+                cinfos.append(cinfo)
+
+            meth_code.add("def $name($py_args_str):", name=method.name,
+                                                     py_args_str=py_args_str)
+
+            # generate input conversion
+            for cinfo in cinfos:
+                meth_code.add(cinfo.arg_check_code)
+
+            # call c++ method with converted args
+            input_args = ", ".join(info.from_py_code for info in cinfos)
+            meth_code.add("    result = self.inst.$meth_name($args)",
+                                   meth_name = name, args =input_args)
+
+            # generate output conversion
+            meth_code.add("    return result")
+
+            self.code.add(meth_code)
         else:
-            print "cdef class %s:" % decl.name
-            print "   cdef _%s * inst" % (decl.cpp_decl.as_cpp_decl())
+            raise Exception("overloading not supported yet")
 
-            for (name, methods) in decl.methods.items():
-                assert len(methods) == 1, "overloading not supported yet"
-                method = methods[0]
-                if name == decl.name:
-                    print "   def __init__(self):"
-                    print "       self.inst = new _%s()" % decl.cpp_decl.as_cpp_decl()
-                else:
-                    all_args = [n for (n, t) in method.arguments]
-                    py_args = ["self"] + all_args
-                    all_args_str = ", ".join(all_args)
-                    py_args_str = ", ".join(py_args)
-                    print "   def %s(%s):" % (name, py_args_str)
-                    print "       return self.inst.%s(%s)" % (name,
-                            all_args_str)
-
-
+    def create_wrapper_for_constructor(self, decl, methods):
+        if len(methods) == 1:
+            meth_code = Code.Code()
+            meth_code.add("def __init__(self):")
+            meth_code.add("    self.inst = new _$name()",
+                         name=decl.cpp_decl.as_cython_decl())
+            self.code.add(meth_code)
+        else:
+            raise Exception("overloading not supported yet")
 
     def create_cimports(self):
         self.create_std_cimports()
@@ -137,12 +184,13 @@ class CodeGenerator(object):
             if os.altsep:
                 cython_dir_name = cython_dir_name.replace(os.altsep, ".")
             import_from = decl.pxd_import_path
-            print "from %s cimport %s as _%s" % (import_from, cpp_decl.name,
-                    cpp_decl.name)
+            self.code.add("from $from_ cimport $name as _$name",
+                          from_=import_from, name = cpp_decl.name)
 
     def create_std_cimports(self):
-        print "from libcpp.string cimport string as cpp_string"
-        print "from libcpp.vector cimport vector as cpp_vector"
+        self.code.add("""from libcpp.string cimport string as cpp_string
+                        |from libcpp.vector cimport vector as cpp_vector
+                        +""")
 
 
 

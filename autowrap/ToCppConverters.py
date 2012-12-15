@@ -2,10 +2,10 @@ from collections import namedtuple, OrderedDict
 import re
 from string import Template
 
-from CppType import CppType
-from Code    import Code
+from Types import CppType
+from Code import Code
 
-        
+
 class Context(object):
     registry = dict()
 
@@ -19,7 +19,8 @@ class Context(object):
             print code.replace("       |", "")
             print
 
-ConversionInfo = namedtuple("ConversionInfo", [ "py_type", "arg_check_code", "from_py_code", "to_py_code" ])
+ConversionInfo = namedtuple("ConversionInfo", [ "py_type", "arg_check_code",
+                                                "from_py_code", "to_py_code" ])
 
 
 def py_type_to_str(t):
@@ -27,13 +28,13 @@ def py_type_to_str(t):
 
 def check_py_list_code(arg_name, inner_py_type):
     inner_py_type_as_str = py_type_to_str(inner_py_type)
-    return Code("""assert type($arg_name) == list 
+    return Code("""assert type($arg_name) == list
                   + and all(isinstance(it, $inner_py_type_as_str) for it in $arg_name),
-                  + "arg $arg_name does not match" 
+                  + "arg $arg_name does not match"
                 """).render(**locals())
 
 def py_list_to_vector_X(c, X_type, var_name):
-    
+
     conv_fun_name = "py_list_to_vector_%s" % X_type.identifier()
     _, _, py_item_to_X, _ = c.get(X_type, "item")
 
@@ -46,7 +47,7 @@ def py_list_to_vector_X(c, X_type, var_name):
                """).render(**locals()))
 
     return "%(conv_fun_name)s(%(var_name)s)" % locals()
-    
+
 
 def vector_X_to_py_list(c, X_type, var_name):
 
@@ -73,10 +74,15 @@ class ConversionInfoProvider(object):
 
     def add_data(self, name, fun):
         self.customized[name] = fun
-    
+
     def num_type_info(self, cpp_type, arg_name):
-        conv = "(<%s>%s)" % (cpp_type.base, arg_name)
-        return ConversionInfo(int, "", conv, conv)
+        conv = "(<%s>%s)" % (cpp_type.base_type, arg_name)
+        # todo: long, uint, integer overflow !
+        #
+        check = Code()
+        check.add("assert isinstance($arg, int), 'int required'",
+                  arg=arg_name)
+        return ConversionInfo(int, check, conv, conv)
 
 
     def std_string_type_info(self, cpp_type, arg_name):
@@ -91,7 +97,7 @@ class ConversionInfoProvider(object):
         targ_conversion_info = self.get(targ_cpp_type, None)
         targ_py_type = targ_conversion_info.py_type
 
-        return ConversionInfo(list, 
+        return ConversionInfo(list,
                               check_py_list_code(arg_name, targ_py_type),\
                               py_list_to_vector_X(self, targ_cpp_type, arg_name),\
                               vector_X_to_py_list(self, targ_cpp_type, arg_name))
@@ -99,19 +105,19 @@ class ConversionInfoProvider(object):
 
     def get(self, cpp_type, arg_name="<unused>"):
 
-        fun = self.customized.get(cpp_type.base)
+        fun = self.customized.get(cpp_type.base_type)
         if fun:
             return fun(cpp_type, arg_name)
 
-        if cpp_type.base == "_String":
-            return ConversionInfo(str, 
-                                  "", 
+        if cpp_type.base_type == "_String":
+            return ConversionInfo(str,
+                                  "",
                                   "_String(<libcpp_string> %s)" % arg_name,
                                   "%s.c_str()" % arg_name)
 
 
 def conversion_info_DataValue(c, cpp_type, arg_name):
-    
+
     def py_to__DataValue(c, arg_name):
         conv_fun_name = "py_to__DataValue"
         conv_fun_code = Code("""cdef $conv_fun_name(obj):
@@ -144,7 +150,7 @@ def conversion_info_DataValue(c, cpp_type, arg_name):
 
     return ConversionInfo("", "", py_to__DataValue(c, arg_name), _DataValue_to_py(c, arg_name))
 
-    
+
 if __name__ == "__main__":
     print """
 from libcpp.vector cimport vector as libcpp_vector
@@ -152,7 +158,7 @@ from libcpp.string cimport string as libcpp_string
 
 from pxd.String cimport String as _String
 """
-    
+
     c = ConversionInfoProvider()
     cinfo = c.get(CppType("std::vector", [CppType("int")]), "arg0")
     print cinfo.arg_check_code

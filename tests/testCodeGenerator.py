@@ -12,7 +12,7 @@ def testMinimal():
     target = os.path.join(test_files, "minimal_wrapper.pyx")
 
     autowrap.parse_and_generate_code("minimal.pxd",
-            root=test_files, target=target)
+            root=test_files, target=target,  debug=True)
 
     cpp_source = os.path.join(test_files, "minimal.cpp")
 
@@ -24,6 +24,13 @@ def testMinimal():
 
     minimal=wrapped.Minimal()
     assert minimal.compute(3) == 4
+
+    try:
+        minimal.compute("a")
+    except:
+        pass
+    else:
+        assert False, "no exception risen"
 
 
 

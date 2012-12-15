@@ -1,10 +1,39 @@
+import pdb
 import string, re
 
-class Code(string.Template):
+class _Code(string.Template):
 
     def render(self, **kw):
         res = self.substitute(**kw)
         res = re.sub(" *\|", "", res)
-        res = re.sub("\n+ *\+", "", res)
+        res = re.sub("\n *+ *\+", "", res)
         return res
-        
+
+
+class Code(object):
+
+    def __init__(self):
+        self.content = []
+
+    def add(self,  what, **kw):
+        if isinstance(what, basestring):
+            res = string.Template(what).substitute(**kw)
+            res = re.sub("\n+ *\+", "", res)
+            for line in re.split("\n *\|", res):
+                self.content.append(line.rstrip())
+        else:
+            self.content.append(what)
+
+    def _render(self, _indent=""):
+        result = []
+        for content in self.content:
+            if isinstance(content, basestring):
+                result.append(_indent + content)
+            else:
+                for line in content._render(_indent = _indent + "    "):
+                    result.append(line)
+        return result
+
+    def render(self):
+        return "\n".join(self._render())
+   
