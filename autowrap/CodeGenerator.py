@@ -81,14 +81,14 @@ def cimport_path(pxd_path, target_dir):
 
 class CodeGenerator(object):
 
-    def __init__(self, class_instances, target_path=None):
-        self.class_instances = class_instances
+    def __init__(self, decls, target_path=None):
+        self.decls = decls
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
         #self.target_path = target_path
 
     def create_cimport_paths(self):
-        for inst in self.class_instances:
+        for inst in self.decls:
             pxd_path = inst.decl.pxd_path
             pxd_dir = os.path.dirname(pxd_path)
             test_for_module_markers(pxd_dir, self.target_dir)
@@ -101,19 +101,41 @@ class CodeGenerator(object):
                 fp = Tee(fp, sys.stdout)
             with stdout_redirect(fp):
                 self.create_cimports()
+                for decl in self.decls:
+                    self.create_wrapper_for(decl)
 
-                print "cdef class X:"
-                print "    pass"
+    def create_wrapper_for(self, decl):
+        if decl.items:
+            # enum
+            pass
+        else:
+            print "cdef class %s:" % decl.name
+            print "   cdef _%s * inst" % (decl.decl.as_cpp_decl())
+
+            for method in decl.methods:
+                if method.name == decl.name:
+                    print "   def __init__(self):"
+                    print "       self.inst = new _%s()" % decl.decl.as_cpp_decl()
+                else:
+                    all_args = [n for (n, t) in method.arguments]
+                    py_args = ["self"] + all_args
+                    all_args_str = ", ".join(all_args)
+                    py_args_str = ", ".join(py_args)
+                    print "   def %s(%s):" % (method.name, py_args_str)
+                    print "       return self.inst.%s(%s)" % (method.name,
+                            all_args_str)
+
+
 
     def create_cimports(self):
         self.create_std_cimports()
-        for class_instance in self.class_instances:
-            cdcl = class_instance.decl
+        for decl in self.decls:
+            cdcl = decl.decl
             rel_pxd_path = os.path.relpath(cdcl.pxd_path, self.target_path)
             cython_dir_name = rel_pxd_path.replace(os.sep, ".")
             if os.altsep:
                 cython_dir_name = cython_dir_name.replace(os.altsep, ".")
-            import_from = class_instance.pxd_import_path
+            import_from = decl.pxd_import_path
             print "from %s cimport %s as _%s" % (import_from, cdcl.name,
                     cdcl.name)
 

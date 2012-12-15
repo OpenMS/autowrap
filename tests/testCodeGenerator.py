@@ -2,26 +2,28 @@ import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
 import autowrap.Utils
+import autowrap
 
 import os
 
-def _resolve(*names):
-    root = os.path.join(os.path.dirname(__file__), "test_files")
-    return autowrap.DeclResolver.resolve_decls_from_files(*names, root=root)
+test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
-def testNull():
-    from autowrap.CodeGenerator import CodeGenerator
-    resolved  = _resolve("int_container_class.pxd")
-    here = os.path.dirname(__file__)
-    target = os.path.join(here, "test_files", "int_container_class_wrapped.pyx")
-    gen = CodeGenerator(resolved, target)
-    gen.create_pyx_file(debug=True)
-    include_path = os.path.join(here, "test_files")
-    wrapped = autowrap.Utils.compile_and_import("wrapped", [target],
-                                                [include_path], debug=True)
+def testMinimal():
+    target = os.path.join(test_files, "minimal_wrapper.pyx")
+
+    autowrap.parse_and_generate_code("minimal.pxd",
+            root=test_files, target=target)
+
+    cpp_source = os.path.join(test_files, "minimal.cpp")
+
+
+    wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source],
+                                                [test_files])
     os.remove(target)
     assert wrapped.__name__ == "wrapped"
 
+    minimal=wrapped.Minimal()
+    assert minimal.compute(3) == 4
 
 
 
