@@ -66,7 +66,7 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     if debug:
         print "imported", result
 
-    sys.path = sys.path[2:]
+    sys.path = sys.path[1:]
     os.chdir(now)
     return result
 
