@@ -6,7 +6,7 @@ def parse(*files, **kw):
 
 def generate_code(decls, target):
     gen = CodeGenerator.CodeGenerator(decls, target)
-    gen.create_pyx_file(debug=True)
+    gen.create_pyx_file()
 
 def parse_and_generate_code(*files, **kw):
     target = kw["target"]

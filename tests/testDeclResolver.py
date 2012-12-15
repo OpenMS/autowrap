@@ -21,66 +21,69 @@ def test_singular():
     res0, res1 = resolved
     assert res0.name == "TemplatesInt", res0.name
     assert res1.name == "TemplatesMixed", res1.name
-    res0_restypes = map(lambda m: str(m.result_type), res0.methods)
+    res0_restypes = map(str, (m.result_type for m in
+        res0.get_flattened_methods()))
+
     assert res0_restypes == ['void', 'int', 'int', 'int', 'int', 'void',
                              'TemplatesInt',
                              'TemplatesMixed', 'Templates[double,float]',
                              'TemplatesInt'], res0_restypes
 
-    res0_names =  map(lambda m: m.name, res0.methods)
+    res0_names =  map(lambda m: m.name, res0.get_flattened_methods())
     assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
     first_arg_names= map(lambda m: None if len(m.arguments) == 0 else
-            str(m.arguments[0][0]), res0.methods)
+            str(m.arguments[0][0]), res0.get_flattened_methods())
     assert first_arg_names == ["a", None, None, None, None, "arg0", "",
                                "", None, ""], first_arg_names
 
     second_arg_names= map(lambda m: None if len(m.arguments) < 2 else
-            str(m.arguments[1][0]), res0.methods)
+            str(m.arguments[1][0]), res0.get_flattened_methods())
     assert second_arg_names == ["b", None, None, None, None, "arg1", None,
                                None, None, ""], second_arg_names
 
     first_arg_types= map(lambda m: None if len(m.arguments) == 0 else
-            str(m.arguments[0][1]), res0.methods)
+            str(m.arguments[0][1]), res0.get_flattened_methods())
 
     assert first_arg_types == ["int", None, None, None, None, "list[int]",
             "TemplatesMixed"  , "TemplatesInt", None , "int"], first_arg_types
 
     second_arg_types= map(lambda m: None if len(m.arguments) < 2 else
-            str(m.arguments[1][1]), res0.methods)
+            str(m.arguments[1][1]), res0.get_flattened_methods())
     assert second_arg_types == ["int", None, None, None, None, "list[int]&",
                                     None, None, None , "int"], second_arg_types
 
 
-    res1_restypes = map(lambda m: str(m.result_type), res1.methods)
+    res1_restypes = map(lambda m: str(m.result_type),
+            res1.get_flattened_methods())
     assert res1_restypes == ['void', 'int', 'float', 'int', 'float', 'void',
                              'TemplatesInt',
                              'TemplatesMixed', 'Templates[double,float]',
                              'TemplatesMixed'], res1_restypes
 
-    res1_names =  map(lambda m: m.name, res1.methods)
+    res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
     assert res1_names ==  ["TemplatesMixed", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res1_names
 
     first_arg_names= map(lambda m: None if len(m.arguments) == 0 else
-            str(m.arguments[0][0]), res1.methods)
+            str(m.arguments[0][0]), res1.get_flattened_methods())
     assert first_arg_names == ["a", None, None, None, None, "arg0", "",
                                "", None, ""], first_arg_names
 
     second_arg_names= map(lambda m: None if len(m.arguments) < 2 else
-            str(m.arguments[1][0]), res1.methods)
+            str(m.arguments[1][0]), res1.get_flattened_methods())
     assert second_arg_names == ["b", None, None, None, None, "arg1", None,
                                None, None, ""], second_arg_names
 
     first_arg_types= map(lambda m: None if len(m.arguments) == 0 else
-            str(m.arguments[0][1]), res1.methods)
+            str(m.arguments[0][1]), res1.get_flattened_methods())
 
     assert first_arg_types == ["int", None, None, None, None, "list[int]",
             "TemplatesMixed"   , "TemplatesInt", None , "int"], first_arg_types
 
     second_arg_types= map(lambda m: None if len(m.arguments) < 2 else
-            str(m.arguments[1][1]), res1.methods)
+            str(m.arguments[1][1]), res1.get_flattened_methods())
     assert second_arg_types == ["float", None, None, None, None,
                                 "list[float]&", None, None, None,
                                 "float"], second_arg_types
@@ -91,7 +94,7 @@ def test_multi_inherit():
     data = dict()
     for class_instance in resolved:
         mdata = []
-        for m in class_instance.methods:
+        for m in class_instance.get_flattened_methods():
             li = [ str(m.result_type), m.name ]
             li += [ str(t) for n, t in m.arguments ]
             mdata.append(li)
@@ -172,13 +175,13 @@ cdef extern from "A.h":
             G, H=4, I
     """)
     assert inst1.name == "A"
-    T1, T2 =  inst1.decl.template_parameters
+    T1, T2 =  inst1.cpp_decl.template_parameters
     assert T1 == "B", T1
     assert T2 == "C", T2
     assert len(inst1.methods) == 0
 
     assert inst2.name == "C"
-    T1, =  inst2.decl.template_parameters
+    T1, =  inst2.cpp_decl.template_parameters
     assert T1 == "E", T1
     assert len(inst2.methods) == 0
 
@@ -192,9 +195,9 @@ cdef extern from "A.h":
 def testIntContainer():
     resolved  = _resolve("int_container_class.pxd")
     assert resolved[0].name == "Xint"
-    assert [ m.name for m in resolved[0].methods] == ["Xint", "operator+",
+    assert [ m.name for m in resolved[0].get_flattened_methods()] == ["Xint", "operator+",
     "getValue"]
     assert resolved[1].name == "XContainerInt"
-    assert [ m.name for m in resolved[1].methods] == ["XContainerInt",
+    assert [ m.name for m in resolved[1].get_flattened_methods()] == ["XContainerInt",
             "push_back", "size",]
 

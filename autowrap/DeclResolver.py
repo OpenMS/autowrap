@@ -60,11 +60,18 @@ class ResolvedClassOrEnum(object):
 
     def __init__(self, name, methods, decl=None):
         self.name = name
-        self.methods = methods
-        self.decl = decl
+        # resolve overloadings
+        self.methods = OrderedDict()
+        for m in methods:
+            self.methods.setdefault(m.name, []).append(m)
+        self.cpp_decl = decl
         self.items = getattr(decl, "items", [])
 
+    def get_flattened_methods(self):
+        return [m for methods in self.methods.values() for m in methods]
+
     def __str__(self):
+        raise Exception("impl not valid any more")
         return "\n   ".join([self.name] + map(str, self.methods))
 
 

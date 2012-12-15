@@ -4,7 +4,6 @@ from distutils.core import setup, Extension
 
 import sys
 import pprint
-pprint.pprint(sys.path)
 
 from Cython.Distutils import build_ext
 

@@ -85,14 +85,13 @@ class CodeGenerator(object):
         self.decls = decls
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
-        #self.target_path = target_path
 
     def create_cimport_paths(self):
-        for inst in self.decls:
-            pxd_path = inst.decl.pxd_path
+        for decl in self.decls:
+            pxd_path = decl.cpp_decl.pxd_path
             pxd_dir = os.path.dirname(pxd_path)
             test_for_module_markers(pxd_dir, self.target_dir)
-            inst.pxd_import_path = cimport_path(pxd_path, self.target_dir)
+            decl.pxd_import_path = cimport_path(pxd_path, self.target_dir)
 
     def create_pyx_file(self, debug=False):
         self.create_cimport_paths()
@@ -110,19 +109,21 @@ class CodeGenerator(object):
             pass
         else:
             print "cdef class %s:" % decl.name
-            print "   cdef _%s * inst" % (decl.decl.as_cpp_decl())
+            print "   cdef _%s * inst" % (decl.cpp_decl.as_cpp_decl())
 
-            for method in decl.methods:
-                if method.name == decl.name:
+            for (name, methods) in decl.methods.items():
+                assert len(methods) == 1, "overloading not supported yet"
+                method = methods[0]
+                if name == decl.name:
                     print "   def __init__(self):"
-                    print "       self.inst = new _%s()" % decl.decl.as_cpp_decl()
+                    print "       self.inst = new _%s()" % decl.cpp_decl.as_cpp_decl()
                 else:
                     all_args = [n for (n, t) in method.arguments]
                     py_args = ["self"] + all_args
                     all_args_str = ", ".join(all_args)
                     py_args_str = ", ".join(py_args)
-                    print "   def %s(%s):" % (method.name, py_args_str)
-                    print "       return self.inst.%s(%s)" % (method.name,
+                    print "   def %s(%s):" % (name, py_args_str)
+                    print "       return self.inst.%s(%s)" % (name,
                             all_args_str)
 
 
@@ -130,14 +131,14 @@ class CodeGenerator(object):
     def create_cimports(self):
         self.create_std_cimports()
         for decl in self.decls:
-            cdcl = decl.decl
-            rel_pxd_path = os.path.relpath(cdcl.pxd_path, self.target_path)
+            cpp_decl = decl.cpp_decl
+            rel_pxd_path = os.path.relpath(cpp_decl.pxd_path, self.target_path)
             cython_dir_name = rel_pxd_path.replace(os.sep, ".")
             if os.altsep:
                 cython_dir_name = cython_dir_name.replace(os.altsep, ".")
             import_from = decl.pxd_import_path
-            print "from %s cimport %s as _%s" % (import_from, cdcl.name,
-                    cdcl.name)
+            print "from %s cimport %s as _%s" % (import_from, cpp_decl.name,
+                    cpp_decl.name)
 
     def create_std_cimports(self):
         print "from libcpp.string cimport string as cpp_string"
