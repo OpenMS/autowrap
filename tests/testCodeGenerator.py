@@ -24,22 +24,14 @@ def testMinimal():
 
     minimal=wrapped.Minimal()
     assert minimal.compute(3) == 4
+    assert minimal.compute("uwe") == "ewu"
 
     try:
-        minimal.compute("a")
+        minimal.compute(3.0)
     except:
         pass
     else:
-        assert False, "no exception risen"
-
-    assert minimal.compute2("uwe")
-
-    try:
-        minimal.compute2(3)
-    except:
-        pass
-    else:
-        assert False, "no exception risen"
+        assert False, "expected exception"
 
 
 

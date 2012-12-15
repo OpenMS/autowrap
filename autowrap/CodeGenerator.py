@@ -135,35 +135,68 @@ class CodeGenerator(object):
 
     def create_wrapper_for_method(self, decl, name, methods):
         if len(methods) == 1:
-            method = methods[0]
-            meth_code = Code.Code()
+            self.create_wrapper_for_nonoverloaded_method(decl, name, name,
+                    methods[0])
 
-            all_args = input_arg_names(method)
-            py_args = ["self"] + all_args
-            py_args_str = ", ".join(py_args)
-            cinfos = []
-            for (__, t), n in zip(method.arguments, all_args):
-                cinfo = self.conv_provider.get(t, n)
-                cinfos.append(cinfo)
-
-            meth_code.add("def $name($py_args_str):", name=method.name,
-                                                     py_args_str=py_args_str)
-
-            # generate input conversion
-            for cinfo in cinfos:
-                meth_code.add(cinfo.arg_check_code)
-
-            # call c++ method with converted args
-            input_args = ", ".join(info.from_py_code for info in cinfos)
-            meth_code.add("    result = self.inst.$meth_name($args)",
-                                   meth_name = name, args =input_args)
-
-            # generate output conversion
-            meth_code.add("    return result")
-
-            self.code.add(meth_code)
         else:
-            raise Exception("overloading not supported yet")
+            for (i, method) in enumerate(methods):
+                local_name = "_%s_%d" % (name, i)
+                self.create_wrapper_for_nonoverloaded_method(decl, local_name,
+                        name, method)
+
+            meth_code = Code.Code()
+            meth_code.add("def $py_name(self, *args):", py_name=name)
+            meth_code.add("    sign = tuple(map(type, args))")
+            for (i, method) in enumerate(methods):
+                local_name = "_%s_%d" % (name, i)
+                py_types = []
+                arg_types =  [t for (n,t) in method.arguments]
+                for arg_type in arg_types:
+                    cinfo = self.conv_provider.get(arg_type, "")
+                    py_types.append(ToCppConverters.py_type_to_str(cinfo.py_type))
+                py_sign = ", ".join(py_types)
+                meth_code.add("    if sign == ($py_sign,):", py_sign=py_sign)
+                meth_code.add("        return self.$local_name(*args)",
+                                                    local_name=local_name)
+
+            meth_code.add("    raise Exception('can not handle %s' % sign)")
+            self.code.add(meth_code)
+
+
+    def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
+                                                method):
+
+        meth_code = Code.Code()
+
+        all_args = input_arg_names(method)
+        py_args = ["self"] + all_args
+        py_args_str = ", ".join(py_args)
+        cinfos = []
+
+        for (__, t), n in zip(method.arguments, all_args):
+            cinfo = self.conv_provider.get(t, n)
+            cinfos.append(cinfo)
+
+        meth_code.add("def $py_name($py_args_str):", py_name=py_name,
+                                                    py_args_str=py_args_str)
+
+        # generate input conversion
+        for cinfo in cinfos:
+            meth_code.add(cinfo.arg_check_code)
+
+        # call c++ method with converted args
+        input_args = ", ".join(info.from_py_code for info in cinfos)
+        meth_code.add("    cdef $cpp_type _result = self.inst.$meth_name($args)",
+                                cpp_type = str(method.result_type),
+                                meth_name = cpp_name, args =input_args)
+
+        # generate output conversion
+        cinfo = self.conv_provider.get(method.result_type, "_result")
+        meth_code.add("    cdef py_result = $to_py_code",
+                to_py_code = cinfo.to_py_code)
+        meth_code.add("    return py_result")
+
+        self.code.add(meth_code)
 
     def create_wrapper_for_constructor(self, decl, methods):
         if len(methods) == 1:
