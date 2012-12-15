@@ -8,7 +8,7 @@ pprint.pprint(sys.path)
 
 from Cython.Distutils import build_ext
 
-ext = Extension("%(name)s", sources = [ "%(pyx_file_base)s"], language="c++",
+ext = Extension("%(name)s", sources = %(source_files)s, language="c++",
         include_dirs = %(include_dirs)r,
         extra_compile_args = [])
 
@@ -20,26 +20,23 @@ setup(cmdclass = {'build_ext' : build_ext},
 
 """
 
-def compile_and_import(pyx_file, name=None, *include_dirs, **kws):
+def compile_and_import(name, source_files, include_dirs=None, **kws):
 
+    if include_dirs is None:
+        include_dirs = []
     debug = kws.get("debug")
     import os.path
     import shutil
     import tempfile
-
-    if name is None:
-        name, _ = os.path.splitext(os.path.basename(pyx_file))
 
     tempdir = tempfile.mkdtemp()
     if debug:
         print
         print "tempdir=", tempdir
         print
-    shutil.copy(pyx_file, tempdir)
-    #if kws.get("copy_subdirs"):
-        #shutil.copytree(kws.get("copy_subdirs")[0], tempdir)
-    pyx_file_base = os.path.basename(pyx_file)
-    include_dirs = [ os.path.abspath(d) for d in include_dirs]
+    for source_file in source_files:
+        shutil.copy(source_file, tempdir)
+    include_dirs = [os.path.abspath(d) for d in include_dirs]
     setup_code = template % locals()
     if debug:
         print
@@ -64,7 +61,7 @@ def compile_and_import(pyx_file, name=None, *include_dirs, **kws):
         print "-"*70
         print
 
-    assert os.system("python setup.py build_ext --inplace") == 0
+    assert os.system("python setup.py build_ext --force --inplace") == 0
     result = __import__(name)
     if debug:
         print "imported", result

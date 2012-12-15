@@ -17,10 +17,10 @@ def testNull():
     gen = CodeGenerator(resolved, target)
     gen.create_pyx_file(debug=True)
     include_path = os.path.join(here, "test_files")
-    wrapped = autowrap.Utils.compile_and_import(target, None, include_path,
-            debug=True)
+    wrapped = autowrap.Utils.compile_and_import("wrapped", [target],
+                                                [include_path], debug=True)
     os.remove(target)
-    assert wrapped.__name__ == "int_container_class_wrapped"
+    assert wrapped.__name__ == "wrapped"
 
 
 
