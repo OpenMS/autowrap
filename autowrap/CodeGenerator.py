@@ -188,8 +188,8 @@ class CodeGenerator(object):
                           from_=import_from, name = cpp_decl.name)
 
     def create_std_cimports(self):
-        self.code.add("""from libcpp.string cimport string as cpp_string
-                        |from libcpp.vector cimport vector as cpp_vector
+        self.code.add("""from libcpp.string cimport string as std_string
+                        |from libcpp.vector cimport vector as std_vector
                         +""")
 
 

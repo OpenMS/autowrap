@@ -69,7 +69,7 @@ class ConversionInfoProvider(object):
         self.add_data("long", self.num_type_info)
         self.add_data("bool", self.num_type_info)
 
-        self.add_data("std::string", self.std_string_type_info)
+        self.add_data("std_string", self.std_string_type_info)
         self.add_data("std::vector", self.std_vector_type_info)
 
     def add_data(self, name, fun):
@@ -86,8 +86,12 @@ class ConversionInfoProvider(object):
 
 
     def std_string_type_info(self, cpp_type, arg_name):
-        conv = "(<libcpp_string>%s)" % arg_name
-        return ConversionInfo(str, "", conv, conv)
+        conv = "(<std_string>%s)" % arg_name
+        check = Code()
+        # todo: unicode ?
+        check.add("assert isinstance($arg, str), 'str required'",
+                  arg=arg_name)
+        return ConversionInfo(str, check, conv, conv)
 
     def std_vector_type_info(self, cpp_type, arg_name):
         targs = cpp_type.targs
@@ -114,6 +118,9 @@ class ConversionInfoProvider(object):
                                   "",
                                   "_String(<libcpp_string> %s)" % arg_name,
                                   "%s.c_str()" % arg_name)
+
+        raise Exception("no conversion info for %s" % cpp_type)
+
 
 
 def conversion_info_DataValue(c, cpp_type, arg_name):

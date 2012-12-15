@@ -32,5 +32,14 @@ def testMinimal():
     else:
         assert False, "no exception risen"
 
+    assert minimal.compute2("uwe")
+
+    try:
+        minimal.compute2(3)
+    except:
+        pass
+    else:
+        assert False, "no exception risen"
+
 
 
