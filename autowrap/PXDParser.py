@@ -116,10 +116,9 @@ def _extract_type(base_type, decl):
 
 class EnumOrClassDecl(object):
 
-    def __init__(self, name, annotations, template_parameters, pxd_path):
+    def __init__(self, name, annotations, pxd_path):
         self.name = name
         self.annotations = annotations
-        self.template_parameters = template_parameters
         self.pxd_path = pxd_path
 
 
@@ -127,8 +126,9 @@ class EnumOrClassDecl(object):
 class EnumDecl(EnumOrClassDecl):
 
     def __init__(self, name, items, annotations, pxd_path):
-        super(EnumDecl, self).__init__(name, annotations, None, pxd_path)
+        super(EnumDecl, self).__init__(name, annotations, pxd_path)
         self.items = items
+        self.template_parameters = None
 
     @classmethod
     def fromTree(cls, node, lines, pxd_path):
@@ -157,9 +157,9 @@ class CppClassDecl(EnumOrClassDecl):
 
     def __init__(self, name, template_parameters, methods, annotations,
                  pxd_path):
-        super(CppClassDecl, self).__init__(name, annotations,
-                                           template_parameters, pxd_path)
+        super(CppClassDecl, self).__init__(name, annotations, pxd_path)
         self.methods = methods
+        self.template_parameters = template_parameters
 
     @classmethod
     def fromTree(cls, node, lines, pxd_path):
@@ -175,6 +175,12 @@ class CppClassDecl(EnumOrClassDecl):
 
         return cls(name, template_parameters, methods, class_annotations,
                    pxd_path)
+
+    def as_cpp_decl(self):
+        if not self.template_parameters:
+            return self.name
+        return "%s[%s]" % (self.name, ", ".join(self.template_parameters))
+
 
     def __str__(self):
         rv = ["cppclass %s: " % (self.name, )]
@@ -208,16 +214,16 @@ class CppClassDecl(EnumOrClassDecl):
 
 class CppMethodDecl(object):
 
-    def __init__(self, result_type,  name, args, annotations):
+    def __init__(self, result_type,  name, arguments, annotations):
         self.result_type = result_type
         self.name = name
-        self.args = args
+        self.arguments = arguments
         self.annotations = annotations
         self.wrap = not self.annotations.get("ignore", False)
 
     def transformed(self, typemap):
         result_type = self.result_type.transform(typemap)
-        args = [ (n, t.transform(typemap)) for n, t in self.args ]
+        args = [ (n, t.transform(typemap)) for n, t in self.arguments ]
         return CppMethodDecl(result_type, self.name, args, self.annotations)
 
     def matches(self, other):
@@ -225,8 +231,8 @@ class CppMethodDecl(object):
             does not consider argument names"""
         if self.name != other.name:
             return False
-        self_key = [ self.result_type ] + [ t for (a,t) in self.args ]
-        other_key = [ other.result_type ] + [ t for (a,t) in other.args ]
+        self_key = [ self.result_type ] + [ t for (a,t) in self.arguments ]
+        other_key = [ other.result_type ] + [ t for (a,t) in other.arguments ]
         return self_key == other_key
 
     @classmethod

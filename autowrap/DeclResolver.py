@@ -242,7 +242,7 @@ def _resolve_method(method_decl, registry, t_param_mapping):
     result_type = _resolve_alias(method_decl.result_type, registry,
                                 t_param_mapping)
     args = []
-    for arg_name, arg_type in method_decl.args:
+    for arg_name, arg_type in method_decl.arguments:
         arg_type = _resolve_alias(arg_type, registry, t_param_mapping)
         args.append((arg_name, arg_type))
     new_name = method_decl.annotations.get("wrap-as")

@@ -34,18 +34,18 @@ cdef extern from "Minimal.hpp":
     assert len(cld.methods["method0"]) == 1
 
     assert cld.methods["Minimal"][0].name == "Minimal"
-    assert len(cld.methods["Minimal"][0].args) == 1
-    argname, arg_type = cld.methods["Minimal"][0].args[0]
+    assert len(cld.methods["Minimal"][0].arguments) == 1
+    argname, arg_type = cld.methods["Minimal"][0].arguments[0]
     assert argname == "a"
     assert arg_type == CppType("int")
 
     assert cld.methods["getA"][0].wrap
-    assert len(cld.methods["getA"][0].args) == 0
+    assert len(cld.methods["getA"][0].arguments) == 0
 
     def subtest(name, inp_type):
         meth = cld.methods[name][0]
         assert meth.result_type == inp_type
-        assert meth.args[0][1] == inp_type
+        assert meth.arguments[0][1] == inp_type
 
     subtest("method0", CppType("int", is_unsigned=True))
     subtest("method1", CppType("float"))
@@ -54,12 +54,12 @@ cdef extern from "Minimal.hpp":
 
     assert len(cld.methods["overloaded"]) == 2
 
-    args = []
+    arguments = []
     for meth in cld.methods["overloaded"]:
         assert meth.name == "overloaded"
         assert meth.result_type == CppType("void")
-        args.append(meth.args)
-    assert args == [[ (u"inp", CppType("int"))], [(u"inp", CppType("float"))]]
+        arguments.append(meth.arguments)
+    assert arguments == [[ (u"inp", CppType("int"))], [(u"inp", CppType("float"))]]
 
 
 def test_int_container_pxd_parsing():
@@ -136,7 +136,7 @@ cdef extern from "":
     (fun,),  = X.methods.values()
     assert fun.result_type == CppType("void"), fun.result_type
     assert fun.name == "fun"
-    (arg_name, type_), = fun.args
+    (arg_name, type_), = fun.arguments
     assert arg_name == ""
     assert type_ == CppType("int")
 
