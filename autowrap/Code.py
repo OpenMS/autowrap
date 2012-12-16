@@ -1,14 +1,4 @@
-import pdb
 import string, re
-
-class _Code(string.Template):
-
-    def render(self, **kw):
-        res = self.substitute(**kw)
-        res = re.sub(" *\|", "", res)
-        res = re.sub("\n *+ *\+", "", res)
-        return res
-
 
 class Code(object):
 
@@ -36,4 +26,3 @@ class Code(object):
 
     def render(self):
         return "\n".join(self._render())
-   
