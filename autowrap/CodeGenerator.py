@@ -162,7 +162,6 @@ class CodeGenerator(object):
             meth_code.add("    raise Exception('can not handle %s' % sign)")
             self.code.add(meth_code)
 
-
     def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
                                                 method):
 

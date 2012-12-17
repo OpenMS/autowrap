@@ -4,8 +4,10 @@ cdef extern from "minimal.hpp":
 
     cdef cppclass Minimal:
         Minimal()
-        int compute(int)
+        int compute(int number)
         std_string compute(std_string)
+        int compute_int(int)
+        std_string compute_str(std_string what)
 
 
 
