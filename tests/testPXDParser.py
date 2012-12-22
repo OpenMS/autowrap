@@ -1,3 +1,4 @@
+import pdb
 import autowrap.PXDParser
 import os
 
@@ -24,6 +25,9 @@ cdef extern from "Minimal.hpp":
 
         void overloaded(int inp)
         void overloaded(float inp)
+
+        void run(Minimal)
+        void run2(Minimal *)
     """)
 
     assert cld.name == "Minimal"
@@ -44,7 +48,7 @@ cdef extern from "Minimal.hpp":
 
     def subtest(name, inp_type):
         meth = cld.methods[name][0]
-        assert meth.result_type == inp_type
+        assert meth.result_type == inp_type, str(meth.result_type)
         assert meth.arguments[0][1] == inp_type
 
     subtest("method0", CppType("int", is_unsigned=True))
@@ -60,6 +64,13 @@ cdef extern from "Minimal.hpp":
         assert meth.result_type == CppType("void")
         arguments.append(meth.arguments)
     assert arguments == [[ (u"inp", CppType("int"))], [(u"inp", CppType("float"))]]
+
+    run_meth = cld.methods["run2"][0]
+    name, arg_type = run_meth.arguments[0]
+    assert str(arg_type) == "Minimal *"
+    run_meth = cld.methods["run"][0]
+    name, arg_type = run_meth.arguments[0]
+    assert str(arg_type) == "Minimal"
 
 
 def test_int_container_pxd_parsing():

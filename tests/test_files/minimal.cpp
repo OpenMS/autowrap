@@ -22,9 +22,14 @@ int Minimal::compute_charp(char *p) const
     return i;
 
 }
-int Minimal::run(const Minimal &inst) const
+int Minimal::run(const Minimal &ref) const
 {
-    return inst.compute_int(3);
+    return ref.compute_int(3);
+}
+
+int Minimal::run2(Minimal * inst) const
+{
+    return inst->compute_int(4);
 }
 
 

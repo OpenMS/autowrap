@@ -1,4 +1,3 @@
-import pdb
 from collections import namedtuple, OrderedDict
 import re
 from string import Template
@@ -131,13 +130,6 @@ class ConversionInfoProvider(object):
 
     def get(self, cpp_type, arg_name=None):
 
-        if isinstance(cpp_type, basestring):
-            # wrapped type
-            assert arg_name is not None
-            return ConversionInfo(cpp_type,
-                    "",
-                    "<_%s>(deref(%s.inst))" % (cpp_type, arg_name),
-                    cpp_type_to_wrapped(self, cpp_type, arg_name))
 
         fun = self.customized.get((cpp_type.base_type, cpp_type.is_ptr))
         if fun:
@@ -149,6 +141,18 @@ class ConversionInfoProvider(object):
                                   "_String(<libcpp_string> %s)" % arg_name,
                                   "%s.c_str()" % arg_name)
 
+        # wrapped type
+        assert arg_name is not None
+        if not cpp_type.is_ptr:
+            return ConversionInfo(cpp_type.base_type,
+                    "",
+                    "<_%s>(deref(%s.inst))" % (cpp_type, arg_name),
+                    cpp_type_to_wrapped(self, cpp_type, arg_name))
+        else:
+            return ConversionInfo(cpp_type.base_type,
+                    "",
+                    "<_%s>(%s.inst)" % (cpp_type, arg_name),
+                    cpp_type_to_wrapped(self, cpp_type, arg_name))
 
 
         raise Exception("no conversion info for %s" % cpp_type)

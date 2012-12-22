@@ -55,8 +55,8 @@ class CppType(object):
             inner = "[%s]" % (",".join(str(t) for t in self.template_args))
         else:
             inner = ""
-        result = "%s %s%s%s" % (unsigned, self.base_type, inner, ptr or ref)
-        return result.lstrip() # if unsigned is "" -> lstrip
+        result = "%s %s%s %s" % (unsigned, self.base_type, inner, ptr or ref)
+        return result.strip() # if unsigned is "" or ptr is "" and ref is ""
 
 
     def matches(self, base_type, **kw):

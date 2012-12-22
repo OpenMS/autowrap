@@ -10,6 +10,7 @@ cdef extern from "minimal.hpp":
         std_string compute_str(std_string what)
         int compute_charp(char * what)
         int run(Minimal & ref)
+        int run2(Minimal *p)
 
 
 
