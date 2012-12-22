@@ -1,4 +1,4 @@
-# the following  import fixes some nostests issue
+# the following  import fixes/avoids some nostests issue
 # see http://bugs.python.org/issue15881
 
 try:

@@ -4,8 +4,10 @@ class Minimal {
 
     public:
 
-        int compute(int i);
-        std::string compute(std::string s);
-        int compute_int(int i);
-        std::string compute_str(std::string s);
+        int compute(int i) const;
+        std::string compute(std::string s) const;
+        int compute_int(int i) const;
+        std::string compute_str(std::string s) const;
+        int compute_charp(char *p) const;
+        int run(const Minimal &) const;
 };

@@ -36,4 +36,9 @@ def testMinimal():
         assert False, "expected exception"
 
 
+    assert minimal.compute_charp("uwe") == 3
+
+    assert minimal.run(minimal) == 4
+
+
 

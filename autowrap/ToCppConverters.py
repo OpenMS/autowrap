@@ -1,3 +1,4 @@
+import pdb
 from collections import namedtuple, OrderedDict
 import re
 from string import Template
@@ -36,7 +37,7 @@ def check_py_list_code(arg_name, inner_py_type):
 def py_list_to_vector_X(c, X_type, var_name):
 
     conv_fun_name = "py_list_to_vector_%s" % X_type.identifier()
-    _, _, py_item_to_X, _ = c.get(X_type, "item")
+    _, _, py_item_to_X, _ = c.get(X_type, False, "item")
 
     Context.register(conv_fun_name,
           Code("""cdef libcpp_vector[$X_type] $conv_fun_name(list li):
@@ -52,7 +53,7 @@ def py_list_to_vector_X(c, X_type, var_name):
 def vector_X_to_py_list(c, X_type, var_name):
 
     conv_fun_name = "vector_%s_to_py_list" % X_type.identifier()
-    _, _, _, X_to_py = c.get(X_type, "v")
+    _, _, _, X_to_py = c.get(X_type, False, "v")
 
     Context.register(conv_fun_name,
            Code("""cdef $conv_fun_name(libcpp_vector[$X_type] vec):
@@ -61,19 +62,33 @@ def vector_X_to_py_list(c, X_type, var_name):
 
     return "%(conv_fun_name)s(%(var_name)s)" % locals()
 
+
+def cpp_type_to_wrapped(c, cpp_type, var_name):
+    conv_fun_name = "%s_to_py" % cpp_type
+    Context.register(conv_fun_name,
+           Code().add("""cdef $conv_fun_name(_$cpp_type * inst):
+                        |     result = $cpp_type.__new__($cpp_type)
+                        |     result.inst = inst
+                        |     return result
+                        """,**locals())
+           )
+
+
 class ConversionInfoProvider(object):
 
     def __init__(self):
         self.customized = dict()
-        self.add_data("int", self.num_type_info)
-        self.add_data("long", self.num_type_info)
-        self.add_data("bool", self.num_type_info)
+        self.add_data("int", False, self.num_type_info)
+        self.add_data("char", False, self.num_type_info)
+        self.add_data("char", True, self.char_p_type_info)
+        self.add_data("long", False, self.num_type_info)
+        self.add_data("bool", False, self.num_type_info)
 
-        self.add_data("std_string", self.std_string_type_info)
-        self.add_data("std::vector", self.std_vector_type_info)
+        self.add_data("std_string", False, self.std_string_type_info)
+        self.add_data("std::vector", False, self.std_vector_type_info)
 
-    def add_data(self, name, fun):
-        self.customized[name] = fun
+    def add_data(self, name, is_ptr, fun):
+        self.customized[name, is_ptr] = fun
 
     def num_type_info(self, cpp_type, arg_name):
         conv = "(<%s>%s)" % (cpp_type.base_type, arg_name)
@@ -82,8 +97,15 @@ class ConversionInfoProvider(object):
         check = Code()
         check.add("assert isinstance($arg, int), 'int required'",
                   arg=arg_name)
-        return ConversionInfo(int, check, conv, conv)
+        return ConversionInfo("int", check, conv, conv)
 
+    def char_p_type_info(self, cpp_type, arg_name):
+        conv = "(<char *>%s)" % arg_name
+        check = Code()
+        # todo: unicode ?
+        check.add("assert isinstance($arg, str), 'str required'",
+                  arg=arg_name)
+        return ConversionInfo("bytes", check, conv, conv)
 
     def std_string_type_info(self, cpp_type, arg_name):
         conv = "(<std_string>%s)" % arg_name
@@ -91,33 +113,43 @@ class ConversionInfoProvider(object):
         # todo: unicode ?
         check.add("assert isinstance($arg, str), 'str required'",
                   arg=arg_name)
-        return ConversionInfo(str, check, conv, conv)
+        return ConversionInfo("str", check, conv, conv)
 
     def std_vector_type_info(self, cpp_type, arg_name):
         targs = cpp_type.targs
         assert len(targs) == 1
         targ_cpp_type = targs[0]
 
-        targ_conversion_info = self.get(targ_cpp_type, None)
+        targ_conversion_info = self.get(targ_cpp_type, False, None)
         targ_py_type = targ_conversion_info.py_type
 
-        return ConversionInfo(list,
+        return ConversionInfo("list",
                               check_py_list_code(arg_name, targ_py_type),\
                               py_list_to_vector_X(self, targ_cpp_type, arg_name),\
                               vector_X_to_py_list(self, targ_cpp_type, arg_name))
 
 
-    def get(self, cpp_type, arg_name="<unused>"):
+    def get(self, cpp_type, arg_name=None):
 
-        fun = self.customized.get(cpp_type.base_type)
+        if isinstance(cpp_type, basestring):
+            # wrapped type
+            assert arg_name is not None
+            return ConversionInfo(cpp_type,
+                    "",
+                    "<_%s>(deref(%s.inst))" % (cpp_type, arg_name),
+                    cpp_type_to_wrapped(self, cpp_type, arg_name))
+
+        fun = self.customized.get((cpp_type.base_type, cpp_type.is_ptr))
         if fun:
             return fun(cpp_type, arg_name)
 
         if cpp_type.base_type == "_String":
-            return ConversionInfo(str,
+            return ConversionInfo("str",
                                   "",
                                   "_String(<libcpp_string> %s)" % arg_name,
                                   "%s.c_str()" % arg_name)
+
+
 
         raise Exception("no conversion info for %s" % cpp_type)
 
@@ -167,7 +199,7 @@ from pxd.String cimport String as _String
 """
 
     c = ConversionInfoProvider()
-    cinfo = c.get(CppType("std::vector", [CppType("int")]), "arg0")
+    cinfo = c.get(CppType("std::vector", [CppType("int")]), False, "arg0")
     print cinfo.arg_check_code
     #print
     print cinfo.from_py_code
@@ -175,7 +207,7 @@ from pxd.String cimport String as _String
     print cinfo.to_py_code
 
 
-    cinfo = c.get(CppType("std::vector", [CppType("_String")]), "arg1")
+    cinfo = c.get(CppType("std::vector", [CppType("_String")]), False, "arg1")
     print cinfo.arg_check_code
     #print
     print cinfo.from_py_code

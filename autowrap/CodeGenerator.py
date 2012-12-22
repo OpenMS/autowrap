@@ -153,7 +153,7 @@ class CodeGenerator(object):
                 arg_types =  [t for (n,t) in method.arguments]
                 for arg_type in arg_types:
                     cinfo = self.conv_provider.get(arg_type, "")
-                    py_types.append(ToCppConverters.py_type_to_str(cinfo.py_type))
+                    py_types.append(cinfo.py_type)
                 py_sign = ", ".join(py_types)
                 meth_code.add("    if sign == ($py_sign,):", py_sign=py_sign)
                 meth_code.add("        return self.$local_name(*args)",
@@ -168,13 +168,15 @@ class CodeGenerator(object):
         meth_code = Code.Code()
 
         all_args = input_arg_names(method)
-        py_args = ["self"] + all_args
-        py_args_str = ", ".join(py_args)
         cinfos = []
 
+        py_args = ["self"]
         for (__, t), n in zip(method.arguments, all_args):
             cinfo = self.conv_provider.get(t, n)
             cinfos.append(cinfo)
+            py_args.append("%s %s" % (cinfo.py_type, n))
+
+        py_args_str = ", ".join(py_args)
 
         meth_code.add("def $py_name($py_args_str):", py_name=py_name,
                                                     py_args_str=py_args_str)
@@ -222,7 +224,7 @@ class CodeGenerator(object):
     def create_std_cimports(self):
         self.code.add("""from libcpp.string cimport string as std_string
                         |from libcpp.vector cimport vector as std_vector
-                        +""")
+                        |from cython.operator cimport dereference as deref, preincrement as inc""")
 
 
 
