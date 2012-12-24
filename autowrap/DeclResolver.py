@@ -106,7 +106,7 @@ def resolve_decls_from_string(pxd_in_a_string):
 def _transform(class_decls):
     """
     input:
-        class_decls ist list of instances of PXDParser.EnumOrClassDecl.
+        class_decls ist list of instances of PXDParser.BaseDecl.
         (contains annotations
           - about instance names for template parameterized classes
           - about inheritance of methods from other classes in class_decls
@@ -114,7 +114,7 @@ def _transform(class_decls):
     output:
         list of instances of ResolvedClassOrEnum
     """
-    assert all(isinstance(d, PXDParser.EnumOrClassDecl) for d in class_decls)
+    assert all(isinstance(d, PXDParser.BaseDecl) for d in class_decls)
 
     class_decls = _resolve_all_inheritances(class_decls)
     return _resolve_templated_classes(class_decls)

@@ -184,9 +184,19 @@ cdef extern from "A.h":
     assert str(decl2.type_) == "int", str(decl2.type_)
 
 def test_function():
-    return
-    decl, = autowrap.PXDParser.parse_str("""
+    decl1, decl2 = autowrap.PXDParser.parse_str("""
 cdef extern from "A.h":
     int floor(float x)
+    int ceil(float x)
     """)
+
+    assert decl1.name == "floor"
+    assert decl2.name == "ceil"
+
+    (name, t), = decl1.arguments
+    assert name == "x"
+    assert str(t) == "float"
+    (name, t), = decl2.arguments
+    assert name == "x"
+    assert str(t) == "float"
 

@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -19,6 +18,8 @@ Methods in this module use Cythons Parser to build an Cython syntax tree
 from the annotated .pxd files and creates a represenation of the
 included classes and methods.
 """
+
+
 
 
 def parse_class_annotations(node, lines):
@@ -114,8 +115,20 @@ def _extract_type(base_type, decl):
     return CppType(base_type.name, template_parameters, is_ptr, is_ref,
                    is_unsigned)
 
+class SubtreeParserInterfaceChecker(type):
+
+    def __new__(mcs, name, bases, dict_):
+        msg = "TreeHandlerInterface not implemented"
+        fromTree = dict_.get("fromTree")
+        assert fromTree is not None, msg
+        assert isinstance(fromTree, classmethod), msg
+        nargs = fromTree.__func__.func_code.co_argcount
+        assert nargs == 4, msg
+        return type(name, bases, dict_)
 
 class CTypeDefDecl(object):
+
+    __metaclass__ = SubtreeParserInterfaceChecker
 
     def __init__(self, new_name, type_,  annotations, pxd_path):
         self.new_name = new_name
@@ -131,23 +144,17 @@ class CTypeDefDecl(object):
         return cls(new_name, type_, annotations, pxd_path)
 
 
-class CFunctionDecl(object):
 
-    @classmethod
-    def fromTree(cls, node, lines, pxd_path):
-        annotations = parse_line_annotations(node, lines)
-        print node
-        print dir(node)
-        pdb.set_trace() ############################## Breakpoint ##############################
-
-class EnumOrClassDecl(object):
+class BaseDecl(object):
 
     def __init__(self, name, annotations, pxd_path):
         self.name = name
         self.annotations = annotations
         self.pxd_path = pxd_path
 
-class EnumDecl(EnumOrClassDecl):
+class EnumDecl(BaseDecl):
+
+    __metaclass__ = SubtreeParserInterfaceChecker
 
     def __init__(self, name, items, annotations, pxd_path):
         super(EnumDecl, self).__init__(name, annotations, pxd_path)
@@ -177,7 +184,9 @@ class EnumDecl(EnumOrClassDecl):
         return []
 
 
-class CppClassDecl(EnumOrClassDecl):
+class CppClassDecl(BaseDecl):
+
+    __metaclass__ = SubtreeParserInterfaceChecker
 
     def __init__(self, name, template_parameters, methods, annotations,
                  pxd_path):
@@ -192,7 +201,7 @@ class CppClassDecl(EnumOrClassDecl):
         class_annotations = parse_class_annotations(node, lines)
         methods = OrderedDict()
         for att in node.attributes:
-            meth = CppMethodDecl.fromTree(att, lines)
+            meth = CppMethodOrFunctionDecl.fromTree(att, lines, pxd_path)
             if meth is not None:
                 # an OrderedDefaultDict(list) would be nice here:
                 methods.setdefault(meth.name,[]).append(meth)
@@ -235,20 +244,22 @@ class CppClassDecl(EnumOrClassDecl):
                 if not self.has_method(decl):
                     self.methods.setdefault(decl.name,[]).append(decl)
 
+class CppMethodOrFunctionDecl(BaseDecl):
 
-class CppMethodDecl(object):
+    __metaclass__ = SubtreeParserInterfaceChecker
 
-    def __init__(self, result_type,  name, arguments, annotations):
+    def __init__(self, result_type,  name, arguments, annotations, pxd_path):
+        super(CppMethodOrFunctionDecl, self).__init__(name, annotations,
+                                                      pxd_path)
         self.result_type = result_type
-        self.name = name
         self.arguments = arguments
-        self.annotations = annotations
         self.wrap = not self.annotations.get("ignore", False)
 
     def transformed(self, typemap):
         result_type = self.result_type.transform(typemap)
-        args = [ (n, t.transform(typemap)) for n, t in self.arguments ]
-        return CppMethodDecl(result_type, self.name, args, self.annotations)
+        args = [(n, t.transform(typemap)) for n, t in self.arguments]
+        return CppMethodOrFunctionDecl(result_type, self.name, args,
+                                       self.annotations, self.pxd_path)
 
     def matches(self, other):
         """ only checks method name signature,
@@ -260,12 +271,12 @@ class CppMethodDecl(object):
         return self_key == other_key
 
     @classmethod
-    def fromTree(cls, node, lines):
+    def fromTree(cls, node, lines, pxd_path):
         annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
             return None # nested classes only can be delcared in pxd
 
-        decl = node.declarators[0]
+        decl, = node.declarators
         result_type = _extract_type(node.base_type, decl)
 
         if isinstance(decl, CNameDeclaratorNode):
@@ -290,7 +301,7 @@ class CppMethodDecl(object):
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname,tt))
 
-        return cls(result_type, name, args, annotations)
+        return cls(result_type, name, args, annotations, pxd_path)
 
     def __str__(self):
         rv = str(self.result_type)
@@ -350,16 +361,18 @@ def parse_pxd_file(path):
     handlers = { CEnumDefNode : EnumDecl.fromTree,
                  CppClassNode : CppClassDecl.fromTree,
                  CTypeDefNode : CTypeDefDecl.fromTree,
-                 # CVarNode     : CFunctionDecl.fromTree,
+                 CVarDefNode  : CppMethodOrFunctionDecl.fromTree,
                  }
 
     result = []
     for body in iter_bodies(root):
+        # print body
         handler = handlers.get(type(body))
         if handler is not None:
             result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):
+                # print " ", node
                 handler = handlers.get(type(node))
                 if handler is not None:
                     result.append(handler(node, lines, path))
