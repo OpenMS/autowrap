@@ -1,4 +1,3 @@
-import pdb
 import autowrap.PXDParser
 import os
 
@@ -172,3 +171,15 @@ cdef extern from "A.h":
     assert inst2.name == u"C"
     assert inst2.template_parameters == [ u"E", ]
     assert len(inst2.methods) == 0
+
+def test_typedef():
+    decl1, decl2 = autowrap.PXDParser.parse_str("""
+cdef extern from "A.h":
+    ctypedef unsigned int myInt
+    ctypedef long allInt
+    """)
+    assert decl1.new_name == 'myInt', decl1.new_name
+    assert decl2.new_name == 'allInt', decl1.new_name
+    assert str(decl1.type_) == "unsigned int"
+    assert str(decl2.type_) == "int", str(decl2.type_)
+

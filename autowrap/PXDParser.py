@@ -114,14 +114,27 @@ def _extract_type(base_type, decl):
                    is_unsigned)
 
 
+class CTypeDefDecl(object):
+
+    def __init__(self, new_name, type_,  annotations, pxd_path):
+        self.new_name = new_name
+        self.type_ = type_
+        self.annotations = annotations
+        self.pxd_path = pxd_path
+
+    @classmethod
+    def fromTree(cls, node, lines, pxd_path):
+        new_name = node.declarator.name
+        type_ = _extract_type(node.base_type, node.declarator)
+        annotations = parse_line_annotations(node, lines)
+        return cls(new_name, type_, annotations, pxd_path)
+
 class EnumOrClassDecl(object):
 
     def __init__(self, name, annotations, pxd_path):
         self.name = name
         self.annotations = annotations
         self.pxd_path = pxd_path
-
-
 
 class EnumDecl(EnumOrClassDecl):
 
@@ -329,12 +342,16 @@ def parse_pxd_file(path):
             result.append(EnumDecl.fromTree(body, lines, path))
         elif isinstance(body, CppClassNode):
             result.append(CppClassDecl.fromTree(body, lines, path))
+        elif isinstance(body, CTypeDefNode):
+            result.append(CTypeDefDecl.fromTree(body, lines, path))
         elif hasattr(body, "stats"):
             for node in body.stats:
                 if isinstance(node, CEnumDefNode):
                     result.append(EnumDecl.fromTree(node, lines, path))
                 elif isinstance(node, CppClassNode):
                     result.append(CppClassDecl.fromTree(node, lines, path))
+                elif isinstance(node, CTypeDefNode):
+                    result.append(CTypeDefDecl.fromTree(node, lines, path))
     return result
 
 if __name__ == "__main__":
