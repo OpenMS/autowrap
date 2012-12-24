@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -128,6 +129,16 @@ class CTypeDefDecl(object):
         type_ = _extract_type(node.base_type, node.declarator)
         annotations = parse_line_annotations(node, lines)
         return cls(new_name, type_, annotations, pxd_path)
+
+
+class CFunctionDecl(object):
+
+    @classmethod
+    def fromTree(cls, node, lines, pxd_path):
+        annotations = parse_line_annotations(node, lines)
+        print node
+        print dir(node)
+        pdb.set_trace() ############################## Breakpoint ##############################
 
 class EnumOrClassDecl(object):
 
@@ -336,22 +347,22 @@ def parse_pxd_file(path):
 
     lines = open(path).readlines()
 
+    handlers = { CEnumDefNode : EnumDecl.fromTree,
+                 CppClassNode : CppClassDecl.fromTree,
+                 CTypeDefNode : CTypeDefDecl.fromTree,
+                 # CVarNode     : CFunctionDecl.fromTree,
+                 }
+
     result = []
     for body in iter_bodies(root):
-        if isinstance(body, CEnumDefNode):
-            result.append(EnumDecl.fromTree(body, lines, path))
-        elif isinstance(body, CppClassNode):
-            result.append(CppClassDecl.fromTree(body, lines, path))
-        elif isinstance(body, CTypeDefNode):
-            result.append(CTypeDefDecl.fromTree(body, lines, path))
-        elif hasattr(body, "stats"):
-            for node in body.stats:
-                if isinstance(node, CEnumDefNode):
-                    result.append(EnumDecl.fromTree(node, lines, path))
-                elif isinstance(node, CppClassNode):
-                    result.append(CppClassDecl.fromTree(node, lines, path))
-                elif isinstance(node, CTypeDefNode):
-                    result.append(CTypeDefDecl.fromTree(node, lines, path))
+        handler = handlers.get(type(body))
+        if handler is not None:
+            result.append(handler(body, lines, path))
+        else:
+            for node in getattr(body, "stats", []):
+                handler = handlers.get(type(node))
+                if handler is not None:
+                    result.append(handler(node, lines, path))
     return result
 
 if __name__ == "__main__":

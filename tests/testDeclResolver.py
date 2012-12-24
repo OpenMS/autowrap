@@ -51,7 +51,7 @@ def test_singular():
 
     second_arg_types= map(lambda m: None if len(m.arguments) < 2 else
             str(m.arguments[1][1]), res0.get_flattened_methods())
-    assert second_arg_types == ["int", None, None, None, None, "list[int]&",
+    assert second_arg_types == ["int", None, None, None, None, "list[int] &",
                                     None, None, None , "int"], second_arg_types
 
 
@@ -85,7 +85,7 @@ def test_singular():
     second_arg_types= map(lambda m: None if len(m.arguments) < 2 else
             str(m.arguments[1][1]), res1.get_flattened_methods())
     assert second_arg_types == ["float", None, None, None, None,
-                                "list[float]&", None, None, None,
+                                "list[float] &", None, None, None,
                                 "float"], second_arg_types
 
 def test_multi_inherit():

@@ -183,3 +183,10 @@ cdef extern from "A.h":
     assert str(decl1.type_) == "unsigned int"
     assert str(decl2.type_) == "int", str(decl2.type_)
 
+def test_function():
+    return
+    decl, = autowrap.PXDParser.parse_str("""
+cdef extern from "A.h":
+    int floor(float x)
+    """)
+
