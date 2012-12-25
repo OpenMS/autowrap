@@ -201,3 +201,23 @@ def testIntContainer():
     assert [ m.name for m in resolved[1].get_flattened_methods()] == ["XContainerInt",
             "push_back", "size",]
 
+def testTypeDef():
+    resolved, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "X.h":
+    ctypedef int X
+    X fun(X x)
+            """)
+    assert resolved.name == "fun"
+    assert str(resolved.result_type) == "int"
+    (n, t), = resolved.arguments
+    assert n == "x"
+    assert str(t) == "int"
+
+
+def testWithoutHeader():
+    return
+    resolved, = DeclResolver.resolve_decls_from_string("""
+cdef extern:
+    ctypedef int X
+    X fun(X x)
+            """)

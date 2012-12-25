@@ -178,8 +178,8 @@ cdef extern from "A.h":
     ctypedef unsigned int myInt
     ctypedef long allInt
     """)
-    assert decl1.new_name == 'myInt', decl1.new_name
-    assert decl2.new_name == 'allInt', decl1.new_name
+    assert decl1.name == 'myInt', decl1.name
+    assert decl2.name == 'allInt', decl1.name
     assert str(decl1.type_) == "unsigned int"
     assert str(decl2.type_) == "int", str(decl2.type_)
 

@@ -75,7 +75,7 @@ class ResolvedClassOrEnum(object):
         return "\n   ".join([self.name] + map(str, self.methods))
 
 
-class ResolvedMethod(object):
+class ResolvedMethodOrFunction(object):
 
     """ contains all info for generating wrapping code of
         resolved class.
@@ -103,7 +103,7 @@ def resolve_decls_from_string(pxd_in_a_string):
     return _transform(PXDParser.parse_str(pxd_in_a_string))
 
 
-def _transform(class_decls):
+def _transform(decls):
     """
     input:
         class_decls ist list of instances of PXDParser.BaseDecl.
@@ -114,11 +114,31 @@ def _transform(class_decls):
     output:
         list of instances of ResolvedClassOrEnum
     """
-    assert all(isinstance(d, PXDParser.BaseDecl) for d in class_decls)
+    assert all(isinstance(d, PXDParser.BaseDecl) for d in decls)
+
+    mapping = _build_typdef_mapping(decls)
+    functions = []
+    class_decls = []
+    for d in decls:
+        if isinstance(d, PXDParser.CTypeDefDecl):
+            continue
+        elif isinstance(d, PXDParser.CppMethodOrFunctionDecl):
+            functions.append(_resolve_function(d, mapping))
+        else:
+            class_decls.append(d)
 
     class_decls = _resolve_all_inheritances(class_decls)
-    return _resolve_templated_classes(class_decls)
+    return _resolve_templated_classes(class_decls, mapping) + functions
 
+
+def _build_typdef_mapping(decls):
+    return dict((d.name, d.type_) for d in decls\
+                                  if isinstance(d, PXDParser.CTypeDefDecl))
+
+def _resolve_function(decl, mapping):
+    res_t = mapping.get(decl.result_type.base_type, decl.result_type)
+    args = [(n, mapping.get(t.base_type, t)) for (n, t) in decl.arguments]
+    return ResolvedMethodOrFunction(decl.name, res_t, args)
 
 def _resolve_all_inheritances(class_decls):
     """
@@ -209,7 +229,7 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     cdcl.attach_base_methods(transformed_methods)
 
 
-def _resolve_templated_classes(class_decls):
+def _resolve_templated_classes(class_decls, mapping):
     """
     generates concrete names of python classes.
 
@@ -253,8 +273,8 @@ def _resolve_method(method_decl, registry, t_param_mapping):
         arg_type = _resolve_alias(arg_type, registry, t_param_mapping)
         args.append((arg_name, arg_type))
     new_name = method_decl.annotations.get("wrap-as")
-    return ResolvedMethod(new_name or method_decl.name, result_type, args)
-
+    return ResolvedMethodOrFunction(new_name or method_decl.name, result_type,
+                                    args)
 
 def _resolve_alias(cpp_type, registry, t_param_mapping):
     cpp_type = cpp_type.transform(t_param_mapping)

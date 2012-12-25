@@ -126,15 +126,23 @@ class SubtreeParserInterfaceChecker(type):
         assert nargs == 4, msg
         return type(name, bases, dict_)
 
-class CTypeDefDecl(object):
+
+class BaseDecl(object):
+
+    def __init__(self, name, annotations, pxd_path):
+        self.name = name
+        self.annotations = annotations
+        self.pxd_path = pxd_path
+
+
+class CTypeDefDecl(BaseDecl):
 
     __metaclass__ = SubtreeParserInterfaceChecker
 
     def __init__(self, new_name, type_,  annotations, pxd_path):
-        self.new_name = new_name
+        super(CTypeDefDecl, self).__init__(new_name, annotations, pxd_path)
+        #self.new_name = new_name
         self.type_ = type_
-        self.annotations = annotations
-        self.pxd_path = pxd_path
 
     @classmethod
     def fromTree(cls, node, lines, pxd_path):
@@ -143,14 +151,6 @@ class CTypeDefDecl(object):
         annotations = parse_line_annotations(node, lines)
         return cls(new_name, type_, annotations, pxd_path)
 
-
-
-class BaseDecl(object):
-
-    def __init__(self, name, annotations, pxd_path):
-        self.name = name
-        self.annotations = annotations
-        self.pxd_path = pxd_path
 
 class EnumDecl(BaseDecl):
 
@@ -366,13 +366,13 @@ def parse_pxd_file(path):
 
     result = []
     for body in iter_bodies(root):
-        # print body
+        print body
         handler = handlers.get(type(body))
         if handler is not None:
             result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):
-                # print " ", node
+                print " ", node
                 handler = handlers.get(type(node))
                 if handler is not None:
                     result.append(handler(node, lines, path))
