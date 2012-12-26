@@ -176,12 +176,33 @@ def test_typedef():
     decl1, decl2 = autowrap.PXDParser.parse_str("""
 cdef extern from "A.h":
     ctypedef unsigned int myInt
-    ctypedef long allInt
+    ctypedef long * allInt
     """)
     assert decl1.name == 'myInt', decl1.name
-    assert decl2.name == 'allInt', decl1.name
+    assert decl2.name == 'allInt', decl2.name
     assert str(decl1.type_) == "unsigned int"
-    assert str(decl2.type_) == "int", str(decl2.type_)
+    assert str(decl2.type_) == "int *", str(decl2.type_)
+
+def test_doubleptr():
+
+    try:
+        autowrap.PXDParser.parse_str("""
+cdef extern from "A.h":
+    void fun(int **)
+        """)
+    except:
+        pass
+    else:
+        assert False, "expected exception"
+
+def test_aliased_doubleptr():
+    d1, d2, d3 = autowrap.PXDParser.parse_str("""
+cdef extern from "A.h":
+    ctypedef int * sptr
+    ctypedef sptr * dptr
+    void fun(dptr x)
+        """)
+    assert  True
 
 def test_function():
     decl1, decl2 = autowrap.PXDParser.parse_str("""

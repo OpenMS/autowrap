@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -146,7 +147,11 @@ class CTypeDefDecl(BaseDecl):
 
     @classmethod
     def fromTree(cls, node, lines, pxd_path):
-        new_name = node.declarator.name
+        decl = node.declarator
+        if isinstance(decl, CPtrDeclaratorNode):
+            new_name = decl.base.name
+        else:
+            new_name = decl.name
         type_ = _extract_type(node.base_type, node.declarator)
         annotations = parse_line_annotations(node, lines)
         return cls(new_name, type_, annotations, pxd_path)
@@ -293,9 +298,13 @@ class CppMethodOrFunctionDecl(BaseDecl):
         args = []
         for arg in decl.args:
             argdecl = arg.declarator
-            if isinstance(argdecl, CReferenceDeclaratorNode) or \
-               isinstance(argdecl, CPtrDeclaratorNode):
+            if isinstance(argdecl, CReferenceDeclaratorNode): 
                 argname = argdecl.base.name
+            elif isinstance(argdecl, CPtrDeclaratorNode):
+                base = argdecl.base
+                if isinstance(base, CPtrDeclaratorNode):
+                    raise Exception("multi ptr not supported")
+                argname = base.name
             else:
                 argname = argdecl.name
             tt = _extract_type(arg.base_type, argdecl)
@@ -366,13 +375,13 @@ def parse_pxd_file(path):
 
     result = []
     for body in iter_bodies(root):
-        print body
+        # print body
         handler = handlers.get(type(body))
         if handler is not None:
             result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):
-                print " ", node
+                # print " ", node
                 handler = handlers.get(type(node))
                 if handler is not None:
                     result.append(handler(node, lines, path))

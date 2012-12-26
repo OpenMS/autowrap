@@ -201,7 +201,7 @@ def testIntContainer():
     assert [ m.name for m in resolved[1].get_flattened_methods()] == ["XContainerInt",
             "push_back", "size",]
 
-def testTypeDef():
+def testTypeDefWithFun():
     resolved, = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
@@ -213,6 +213,17 @@ cdef extern from "X.h":
     assert n == "x"
     assert str(t) == "int"
 
+def testTypeDefWithClass():
+    resolved, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "X.h":
+    ctypedef int X
+    cdef cppclass A[B]:
+        # wrap-instances:
+        #   A[X]
+        X foo(B)
+        B bar(X)
+            """)
+    assert resolved.name == "A"
 
 def testWithoutHeader():
     return
