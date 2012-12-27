@@ -195,14 +195,16 @@ cdef extern from "A.h":
     else:
         assert False, "expected exception"
 
-def test_aliased_doubleptr():
-    d1, d2, d3 = autowrap.PXDParser.parse_str("""
+def test_aliased_ptr():
+    d1, d2 = autowrap.PXDParser.parse_str("""
 cdef extern from "A.h":
-    ctypedef int * sptr
-    ctypedef sptr * dptr
-    void fun(dptr x)
+    ctypedef int integer
+    ctypedef integer * iptr
         """)
-    assert  True
+    assert d1.name == "integer"
+    assert d2.name == "iptr"
+    assert str(d1.type_) == "int"
+    assert str(d2.type_) == "integer *", str(d2.type_)
 
 def test_function():
     decl1, decl2 = autowrap.PXDParser.parse_str("""
