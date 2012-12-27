@@ -62,6 +62,7 @@ class CppType(object):
         return result.strip() # if unsigned is "" or ptr is "" and ref is ""
 
 
+
     def matches(self, base_type, **kw):
 
         is_ptr = kw.get("is_ptr")

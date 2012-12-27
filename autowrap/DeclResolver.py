@@ -1,4 +1,3 @@
-import pdb
 # encoding: utf-8
 import PXDParser
 import re
@@ -40,18 +39,17 @@ __doc__ = """
 
 """
 
-
 def _split_targs(decl_str):
     # decl looks like T[X,Y]
     # returns: "T", "[X,Y]", ("X", "Y")
-    match = re.match("(\w+)(\[\w+(,\w+)*\])?", decl_str)
+
+    decl_str = re.sub("[ ]+", "", decl_str)
+    match = re.match("(\w+)(\[\w+\*?(,\w+\*?)*\])?", decl_str)
     base, t_part, _ = match.groups()
     if t_part is None:
         return base, "", None
     t_parts = tuple(t.strip() for t in t_part[1:-1].split(","))
     return base, t_part, t_parts
-
-
 
 class ResolvedClassOrEnum(object):
     """ contains all info for generating wrapping code of
@@ -59,12 +57,13 @@ class ResolvedClassOrEnum(object):
         "Resolved" means that template parameters are resolved.
     """
 
-    def __init__(self, name, methods, decl=None):
+    def __init__(self, name, methods, tinstances=None, decl=None):
         self.name = name
         # resolve overloadings
         self.methods = OrderedDict()
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
+        self.tinstances = tinstances
         self.cpp_decl = decl
         self.items = getattr(decl, "items", [])
 
@@ -123,11 +122,12 @@ def _transform(decls):
     enums = [d for d in decls if isinstance(d, PXDParser.EnumDecl)]
     classes = [d for d in decls if isinstance(d, PXDParser.CppClassDecl)]
 
-    mapping = _build_typdef_mapping(typedefs)
-    functions = [_resolve_function(f, mapping) for f in functions]
+    td_mapping = _build_typdef_mapping(typedefs)
+
+    functions = [_resolve_function(f, td_mapping) for f in functions]
 
     classes = _resolve_all_inheritances(classes)
-    classes = _resolve_templated_classes(classes, mapping)
+    classes = _resolve_templated_classes(classes, td_mapping)
 
     return classes + enums + functions
 
@@ -178,10 +178,9 @@ def _build_typdef_mapping(decls):
     return mapping
 
 
-def _resolve_function(decl, mapping):
-    res_t = mapping.get(decl.result_type.base_type, decl.result_type)
-    args = [(n, mapping.get(t.base_type, t)) for (n, t) in decl.arguments]
-    return ResolvedMethodOrFunction(decl.name, res_t, args)
+def _resolve_function(decl, td_mapping):
+    # functions are methods without template mapping:
+    return _resolve_method(decl, dict(), td_mapping)
 
 def _resolve_all_inheritances(class_decls):
     """
@@ -272,7 +271,7 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     cdcl.attach_base_methods(transformed_methods)
 
 
-def _resolve_templated_classes(class_decls, mapping):
+def _resolve_templated_classes(class_decls, td_mapping):
     """
     generates concrete names of python classes.
 
@@ -290,18 +289,33 @@ def _resolve_templated_classes(class_decls, mapping):
 
     """
 
+    # do not need full type info any more
+    td_mapping = dict((n, str(t)) for (n, t) in td_mapping.items())
+
     registry = _create_alias_registry(class_decls)
     resolved_classes = []
     for alias, decl, t_param_mapping in registry.values():
+
+        # resolve typedefs in templates:
+        final_mapping = dict((k, td_mapping.get(v,v)) for (k,v) in
+                t_param_mapping.items())
+        # resolve 'free' typedefs in method args and result types:
+        final_mapping.update(td_mapping)
+
         methods = []
         for mdcl in decl.get_method_decls():
             if mdcl.annotations.get("wrap-ignore"):
                 continue
-            inst = _resolve_method(mdcl, registry, t_param_mapping)
+            inst = _resolve_method(mdcl, registry, final_mapping)
             if inst.name == decl.name:
                 inst.name = alias
             methods.append(inst)
-        resolved_classes.append(ResolvedClassOrEnum(alias, methods, decl))
+        if decl.template_parameters is not None:
+            tinstances = [final_mapping.get(n) for n in decl.template_parameters]
+        else:
+            tinstances = None
+        resolved_classes.append(ResolvedClassOrEnum(alias, methods, tinstances,
+                                                    decl))
     return resolved_classes
 
 
@@ -378,3 +392,5 @@ def _register_alias(cdcl, instance_decl_str, r):
         t_param_mapping = dict()
     # maps 'T[int]' -> ('Tint', cdcl, { 'X': 'int' })
     r[cdcl.name + t_part] = (alias, cdcl, t_param_mapping)
+
+

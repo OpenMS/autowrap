@@ -158,6 +158,17 @@ cdef extern from "A.h":
     """)
     assert instance.name == "B"
 
+def test_template_class_with_ptrtype():
+    instance, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "A.h":
+    cdef cppclass A[X]:
+        # wrap-instances:
+        #  Ax[int*]
+        pass
+    """)
+    assert instance.name == "Ax"
+    assert instance.tinstances == ["int*"], instance.tinstances
+
 def test_multi_decls_in_one_file():
     inst1, inst2, enum = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
@@ -217,16 +228,16 @@ def testTypeDefChaining():
     function, = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
-    ctypedef X * iptr
+    ctypedef X* iptr
     ctypedef X Y
-    ctypedef Y * iptr2
-    iptr2 fun(iptr, Y)
+    ctypedef Y *iptr2
+    iptr2 fun(iptr, Y *)
             """)
 
     assert str(function.result_type) == "int *"
     t1, t2 = map(str, (t for (n, t) in function.arguments))
-    assert t1 == "int *"
-    assert t2 == "int"
+    assert t1 == "int *", t1
+    assert t2 == "int *", t2
 
 @expect_exception
 def doublePtrTypeDef():
@@ -246,23 +257,36 @@ cdef extern from "X.h":
     ctypedef int X
     ctypedef X Y
     ctypedef Y Z
-    ctypedef Z X 
+    ctypedef Z X
     iptr2 fun(iptr, Y)
             """)
 
 def testTypeDefWithClass():
-    return
-    resolved, = DeclResolver.resolve_decls_from_string("""
+    resolved, fun = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
+    ctypedef int * Y
     cdef cppclass A[B]:
         # wrap-instances:
         #   A[X]
         X foo(B)
         B bar(X)
+    Y fun(X *)
             """)
     assert resolved.name == "A"
-    assert False
+    tinstance, = resolved.tinstances
+    assert tinstance == "int", tinstance
+
+    foo, = resolved.methods.get("foo")
+    assert str(foo.result_type) == "int", foo.result_type
+
+    bar, = resolved.methods.get("bar")
+    assert str(bar.result_type) == "int"
+
+    assert fun.name == "fun"
+    assert str(fun.result_type) == "int *"
+    (__, arg_t), = fun.arguments
+    assert str(arg_t) == "int *", str(arg_t)
 
 def testWithoutHeader():
     return

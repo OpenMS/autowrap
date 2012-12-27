@@ -315,7 +315,7 @@ class CppMethodOrFunctionDecl(BaseDecl):
     def __str__(self):
         rv = str(self.result_type)
         rv += " " + self.name
-        argl = [str(type_) + " " + str(name) for name, type_ in self.args]
+        argl = [str(type_) + " " + str(name) for name, type_ in self.arguments]
         return rv + "(" + ", ".join(argl) + ")"
 
 
