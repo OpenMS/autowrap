@@ -206,6 +206,23 @@ cdef extern from "A.h":
     assert str(d1.type_) == "int"
     assert str(d2.type_) == "integer *", str(d2.type_)
 
+def test_multi_alias():
+    d1, d2, d3, d4 = autowrap.PXDParser.parse_str("""
+cdef extern from "A.h":
+    ctypedef int X
+    ctypedef X * iptr
+    ctypedef X Y
+    ctypedef Y * iptr2
+        """)
+    assert d1.name == "X"
+    assert str(d1.type_) == "int"
+    assert d2.name == "iptr"
+    assert str(d2.type_) == "X *"
+    assert d3.name == "Y"
+    assert str(d3.type_) == "X"
+    assert d4.name == "iptr2"
+    assert str(d4.type_) == "Y *"
+
 def test_function():
     decl1, decl2 = autowrap.PXDParser.parse_str("""
 cdef extern from "A.h":

@@ -214,14 +214,41 @@ cdef extern from "X.h":
     assert str(t) == "int"
 
 def testTypeDefChaining():
-    d1, d2, d3, d4, = DeclResolver.resolve_decls_from_string("""
+    function, = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     ctypedef X * iptr
     ctypedef X Y
     ctypedef Y * iptr2
+    iptr2 fun(iptr, Y)
             """)
-    assert True
+
+    assert str(function.result_type) == "int *"
+    t1, t2 = map(str, (t for (n, t) in function.arguments))
+    assert t1 == "int *"
+    assert t2 == "int"
+
+@expect_exception
+def doublePtrTypeDef():
+    function, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "X.h":
+    ctypedef int X
+    ctypedef X * iptr
+    ctypedef X * Y
+    ctypedef Y * iptr2
+    iptr2 fun(iptr, Y)
+            """)
+
+@expect_exception
+def ctypedefWithCycle():
+    function, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "X.h":
+    ctypedef int X
+    ctypedef X Y
+    ctypedef Y Z
+    ctypedef Z X 
+    iptr2 fun(iptr, Y)
+            """)
 
 def testTypeDefWithClass():
     return

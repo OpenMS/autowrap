@@ -45,6 +45,9 @@ class CppType(object):
         rv.is_ref = False
         return rv
 
+    def copy(self):
+        return copy.copy(self)
+
     def __str__(self):
         unsigned = "unsigned" if self.is_unsigned else ""
         ptr  = "*" if self.is_ptr else ""

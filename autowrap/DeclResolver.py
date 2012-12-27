@@ -1,3 +1,4 @@
+import pdb
 # encoding: utf-8
 import PXDParser
 import re
@@ -116,24 +117,66 @@ def _transform(decls):
     """
     assert all(isinstance(d, PXDParser.BaseDecl) for d in decls)
 
-    mapping = _build_typdef_mapping(decls)
-    functions = []
-    class_decls = []
-    for d in decls:
-        if isinstance(d, PXDParser.CTypeDefDecl):
-            continue
-        elif isinstance(d, PXDParser.CppMethodOrFunctionDecl):
-            functions.append(_resolve_function(d, mapping))
-        else:
-            class_decls.append(d)
+    typedefs = [d for d in decls if isinstance(d, PXDParser.CTypeDefDecl)]
+    functions = [d for d in decls if isinstance(d,
+                                            PXDParser.CppMethodOrFunctionDecl)]
+    enums = [d for d in decls if isinstance(d, PXDParser.EnumDecl)]
+    classes = [d for d in decls if isinstance(d, PXDParser.CppClassDecl)]
 
-    class_decls = _resolve_all_inheritances(class_decls)
-    return _resolve_templated_classes(class_decls, mapping) + functions
+    mapping = _build_typdef_mapping(typedefs)
+    functions = [_resolve_function(f, mapping) for f in functions]
+
+    classes = _resolve_all_inheritances(classes)
+    classes = _resolve_templated_classes(classes, mapping)
+
+    return classes + enums + functions
 
 
 def _build_typdef_mapping(decls):
-    return dict((d.name, d.type_) for d in decls\
-                                  if isinstance(d, PXDParser.CTypeDefDecl))
+
+    # build graph with names to detect cycles
+    graph = defaultdict(list)
+    for decl in decls:
+        graph[decl.name].append(decl.type_.base_type)
+
+    for name, successors in graph.items():
+        assert len(successors) < 2, "multiple ctypedef for %s" % name
+
+    cycle = autowrap.Utils.find_cycle(graph)
+    if cycle is not None:
+        info = " -> ".join(map(str, cycle))
+        raise Exception("ctypedefs contains cycle: " + info)
+
+    mapping = dict()
+    done = set()
+    for decl in decls:
+        name = decl.name
+        type_ = decl.type_
+        if type_.base_type not in graph.keys():
+            mapping[name] = type_.copy()
+            done.add(name)
+
+    while True:
+        for decl in decls:
+            if decl.name in done:
+                continue
+            name = decl.name
+            type_ = decl.type_
+            if type_.base_type in mapping.keys():
+                type_ = type_.copy()
+                resolved = mapping[type_.base_type]
+                if type_.is_ptr and resolved.is_ptr:
+                    raise Exception("double ptr %s not supported" % type_)
+                type_.is_ptr = type_.is_ptr or resolved.is_ptr
+                type_.base_type = resolved.base_type
+                mapping[name] = type_
+                done.add(decl.name)
+                break
+        else:
+            break
+
+    return mapping
+
 
 def _resolve_function(decl, mapping):
     res_t = mapping.get(decl.result_type.base_type, decl.result_type)
