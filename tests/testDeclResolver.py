@@ -213,6 +213,16 @@ cdef extern from "X.h":
     assert n == "x"
     assert str(t) == "int"
 
+def testTypeDefChaining():
+    d1, d2, d3, d4, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "X.h":
+    ctypedef int X
+    ctypedef X * iptr
+    ctypedef X Y
+    ctypedef Y * iptr2
+            """)
+    assert True
+
 def testTypeDefWithClass():
     return
     resolved, = DeclResolver.resolve_decls_from_string("""
