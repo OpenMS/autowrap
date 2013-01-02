@@ -17,4 +17,4 @@ cdef extern from "minimal.hpp":
         int run2(Minimal *p)
         Minimal create()
 
-        int sumup(std_vector what)  # wrap-ignore
+        int sumup(std_vector[int] what) # wrap-ignore

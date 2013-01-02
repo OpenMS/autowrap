@@ -207,7 +207,6 @@ cdef extern from "A.h":
 def test_int_container():
     resolved  = _resolve("int_container_class.pxd")
     assert resolved[0].name == "Xint"
-    print [ m.name for m in resolved[0].get_flattened_methods()]
     assert [ m.name for m in resolved[0].get_flattened_methods()] == ["Xint", "operator+",
     "getValue"]
     assert resolved[1].name == "XContainerInt"
@@ -361,5 +360,3 @@ cdef extern from "minimal.hpp":
         Minimal create()
 """)
     meth, = resolved.methods.get("create")
-    print type(meth.result_type)
-    print str(meth.result_type)

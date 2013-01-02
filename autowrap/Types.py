@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 import copy
 import re
@@ -20,6 +21,7 @@ class CppType(object):
 
         if self.template_args is not None:
             template_args = [t.transform(typemap) for t in self.template_args]
+            template_args = tuple(template_args)
         else:
             template_args = None
 
@@ -51,16 +53,29 @@ class CppType(object):
 
         return mapped_type
 
-
     def __hash__(self):
 
-        # this one is recursive if we have template_args !
+        if self.template_args is None:
+            thash = hash(None)
+        else:
+            # this one is recursive:
+            if not isinstance(self.template_args, tuple):
+                raise Exception("implementation invalid")
+            thash = hash(self.template_args)
         return hash((self.base_type, self.is_ptr, self.is_ref,
-                    self.is_unsigned, self.is_enum, hash(self.template_args)))
+                    self.is_unsigned, self.is_enum, thash))
 
     def __eq__(self, other):
         """ for using Types as dict keys """
         # this one is recursive if we have template_args !
+        if not isinstance(other, self.__class__):
+            return False
+        if self.template_args is not None\
+           and not isinstance(self.template_args, tuple):
+                raise Exception("implementation invalid")
+        if other.template_args is not None\
+           and not isinstance(other.template_args, tuple):
+                raise Exception("implementation invalid")
         return  (self.base_type, self.is_ptr, self.is_ref, self.is_unsigned,
                      self.is_enum, self.template_args ) == \
                 (other.base_type, other.is_ptr, other.is_ref, other.is_unsigned,
@@ -87,7 +102,7 @@ class CppType(object):
         result = "%s %s%s %s" % (unsigned, self.base_type, inner, ptr or ref)
         return result.strip() # if unsigned is "" or ptr is "" and ref is ""
 
-    def matches(self, base_type, **kw):
+    def _matches(self, base_type, **kw):
 
         is_ptr = kw.get("is_ptr")
         is_ref = kw.get("is_ref")
@@ -125,7 +140,7 @@ class CppType(object):
         return CppType(base_type, t_types)
 
 
-def __cy_repr(type_):
+def _x__cy_repr(type_):
     """ returns cython type representation """
 
     if type_.is_enum:
@@ -149,7 +164,7 @@ def __cy_repr(type_):
     return rv
 
 
-def __cpp_repr(type_):
+def _x_cpp_repr(type_):
     """ returns C++ type representation """
 
     if type_.is_enum:
@@ -170,12 +185,12 @@ def __cpp_repr(type_):
     return rv
 
 
-def __py_name(type_):
+def _x__py_name(type_):
     """ returns Python representation, that is the name the module
         will expose to its users """
     return type_.base_type
 
-def __py_type_for_cpp_type(type_):
+def _x__py_type_for_cpp_type(type_):
 
     if type_.matches("char", is_ptr=True):
             return CppType("str")
@@ -213,7 +228,7 @@ def __py_type_for_cpp_type(type_):
 
     return type_
 
-def __cy_decl(type_):
+def __x_cy_decl(type_):
 
     type_ = py_type_for_cpp_type(type_)
     if type_ is None: return
@@ -223,7 +238,7 @@ def __cy_decl(type_):
     return ("unsigned " if type_.is_unsigned else "")  + type_.base_type + ("*" if type_.is_ptr  else "")
 
 
-def __pysig_for_cpp_type(type_):
+def _x__pysig_for_cpp_type(type_):
 
     pybase = py_type_for_cpp_type(type_).base_type
     if type_.template_args is None:

@@ -24,10 +24,13 @@ __doc__ = """
     eg
 
         cdef cppclass B[U,V]:
-            # wrap-inherits: C[U] D
+            # wrap-inherits:
+            #    C[U]
+            #    D
             #
-            # wrap-instances: B_int_float[int, float] B_pure[int, int]
-
+            # wrap-instances:
+            #   B_int_float[int, float]
+            #   B_pure[int, int]
 
     So B[U,V] gets additional methods from C[U] and from D.
 
@@ -44,25 +47,24 @@ def _split_targs(decl_str):
     # decl looks like T[X,Y*]
     # returns: "T", "[X,Y]", (CppType("X"), CppType("Y", is_ptr=True))
 
-    decl_str = re.sub("[ ]+", "", decl_str)
+    decl_str = re.sub("[ ]+", "", decl_str) #removes spaces
     match = re.match("(\w+)(\[\w+\*?(,\w+\*?)*\])?", decl_str)
     base, t_part, _ = match.groups()
     if t_part is None:
         return base, "", None
-    #t_parts = tuple(t.strip() for t in t_part[1:-1].split(","))
     t_parts = []
-    for t in t_part[1:-1].split(","):
-        if t.endswith("*"):
-            type_ = Types.CppType(t[:-1], is_ptr=True)
+    for t_arg in t_part[1:-1].split(","):
+        if t_arg.endswith("*"):
+            type_ = Types.CppType(t_arg[:-1], is_ptr=True)
         else:
-            type_ = Types.CppType(t, is_ptr=False)
+            type_ = Types.CppType(t_arg, is_ptr=False)
         t_parts.append(type_)
     return base, t_part, t_parts
 
 class ResolvedClassOrEnum(object):
     """ contains all info for generating wrapping code of
         resolved class.
-        "Resolved" means that template parameters are resolved.
+        "Resolved" means that template parameters and typedefs are resolved.
     """
 
     def __init__(self, name, methods, tinstances=None, decl=None):
@@ -79,7 +81,6 @@ class ResolvedClassOrEnum(object):
         return [m for methods in self.methods.values() for m in methods]
 
     def __str__(self):
-        raise Exception("impl not valid any more")
         return "\n   ".join([self.name] + map(str, self.methods))
 
 
@@ -99,6 +100,7 @@ class ResolvedMethodOrFunction(object):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
         return "%s %s(%s)" % (self.result_type, self.name, ", ".join(args))
 
+
 def resolve_decls_from_files(*pathes, **kw):
     root = kw.get("root", ".")
     decls = []
@@ -106,6 +108,7 @@ def resolve_decls_from_files(*pathes, **kw):
         full_path = os.path.join(root, path)
         decls.extend(PXDParser.parse_pxd_file(full_path))
     return _transform(decls)
+
 
 def resolve_decls_from_string(pxd_in_a_string):
     return _transform(PXDParser.parse_str(pxd_in_a_string))
@@ -124,11 +127,13 @@ def _transform(decls):
     """
     assert all(isinstance(d, PXDParser.BaseDecl) for d in decls)
 
-    typedefs = [d for d in decls if isinstance(d, PXDParser.CTypeDefDecl)]
-    functions = [d for d in decls if isinstance(d,
-                                            PXDParser.CppMethodOrFunctionDecl)]
-    enums = [d for d in decls if isinstance(d, PXDParser.EnumDecl)]
-    classes = [d for d in decls if isinstance(d, PXDParser.CppClassDecl)]
+    def filter_out(type_):
+        return [d for d in decls if isinstance(d, type_)]
+
+    typedefs  = filter_out(PXDParser.CTypeDefDecl)
+    functions = filter_out(PXDParser.CppMethodOrFunctionDecl)
+    enums     = filter_out(PXDParser.EnumDecl)
+    classes   = filter_out(PXDParser.CppClassDecl)
 
     td_mapping = _build_typdef_mapping(typedefs)
 
@@ -155,6 +160,7 @@ def _build_typdef_mapping(decls):
         info = " -> ".join(map(str, cycle))
         raise Exception("ctypedefs contains cycle: " + info)
 
+    # setup first generation of typedef mapping:
     mapping = dict()
     done = set()
     for decl in decls:
@@ -164,6 +170,7 @@ def _build_typdef_mapping(decls):
             mapping[name] = type_.copy()
             done.add(name)
 
+    # iterativly resolve chains in typedefs. terminates if graph has no cycles:
     while True:
         for decl in decls:
             if decl.name in done:
@@ -181,6 +188,7 @@ def _build_typdef_mapping(decls):
                 done.add(decl.name)
                 break
         else:
+            # this else happens if no 'break' is reached in loop above
             break
 
     return mapping
@@ -297,28 +305,32 @@ def _resolve_templated_classes(class_decls, td_mapping):
 
     """
 
-    registry = _create_alias_registry(class_decls)
+    registered_template_instances = _create_alias_registry(class_decls)
     resolved_classes = []
-    for alias, decl, t_param_mapping in registry.values():
 
+    #for inst_name in registered_template_instances.keys():
+    for alias, decl, t_param_mapping in registered_template_instances.values():
 
-        final_mapping = dict((k, v.transform(td_mapping)) for (k, v) in \
+        # for resolving typedefed types in template instance args:
+        local_mapping = dict((k, v.transform(td_mapping)) for (k, v) in \
                 t_param_mapping.items())
 
-        # resolve 'free' typedefs in method args and result types:
-        final_mapping.update(td_mapping)
+        # for resolving 'free' typedefs in method args and result types:
+        if set(local_mapping) & set(td_mapping):
+            raise Exception("t_param_mapping and td_mapping intersects")
+        local_mapping.update(td_mapping)
 
         methods = []
         for mdcl in decl.get_method_decls():
             if mdcl.annotations.get("wrap-ignore"):
                 continue
-            inst = _resolve_method(mdcl, registry, final_mapping)
+            inst = _resolve_method(mdcl, registered_template_instances, local_mapping)
             # constructor:
             if inst.name == decl.name:
                 inst.name = alias.base_type
             methods.append(inst)
         if decl.template_parameters is not None:
-            tinstances = [final_mapping.get(n) for n in decl.template_parameters]
+            tinstances = [local_mapping.get(n) for n in decl.template_parameters]
         else:
             tinstances = None
         resolved_classes.append(ResolvedClassOrEnum(alias.base_type, methods, tinstances,
@@ -343,13 +355,7 @@ def _resolve_method(method_decl, registry, t_param_mapping):
 
 def _resolve_alias(cpp_type, registry, t_param_mapping):
     cpp_type = cpp_type.transform(t_param_mapping)
-    key = str(cpp_type)
-    if key.endswith("&"):
-        key = key[:-1]
-    alias = registry.get(key)
-    #print alias
-    if alias is None:
-        return cpp_type
+    alias = registry.get(cpp_type, (cpp_type, None, None))
     return alias[0]
 
 
@@ -363,7 +369,6 @@ def _create_alias_registry(class_decls):
 
         generates an entry  'A[int]' : ( 'AA', cldA, {'U': 'int'} )
         where cldA is the class_decl of A.
-
     """
     r = OrderedDict()
     for cdcl in class_decls:
@@ -400,6 +405,8 @@ def _register_alias(cdcl, instance_decl_str, r):
     else:
         t_param_mapping = dict()
     # maps 'T[int]' -> ( CppType('Tint'), cdcl, { 'X': 'int' })
-    r[cdcl.name + t_part] = (Types.CppType(alias), cdcl, t_param_mapping)
+    #r[cdcl.name + t_part] = (Types.CppType(alias), cdcl, t_param_mapping)
+    t_type = Types.CppType(cdcl.name, t_instances)
+    r[t_type] = (Types.CppType(alias), cdcl, t_param_mapping)
 
 

@@ -56,10 +56,10 @@ Minimal Minimal::create() const
 }
 
 
-int Minimal::sumup(std::vector what) const {
+int Minimal::sumup(std::vector<int> what) const {
     int sum = 0;
-    for (std::vector::const_iter it = what.begin(); it != what.end(); ++it)
+    for (std::vector<int>::const_iterator it = what.begin(); it != what.end(); ++it)
         sum += *it;
-    return sum
+    return sum;
 }
 
