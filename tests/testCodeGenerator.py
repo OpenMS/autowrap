@@ -39,6 +39,7 @@ def testMinimal():
     assert minimal.compute_charp("uwe") == 3
 
     assert minimal.run(minimal) == 4
+    assert minimal.run2(minimal) == 5
 
 
 

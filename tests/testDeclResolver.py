@@ -352,3 +352,13 @@ cdef extern:
     ctypedef int X
     X fun(X x)
             """)
+
+def test_method_return_values():
+    resolved, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "minimal.hpp":
+    cdef cppclass Minimal:
+        Minimal create()
+""")
+    meth, = resolved.methods.get("create")
+    print type(meth.result_type)
+    print str(meth.result_type)

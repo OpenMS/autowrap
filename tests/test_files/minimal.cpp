@@ -32,4 +32,15 @@ int Minimal::run2(Minimal * inst) const
     return inst->compute_int(4);
 }
 
+Minimal Minimal::create() const
+{
+    Minimal result;
+    return result;
+}
+
+Minimal * Minimal::create_ptr() const
+{
+    Minimal result;
+    return result;
+}
 

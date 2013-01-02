@@ -11,4 +11,7 @@ class Minimal {
         int compute_charp(char *p) const;
         int run(const Minimal &) const;
         int run2(Minimal *) const;
+
+        Minimal create() const;
+        Minimal * create_ptr() const;
 };

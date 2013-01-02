@@ -11,6 +11,8 @@ cdef extern from "minimal.hpp":
         int compute_charp(char * what)
         int run(Minimal & ref)
         int run2(Minimal *p)
+        Minimal create()
+    
 
 
 
