@@ -20,6 +20,10 @@ int Minimal::compute_int(int i)  const{
     return compute(i);
 }
 
+int Minimal::compute_int()  const{
+    return compute(41);
+}
+
 std::string Minimal::compute(std::string s) const{
     return std::string(s.rbegin(), s.rend());
 }

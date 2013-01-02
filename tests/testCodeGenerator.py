@@ -28,6 +28,8 @@ def testMinimal():
     assert minimal.compute("uwe") == "ewu"
     assert minimal.compute_str("emzed") == "dezme"
 
+    assert minimal.compute_int() == 42
+
     try:
         minimal.compute(3.0)
     except:
@@ -43,8 +45,10 @@ def testMinimal():
 
     assert minimal.create().compute(3) == 4
 
+
     m2 = wrapped.Minimal(-1)
     assert m2.compute(3) == 3
+
 
 
 

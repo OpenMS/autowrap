@@ -14,6 +14,7 @@ class Minimal {
         int compute(int i) const;
         std::string compute(std::string s) const;
         int compute_int(int i) const;
+        int compute_int() const;
         std::string compute_str(std::string s) const;
         int compute_charp(char *p) const;
         int run(const Minimal &) const;
