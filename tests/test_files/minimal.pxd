@@ -1,4 +1,5 @@
 from libcpp.string cimport string as std_string
+from libcpp.vector cimport vector as std_vector
 
 cdef extern from "minimal.hpp":
 
@@ -15,3 +16,5 @@ cdef extern from "minimal.hpp":
         int run(Minimal & ref)
         int run2(Minimal *p)
         Minimal create()
+
+        int sumup(std_vector what)  # wrap-ignore

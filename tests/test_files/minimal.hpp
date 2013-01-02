@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 
 class Minimal {
 
@@ -19,6 +20,8 @@ class Minimal {
         int compute_charp(char *p) const;
         int run(const Minimal &) const;
         int run2(Minimal *) const;
+
+        int sumup(std::vector) const;
 
         Minimal create() const;
 };
