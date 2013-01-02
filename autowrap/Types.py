@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 import copy
 import re
@@ -17,6 +18,41 @@ class CppType(object):
         self.template_args = template_args and tuple(template_args)
 
     def transform(self, typemap):
+        if self.template_args is not None:
+            template_args = [t.transform(typemap) for t in self.template_args]
+        else:
+            template_args = None
+
+        mapped_type = typemap.get(self.base_type)
+
+        if mapped_type is None:
+            mapped_type = self.copy()
+            mapped_type.template_args = template_args
+            return mapped_type
+
+        mapped_type = mapped_type.copy()
+        mapped_type.template_args = template_args
+
+        if mapped_type.is_ptr and self.is_ptr:
+            raise Exception("double ptr not supported")
+
+        mapped_type.is_ptr = mapped_type.is_ptr or self.is_ptr
+
+        if self.is_ref and mapped_type.is_ptr:
+            raise  Exception("mix of ptr and ref not supported")
+
+        mapped_type.is_ref = mapped_type.is_ref or self.is_ref
+
+        if self.is_unsigned:
+            raise  Exception("self.is_unsigned not supported")
+
+        if self.is_enum:
+            raise  Exception("self.is_enum not supported")
+
+        return mapped_type
+
+
+
         base_type = typemap.get(self.base_type, self.base_type)
         if self.template_args:
             template_args = [t.transform(typemap) for t in self.template_args]

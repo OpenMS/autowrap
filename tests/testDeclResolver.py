@@ -167,7 +167,8 @@ cdef extern from "A.h":
         pass
     """)
     assert instance.name == "Ax"
-    assert instance.tinstances == ["int*"], instance.tinstances
+    assert map(str, instance.tinstances) == ["int *"], map(str,
+            instance.tinstances)
 
 def test_multi_decls_in_one_file():
     inst1, inst2, enum = DeclResolver.resolve_decls_from_string("""
@@ -203,7 +204,7 @@ cdef extern from "A.h":
     assert I == ("I", 5)
 
 
-def testIntContainer():
+def test_int_container():
     resolved  = _resolve("int_container_class.pxd")
     assert resolved[0].name == "Xint"
     assert [ m.name for m in resolved[0].get_flattened_methods()] == ["Xint", "operator+",
@@ -212,7 +213,7 @@ def testIntContainer():
     assert [ m.name for m in resolved[1].get_flattened_methods()] == ["XContainerInt",
             "push_back", "size",]
 
-def testTypeDefWithFun():
+def test_typedef_with_fun():
     resolved, = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
@@ -224,7 +225,7 @@ cdef extern from "X.h":
     assert n == "x"
     assert str(t) == "int"
 
-def testTypeDefChaining():
+def test_typedef_chaining():
     function, = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
@@ -240,7 +241,7 @@ cdef extern from "X.h":
     assert t2 == "int *", t2
 
 @expect_exception
-def doublePtrTypeDef():
+def double_ptr_typedef():
     function, = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
@@ -251,7 +252,7 @@ cdef extern from "X.h":
             """)
 
 @expect_exception
-def ctypedefWithCycle():
+def ctypedef_with_cycle():
     function, = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
@@ -261,7 +262,7 @@ cdef extern from "X.h":
     iptr2 fun(iptr, Y)
             """)
 
-def testTypeDefWithClass():
+def test_typedef_with_class():
     resolved, fun = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
@@ -270,25 +271,81 @@ cdef extern from "X.h":
         # wrap-instances:
         #   A[X]
         X foo(B)
-        B bar(X)
+        B bar(X *)
     Y fun(X *)
             """)
     assert resolved.name == "A"
     tinstance, = resolved.tinstances
-    assert tinstance == "int", tinstance
+    assert str(tinstance) == "int"
 
     foo, = resolved.methods.get("foo")
     assert str(foo.result_type) == "int", foo.result_type
+    (__, arg_t), = foo.arguments
+    assert str(arg_t) == "int"
 
     bar, = resolved.methods.get("bar")
     assert str(bar.result_type) == "int"
+    (__, arg_t), = bar.arguments
+    assert str(arg_t) == "int *"
 
     assert fun.name == "fun"
     assert str(fun.result_type) == "int *"
     (__, arg_t), = fun.arguments
     assert str(arg_t) == "int *", str(arg_t)
 
-def testWithoutHeader():
+
+def test_typedef_with_class2():
+    resolved, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "X.h":
+    ctypedef int X
+    cdef cppclass A[B]:
+        # wrap-instances:
+        #   A[X *]
+        X foo(B)
+        B bar(X)
+            """)
+    assert resolved.name == "A"
+    tinstance, = resolved.tinstances
+
+    assert str(tinstance) == "int *", str(tinstance)
+
+    foo, = resolved.methods.get("foo")
+    assert str(foo.result_type) == "int", foo.result_type
+    (__, arg_t), = foo.arguments
+    assert str(arg_t) == "int *", str(arg_t)
+
+    bar, = resolved.methods.get("bar")
+    assert str(bar.result_type) == "int *"
+    (__, arg_t), = bar.arguments
+    assert str(arg_t) == "int", str(arg_t)
+
+def test_typedef_with_class3():
+    resolved, = DeclResolver.resolve_decls_from_string("""
+cdef extern from "X.h":
+    ctypedef int X
+    cdef cppclass A[B,C]:
+        # wrap-instances:
+        #   A[X *,int]
+        X foo(C*)
+        C* bar(B)
+            """)
+    assert resolved.name == "A"
+    tinst1, tinst2 = resolved.tinstances
+
+    assert str(tinst1) == "int *", str(tinst1)
+    assert str(tinst2) == "int", str(tinst2)
+
+    foo, = resolved.methods.get("foo")
+    assert str(foo.result_type) == "int", foo.result_type
+    (__, arg_t), = foo.arguments
+    assert str(arg_t) == "int *", str(arg_t)
+
+    bar, = resolved.methods.get("bar")
+    assert str(bar.result_type) == "int *"
+    (__, arg_t), = bar.arguments
+    assert str(arg_t) == "int *", str(arg_t)
+
+def test_without_header():
     return
     resolved, = DeclResolver.resolve_decls_from_string("""
 cdef extern:

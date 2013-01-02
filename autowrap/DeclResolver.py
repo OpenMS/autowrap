@@ -1,5 +1,6 @@
 # encoding: utf-8
 import PXDParser
+import Types
 import re
 import os
 from collections import OrderedDict, defaultdict
@@ -40,15 +41,22 @@ __doc__ = """
 """
 
 def _split_targs(decl_str):
-    # decl looks like T[X,Y]
-    # returns: "T", "[X,Y]", ("X", "Y")
+    # decl looks like T[X,Y*]
+    # returns: "T", "[X,Y]", (CppType("X"), CppType("Y", is_ptr=True))
 
     decl_str = re.sub("[ ]+", "", decl_str)
     match = re.match("(\w+)(\[\w+\*?(,\w+\*?)*\])?", decl_str)
     base, t_part, _ = match.groups()
     if t_part is None:
         return base, "", None
-    t_parts = tuple(t.strip() for t in t_part[1:-1].split(","))
+    #t_parts = tuple(t.strip() for t in t_part[1:-1].split(","))
+    t_parts = []
+    for t in t_part[1:-1].split(","):
+        if t.endswith("*"):
+            type_ = Types.CppType(t[:-1], is_ptr=True)
+        else:
+            type_ = Types.CppType(t, is_ptr=False)
+        t_parts.append(type_)
     return base, t_part, t_parts
 
 class ResolvedClassOrEnum(object):
@@ -289,16 +297,14 @@ def _resolve_templated_classes(class_decls, td_mapping):
 
     """
 
-    # do not need full type info any more
-    td_mapping = dict((n, str(t)) for (n, t) in td_mapping.items())
-
     registry = _create_alias_registry(class_decls)
     resolved_classes = []
     for alias, decl, t_param_mapping in registry.values():
 
-        # resolve typedefs in templates:
-        final_mapping = dict((k, td_mapping.get(v,v)) for (k,v) in
+
+        final_mapping = dict((k, v.transform(td_mapping)) for (k, v) in \
                 t_param_mapping.items())
+
         # resolve 'free' typedefs in method args and result types:
         final_mapping.update(td_mapping)
 
