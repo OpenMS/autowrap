@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 import os.path, sys
 
-import ToCppConverters
+from ConversionProvider import ConversionProvider
 
 import Code
 
@@ -93,7 +93,7 @@ class CodeGenerator(object):
         self.decls = decls
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
-        self.cp = ToCppConverters.ConversionProvider(decls)
+        self.cp = ConversionProvider(decls)
         self.code = Code.Code()
 
     def create_cimport_paths(self):
