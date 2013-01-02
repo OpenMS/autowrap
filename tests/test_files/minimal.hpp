@@ -2,9 +2,13 @@
 
 class Minimal {
 
+    private:
+        int _i;
+
     public:
 
         Minimal();
+        Minimal(int);
         Minimal(const Minimal &);
 
         int compute(int i) const;

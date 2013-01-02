@@ -1,16 +1,20 @@
 #include "minimal.hpp"
 
-Minimal::Minimal()
+Minimal::Minimal() : _i(0)
 {
 }
 
-Minimal::Minimal(const Minimal &m)
+Minimal::Minimal(int i) : _i(i)
+{
+}
+
+Minimal::Minimal(const Minimal &m): _i(0)
 {
 }
 
 
 int Minimal::compute(int i)  const{
-    return i+1;
+    return i+_i + 1;
 }
 int Minimal::compute_int(int i)  const{
     return compute(i);

@@ -70,7 +70,6 @@ def test_for_module_markers(start_at_dir, up_to_dir):
         current_dir, _ = os.path.split(current_dir)
 
 
-
 def cimport_path(pxd_path, target_dir):
     pxd_path = _normalize(pxd_path)
     pxd_dir  = _normalize(os.path.dirname(pxd_path))
@@ -84,7 +83,6 @@ def cimport_path(pxd_path, target_dir):
         current_dir, _ = os.path.split(current_dir)
 
     return ".".join(parts[::-1])
-
 
 
 class CodeGenerator(object):
@@ -129,6 +127,9 @@ class CodeGenerator(object):
         self.code.add("cdef class $name:", name=decl.name)
         self.code.add("    cdef $cy_type * inst",
                                 cy_type= self.cp.cy_decl_str(decl))
+        self.code.add("    def __dealloc__(self):")
+        self.code.add("        if self.inst:")
+        self.code.add("            del self.inst")
 
         for (name, methods) in decl.methods.items():
             if name == decl.name:
@@ -158,11 +159,13 @@ class CodeGenerator(object):
                     cinfo = self.cp.get(arg_type, "")
                     py_types.append(cinfo.py_type)
                 py_sign = ", ".join(py_types)
-                meth_code.add("    if sign == ($py_sign,):", py_sign=py_sign)
+                if py_sign != "":
+                    py_sign += ","
+                meth_code.add("    if sign == ($py_sign):", py_sign=py_sign)
                 meth_code.add("        return self.$local_name(*args)",
                                                     local_name=local_name)
 
-            meth_code.add("    raise Exception('can not handle %s' % sign)")
+            meth_code.add("    raise Exception('can not handle %s' % (sign,))")
             self.code.add(meth_code)
 
     def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
@@ -202,21 +205,73 @@ class CodeGenerator(object):
 
         self.code.add(meth_code)
 
-    def create_wrapper_for_constructor(self, decl, methods):
+    def create_wrapper_for_constructor(self, class_decl, methods):
         if len(methods) == 1:
-            init_code = Code.Code()
-            init_code.add("def __init__(self):")
-            init_code.add("    self.inst = new $name()",
-                         name=self.cp.cy_decl_str(decl))
-            self.code.add(init_code)
-            dealloc_code = Code.Code()
-            dealloc_code.add("def __dealloc__(self):")
-            dealloc_code.add("    if self.inst:")
-            dealloc_code.add("       del self.inst")
-            self.code.add(dealloc_code)
+            self.create_wrapper_for_nonoverloaded_constructor(class_decl,
+                                                              "__init__",
+                                                              methods[0])
 
         else:
-            raise Exception("overloading not supported yet")
+            for i, method in enumerate(methods):
+                local_name = "__init__%d" % i
+                self.create_wrapper_for_nonoverloaded_constructor(class_decl,
+                                                                  local_name,
+                                                                  method)
+
+            init_code = Code.Code()
+            init_code.add("def __init__(self, *args):")
+            init_code.add("    sign = tuple(map(type, args))")
+
+            for i, method in enumerate(methods):
+                local_name = "__init__%d" % i
+
+                py_types = []
+                arg_types =  [t for (n,t) in method.arguments]
+                for arg_type in arg_types:
+                    cinfo = self.cp.get(arg_type, "")
+                    py_types.append(cinfo.py_type)
+                py_sign = ", ".join(py_types)
+                if py_sign != "":
+                    py_sign += ","
+                init_code.add("    if sign == ($py_sign):", py_sign=py_sign)
+                init_code.add("        self.$local_name(*args)",
+                                                    local_name=local_name)
+                init_code.add("        return")
+
+            init_code.add("    raise Exception('can not handle %s' % (sign,))")
+            self.code.add(init_code)
+
+
+    def create_wrapper_for_nonoverloaded_constructor(self, class_decl, py_name,
+                                                           method):
+
+        init_code = Code.Code()
+
+        all_args = input_arg_names(method)
+        cinfos = []
+
+        py_args = ["self"]
+        for (__, t), n in zip(method.arguments, all_args):
+            cinfo = self.cp.get(t, n)
+            cinfos.append(cinfo)
+            py_args.append("%s %s" % (cinfo.py_type, n))
+
+        py_args_str = ", ".join(py_args)
+
+        init_code.add("def $py_name($py_args_str):", py_name=py_name,
+                                                    py_args_str=py_args_str)
+
+        # generate input conversion
+        for cinfo in cinfos:
+            init_code.add(cinfo.arg_check_code)
+
+        # call c++ method with converted args
+        input_args = ", ".join(info.from_py_code for info in cinfos)
+        init_code.add("    self.inst = new $name($args)",
+                         name=self.cp.cy_decl_str(class_decl), args=input_args)
+
+        self.code.add(init_code)
+
 
     def create_cimports(self):
         self.create_std_cimports()

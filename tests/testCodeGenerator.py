@@ -43,5 +43,8 @@ def testMinimal():
 
     assert minimal.create().compute(3) == 4
 
+    m2 = wrapped.Minimal(-1)
+    assert m2.compute(3) == 3
+
 
 

@@ -4,6 +4,7 @@ cdef extern from "minimal.hpp":
 
     cdef cppclass Minimal:
         Minimal()
+        Minimal(int)
         Minimal(Minimal &)  # wrap-ignore
         int compute(int number)
         std_string compute(std_string)
