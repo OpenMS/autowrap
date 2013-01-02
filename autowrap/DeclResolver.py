@@ -313,14 +313,15 @@ def _resolve_templated_classes(class_decls, td_mapping):
             if mdcl.annotations.get("wrap-ignore"):
                 continue
             inst = _resolve_method(mdcl, registry, final_mapping)
+            # constructor:
             if inst.name == decl.name:
-                inst.name = alias
+                inst.name = alias.base_type
             methods.append(inst)
         if decl.template_parameters is not None:
             tinstances = [final_mapping.get(n) for n in decl.template_parameters]
         else:
             tinstances = None
-        resolved_classes.append(ResolvedClassOrEnum(alias, methods, tinstances,
+        resolved_classes.append(ResolvedClassOrEnum(alias.base_type, methods, tinstances,
                                                     decl))
     return resolved_classes
 
@@ -339,12 +340,14 @@ def _resolve_method(method_decl, registry, t_param_mapping):
     return ResolvedMethodOrFunction(new_name or method_decl.name, result_type,
                                     args)
 
+
 def _resolve_alias(cpp_type, registry, t_param_mapping):
     cpp_type = cpp_type.transform(t_param_mapping)
     key = str(cpp_type)
     if key.endswith("&"):
         key = key[:-1]
     alias = registry.get(key)
+    #print alias
     if alias is None:
         return cpp_type
     return alias[0]
@@ -396,7 +399,7 @@ def _register_alias(cdcl, instance_decl_str, r):
         t_param_mapping = dict(zip(t_params, t_instances))
     else:
         t_param_mapping = dict()
-    # maps 'T[int]' -> ('Tint', cdcl, { 'X': 'int' })
-    r[cdcl.name + t_part] = (alias, cdcl, t_param_mapping)
+    # maps 'T[int]' -> ( CppType('Tint'), cdcl, { 'X': 'int' })
+    r[cdcl.name + t_part] = (Types.CppType(alias), cdcl, t_param_mapping)
 
 

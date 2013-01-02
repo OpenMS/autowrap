@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 import copy
 import re
@@ -18,6 +17,7 @@ class CppType(object):
         self.template_args = template_args and tuple(template_args)
 
     def transform(self, typemap):
+
         if self.template_args is not None:
             template_args = [t.transform(typemap) for t in self.template_args]
         else:
@@ -51,16 +51,6 @@ class CppType(object):
 
         return mapped_type
 
-
-
-        base_type = typemap.get(self.base_type, self.base_type)
-        if self.template_args:
-            template_args = [t.transform(typemap) for t in self.template_args]
-        else:
-            template_args = self.template_args
-
-        return CppType(base_type, template_args, self.is_ptr, self.is_ref,
-                       self.is_unsigned, self.is_enum)
 
     def __hash__(self):
 
@@ -96,8 +86,6 @@ class CppType(object):
             inner = ""
         result = "%s %s%s %s" % (unsigned, self.base_type, inner, ptr or ref)
         return result.strip() # if unsigned is "" or ptr is "" and ref is ""
-
-
 
     def matches(self, base_type, **kw):
 

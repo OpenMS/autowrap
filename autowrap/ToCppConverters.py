@@ -130,7 +130,6 @@ class ConversionInfoProvider(object):
 
     def get(self, cpp_type, arg_name=None):
 
-
         fun = self.customized.get((cpp_type.base_type, cpp_type.is_ptr))
         if fun:
             return fun(cpp_type, arg_name)
