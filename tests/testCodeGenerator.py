@@ -41,5 +41,7 @@ def testMinimal():
     assert minimal.run(minimal) == 4
     assert minimal.run2(minimal) == 5
 
+    assert minimal.create().compute(3) == 4
+
 
 

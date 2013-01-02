@@ -36,6 +36,7 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     for source_file in source_files:
         shutil.copy(source_file, tempdir)
     include_dirs = [os.path.abspath(d) for d in include_dirs]
+    source_files = [os.path.basename(f) for f in source_files]
     setup_code = template % locals()
     if debug:
         print

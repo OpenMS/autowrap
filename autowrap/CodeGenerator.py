@@ -93,7 +93,7 @@ class CodeGenerator(object):
         self.decls = decls
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
-        self.conv_provider = ToCppConverters.ConversionInfoProvider()
+        self.cp = ToCppConverters.ConversionProvider(decls)
         self.code = Code.Code()
 
     def create_cimport_paths(self):
@@ -113,6 +113,9 @@ class CodeGenerator(object):
                 self.create_wrapper_for_class(decl)
 
         code = self.code.render()
+        code += "\n\n"
+        code += self.cp.render_utils()
+
         if debug:
             print code
         with open(self.target_path, "w") as fp:
@@ -124,8 +127,8 @@ class CodeGenerator(object):
 
     def create_wrapper_for_class(self, decl):
         self.code.add("cdef class $name:", name=decl.name)
-        self.code.add("    cdef _$cy_type * inst",
-                                 cy_type= decl.cpp_decl.as_cython_decl())
+        self.code.add("    cdef $cy_type * inst",
+                                cy_type= self.cp.cy_decl_str(decl))
 
         for (name, methods) in decl.methods.items():
             if name == decl.name:
@@ -152,7 +155,7 @@ class CodeGenerator(object):
                 py_types = []
                 arg_types =  [t for (n,t) in method.arguments]
                 for arg_type in arg_types:
-                    cinfo = self.conv_provider.get(arg_type, "")
+                    cinfo = self.cp.get(arg_type, "")
                     py_types.append(cinfo.py_type)
                 py_sign = ", ".join(py_types)
                 meth_code.add("    if sign == ($py_sign,):", py_sign=py_sign)
@@ -172,7 +175,7 @@ class CodeGenerator(object):
 
         py_args = ["self"]
         for (__, t), n in zip(method.arguments, all_args):
-            cinfo = self.conv_provider.get(t, n)
+            cinfo = self.cp.get(t, n)
             cinfos.append(cinfo)
             py_args.append("%s %s" % (cinfo.py_type, n))
 
@@ -187,12 +190,12 @@ class CodeGenerator(object):
 
         # call c++ method with converted args
         input_args = ", ".join(info.from_py_code for info in cinfos)
-        meth_code.add("    cdef $cpp_type _result = self.inst.$meth_name($args)",
-                                cpp_type = str(method.result_type),
+        meth_code.add("    cdef $cy_type _result = self.inst.$meth_name($args)",
+                                cy_type = self.cp.cy_decl_str(method.result_type),
                                 meth_name = cpp_name, args =input_args)
 
         # generate output conversion
-        cinfo = self.conv_provider.get(method.result_type, "_result")
+        cinfo = self.cp.get(method.result_type, "_result")
         meth_code.add("    cdef py_result = $to_py_code",
                 to_py_code = cinfo.to_py_code)
         meth_code.add("    return py_result")
@@ -201,11 +204,17 @@ class CodeGenerator(object):
 
     def create_wrapper_for_constructor(self, decl, methods):
         if len(methods) == 1:
-            meth_code = Code.Code()
-            meth_code.add("def __init__(self):")
-            meth_code.add("    self.inst = new _$name()",
-                         name=decl.cpp_decl.as_cython_decl())
-            self.code.add(meth_code)
+            init_code = Code.Code()
+            init_code.add("def __init__(self):")
+            init_code.add("    self.inst = new $name()",
+                         name=self.cp.cy_decl_str(decl))
+            self.code.add(init_code)
+            dealloc_code = Code.Code()
+            dealloc_code.add("def __dealloc__(self):")
+            dealloc_code.add("    if self.inst:")
+            dealloc_code.add("       del self.inst")
+            self.code.add(dealloc_code)
+
         else:
             raise Exception("overloading not supported yet")
 
@@ -224,7 +233,8 @@ class CodeGenerator(object):
     def create_std_cimports(self):
         self.code.add("""from libcpp.string cimport string as std_string
                         |from libcpp.vector cimport vector as std_vector
-                        |from cython.operator cimport dereference as deref, preincrement as inc""")
+                        |from cython.operator cimport dereference as deref,
+                        + preincrement as inc, address as address""")
 
 
 

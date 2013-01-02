@@ -1,5 +1,14 @@
 #include "minimal.hpp"
 
+Minimal::Minimal()
+{
+}
+
+Minimal::Minimal(const Minimal &m)
+{
+}
+
+
 int Minimal::compute(int i)  const{
     return i+1;
 }
@@ -38,9 +47,4 @@ Minimal Minimal::create() const
     return result;
 }
 
-Minimal * Minimal::create_ptr() const
-{
-    Minimal result;
-    return result;
-}
 

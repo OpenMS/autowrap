@@ -13,6 +13,7 @@ class Code(object):
                 self.content.append(line.rstrip())
         else:
             self.content.append(what)
+        return self
 
     def _render(self, _indent=""):
         result = []
