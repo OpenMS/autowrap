@@ -13,7 +13,7 @@ def stdout_redirect(stream):
     sys.stdout = sys.__stdout__
 
 
-def input_arg_names(method):
+def argument_names(method):
     return [n if (n and n != "self") else "in_%d" % i\
             for i, (n, t) in enumerate(method.arguments)]
 
@@ -183,40 +183,46 @@ class CodeGenerator(object):
 
         meth_code = Code.Code()
 
-        all_args = input_arg_names(method)
+        meth_arg_names = argument_names(method)
         cinfos = []
 
-        py_args = ["self"]
-        for i, (__, t), n in zip(xrange(9999), method.arguments, all_args):
-            arg = "arg%d" % i
-            cinfo = self.cp.get(t, n, arg)
+        # collect info for converting input-args to args for cpp method:
+        for i, (__, arg_t), arg_name in zip(xrange(9999), method.arguments,
+                                            meth_arg_names):
+            cpp_meth_arg = "arg%d" % i
+            cinfo = self.cp.get(arg_t, arg_name, cpp_meth_arg)
             cinfos.append(cinfo)
-            py_args.append("%s %s" % (cinfo.py_type, n))
 
-        py_args_str = ", ".join(py_args)
 
-        meth_code.add("def $py_name($py_args_str):", py_name=py_name,
-                                                    py_args_str=py_args_str)
+        # create signature of python method
+        py_args = ["self"]
+        for (cinfo, arg_name) in zip(cinfos, meth_arg_names):
+            py_args.append("%s %s" % (cinfo.py_type, arg_name))
+        py_signature = ", ".join(py_args)
 
-        # generate input conversion
+        meth_code.add("def $py_name($py_signature):", locals())
+
+        # generate input check
         for cinfo in cinfos:
             meth_code.add(cinfo.arg_check_code)
-        args = []
+
+        # create variable for calling cpp method
+        cpp_meth_args = []
         for i, cinfo in enumerate(cinfos):
-            arg = "arg%d" % i
-            from_py_code = cinfo.from_py_code
-            meth_code.add("    $arg = $from_py_code", locals())
-            args.append(cinfo.call_as)
+            cpp_meth_arg = "arg%d" % i
+            py_to_cpp_conv = cinfo.from_py_code
+            meth_code.add("    $cpp_meth_arg = $py_to_cpp_conv", locals())
+            cpp_meth_args.append(cinfo.call_as)
 
         # call c++ method with converted args and generate output conversion
-        input_args = ", ".join(args)
-        cy_type = self.cp.cy_decl_str(method.result_type)
+        args_str = ", ".join(cpp_meth_args)
+        cy_result_type = self.cp.cy_decl_str(method.result_type)
 
-        cinfo = self.cp.get(method.result_type, "_result")
+        cinfo = self.cp.get(method.result_type, "_r")
         to_py_code = cinfo.to_py_code
 
         meth_code.add("""
-                |    cdef $cy_type _result = self.inst.$cpp_name($input_args)
+                |    cdef $cy_result_type _r = self.inst.$cpp_name($args_str)
                 |    cdef py_result = $to_py_code
                 |    return py_result """, locals())
 
@@ -255,32 +261,53 @@ class CodeGenerator(object):
 
 
     def create_wrapper_for_nonoverloaded_constructor(self, class_decl, py_name,
-                                                           method):
+                                                           cons_decl):
+
+        """ py_name ist name for constructor, as we dispatch overloaded
+            constructors in __init__() the name of the method calling the
+            c++ constructor is variable and given by `py_name`.
+
+        """
+        # TODO: examples !!!
 
         init_code = Code.Code()
 
-        all_args = input_arg_names(method)
+        cons_arg_names = argument_names(cons_decl)
         cinfos = []
 
-        py_args = ["self"]
-        for (__, t), n in zip(method.arguments, all_args):
-            cinfo = self.cp.get(t, n)
+        # collect info for converting input-args to args for cpp constructor:
+        for i, (__, arg_t), arg_name in zip(xrange(9999), cons_decl.arguments,
+                                            cons_arg_names):
+            cpp_cons_arg = "arg%d" % i
+            cinfo = self.cp.get(arg_t, arg_name, cpp_cons_arg)
             cinfos.append(cinfo)
-            py_args.append("%s %s" % (cinfo.py_type, n))
 
-        py_args_str = ", ".join(py_args)
+        # create signature of python method:
+        py_args = ["self"]
+        for cinfo, arg_name in zip(cinfos, cons_arg_names):
+            py_args.append("%s %s" % (cinfo.py_type, arg_name))
+        py_signature = ", ".join(py_args)
 
-        init_code.add("def $py_name($py_args_str):", locals())
+        init_code.add("def $py_name($py_signature):", locals())
 
-        # generate input conversion
+        # generate input check
         for cinfo in cinfos:
             init_code.add(cinfo.arg_check_code)
 
-        # call c++ method with converted args
-        input_args = ", ".join(info.from_py_code for info in cinfos)
-        init_code.add("    self.inst = new $name($args)",
-                         name=self.cp.cy_decl_str(class_decl), args=input_args)
+        # create variables for calling cpp constructor:
+        cpp_cons_args = []
+        for i, cinfo in enumerate(cinfos):
+            cpp_cons_arg = "arg%d" % i
+            py_to_cpp_conv = cinfo.from_py_code
+            init_code.add("    $cpp_cons_arg = $py_to_cpp_conv", locals())
+            cpp_cons_args.append(cinfo.call_as)
 
+        # call c++ method with converted args
+        args = ", ".join(cpp_cons_args)
+        init_code.add("    self.inst = new $name($args)",
+                         name=self.cp.cy_decl_str(class_decl), args=args)
+
+        # add cons code to overall code:
         self.code.add(init_code)
 
 

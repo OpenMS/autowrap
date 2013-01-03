@@ -58,7 +58,11 @@ def testMinimal():
     assert wrapped.ABCorD.C == 3
     assert wrapped.ABCorD.D == 4
 
+
     assert minimal.call([m2, minimal]) == 1
+
+    m3 = wrapped.Minimal([1,2,3])
+    assert m3.compute(0) == 4
 
 
 

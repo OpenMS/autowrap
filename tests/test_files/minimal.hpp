@@ -10,6 +10,7 @@ class Minimal {
 
         Minimal();
         Minimal(int);
+        Minimal(std::vector<int> const &);
         Minimal(const Minimal &);
 
         int compute(int i) const;

@@ -5,6 +5,11 @@ Minimal::Minimal() : _i(0)
 {
 }
 
+Minimal::Minimal(std::vector<int> const & ii)
+{
+    _i = ii.size();
+}
+
 Minimal::Minimal(int i) : _i(i)
 {
 }
