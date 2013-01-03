@@ -8,6 +8,7 @@ cdef extern from "minimal.hpp":
         Minimal(int)
         Minimal(Minimal &)  # wrap-ignore
         int compute(int number)
+        int compute(int number1, int number2)
         std_string compute(std_string)
         int compute_int(int)
         int compute_int()

@@ -13,6 +13,7 @@ class Minimal {
         Minimal(const Minimal &);
 
         int compute(int i) const;
+        int compute(int, int) const;
         std::string compute(std::string s) const;
         int compute_int(int i) const;
         int compute_int() const;

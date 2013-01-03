@@ -24,6 +24,8 @@ def testMinimal():
 
     minimal=wrapped.Minimal()
     assert minimal.compute(3) == 4
+
+    assert minimal.compute(1, 2) == 3
     assert minimal.compute_int(4) == 5
     assert minimal.compute("uwe") == "ewu"
     assert minimal.compute_str("emzed") == "dezme"

@@ -18,6 +18,10 @@ Minimal::Minimal(const Minimal &m)
 int Minimal::compute(int i)  const{
     return i+_i + 1;
 }
+
+int Minimal::compute(int i, int j)  const{
+    return i+j;
+}
 int Minimal::compute_int(int i)  const{
     return compute(i);
 }
