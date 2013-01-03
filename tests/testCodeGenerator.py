@@ -49,10 +49,10 @@ def testMinimal():
     m2 = wrapped.Minimal(-1)
     assert m2.compute(3) == 3
 
-    assert minimal.ABCorD.A == 0
-    assert minimal.ABCorD.B == 2
-    assert minimal.ABCorD.C == 3
-    assert minimal.ABCorD.E == 4
+    assert wrapped.ABCorD.A == 0
+    assert wrapped.ABCorD.B == 2
+    assert wrapped.ABCorD.C == 3
+    assert wrapped.ABCorD.D == 4
 
 
 
