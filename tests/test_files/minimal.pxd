@@ -18,3 +18,7 @@ cdef extern from "minimal.hpp":
         Minimal create()
 
         int sumup(std_vector[int] what) # wrap-ignore
+
+    cdef enum ABCorD:
+        A, B=2, C, D
+           

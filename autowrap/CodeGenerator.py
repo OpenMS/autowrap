@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import os.path, sys
 
 from ConversionProvider import ConversionProvider
+from DeclResolver import ResolvedClass
 
 import Code
 
@@ -41,6 +42,7 @@ def _normalize(path):
         path = path[:-1]
     return path
 
+
 def _diff(a_path, b_path):
     """ a_path minus b_path prefix """
     a_path = _normalize(a_path)
@@ -49,6 +51,7 @@ def _diff(a_path, b_path):
            "%s is not a prefix of %s" % (b_path, a_path)
 
     return a_path[len(b_path)+1:]
+
 
 def _has_module_marker(dir_):
     return os.path.isfile(os.path.join(dir_, "__init__.py")) or \
@@ -94,19 +97,20 @@ class CodeGenerator(object):
         self.cp = ConversionProvider(decls)
         self.code = Code.Code()
 
-    def create_cimport_paths(self):
+    def setup_cimport_paths(self):
         for decl in self.decls:
-            pxd_path = decl.cpp_decl.pxd_path
-            pxd_dir = os.path.dirname(pxd_path)
-            test_for_module_markers(pxd_dir, self.target_dir)
-            decl.pxd_import_path = cimport_path(pxd_path, self.target_dir)
+            if isinstance(decl, ResolvedClass):
+                pxd_path = decl.cpp_decl.pxd_path
+                pxd_dir = os.path.dirname(pxd_path)
+                test_for_module_markers(pxd_dir, self.target_dir)
+                decl.pxd_import_path = cimport_path(pxd_path, self.target_dir)
 
     def create_pyx_file(self, debug=False):
-        self.create_cimport_paths()
+        self.setup_cimport_paths()
         self.create_cimports()
         for decl in self.decls:
             if decl.items:
-                self.create_wrapper_for_enumd(decl)
+                self.create_wrapper_for_enum(decl)
             else:
                 self.create_wrapper_for_class(decl)
 
@@ -119,9 +123,11 @@ class CodeGenerator(object):
         with open(self.target_path, "w") as fp:
             print >> fp, code
 
-
     def create_wrapper_for_enum(self, decl):
-        raise Exception("enums not implemented yet")
+        self.code.add("cdef class $name:", name=decl.name)
+        for (name, value) in decl.items:
+            self.code.add("    $name = $value", name=name, value=value)
+
 
     def create_wrapper_for_class(self, decl):
         self.code.add("cdef class $name:", name=decl.name)
@@ -276,14 +282,16 @@ class CodeGenerator(object):
     def create_cimports(self):
         self.create_std_cimports()
         for decl in self.decls:
-            cpp_decl = decl.cpp_decl
-            rel_pxd_path = os.path.relpath(cpp_decl.pxd_path, self.target_path)
-            cython_dir_name = rel_pxd_path.replace(os.sep, ".")
-            if os.altsep:
-                cython_dir_name = cython_dir_name.replace(os.altsep, ".")
-            import_from = decl.pxd_import_path
-            self.code.add("from $from_ cimport $name as _$name",
-                          from_=import_from, name = cpp_decl.name)
+            if isinstance(decl, ResolvedClass):
+                cpp_decl = decl.cpp_decl
+                rel_pxd_path = os.path.relpath(cpp_decl.pxd_path,
+                                               self.target_path)
+                cython_dir_name = rel_pxd_path.replace(os.sep, ".")
+                if os.altsep:
+                    cython_dir_name = cython_dir_name.replace(os.altsep, ".")
+                import_from = decl.pxd_import_path
+                self.code.add("from $from_ cimport $name as _$name",
+                                       from_=import_from, name = cpp_decl.name)
 
     def create_std_cimports(self):
         self.code.add("""from libcpp.string cimport string as std_string

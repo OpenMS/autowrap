@@ -1,3 +1,4 @@
+import pdb
 import autowrap.DeclResolver as DeclResolver
 import autowrap.PXDParser
 import os
@@ -11,8 +12,9 @@ def _resolve(*names):
     return autowrap.DeclResolver.resolve_decls_from_files(*names, root=root)
 
 def test_simple():
-    dcls = _resolve("minimal.pxd")
-    assert len(dcls) == 1, len(dcls)
+    cdcl, enumdcl = _resolve("minimal.pxd")
+    assert cdcl.name == "Minimal"
+    assert enumdcl.name == "ABCorD"
 
 def test_singular():
     resolved = _resolve("templates.pxd")
@@ -360,3 +362,25 @@ cdef extern from "minimal.hpp":
         Minimal create()
 """)
     meth, = resolved.methods.get("create")
+
+def test_class_and_enum():
+    A, E = DeclResolver.resolve_decls_from_string("""
+cdef extern from "":
+
+    cdef cppclass A:
+        A()
+
+    cdef enum E:
+                A, B, C
+    """)
+
+    assert A.name == "A"
+    method, = A.methods.values()[0]
+    assert method.name == "A"
+    assert len(method.arguments) == 0
+
+    assert E.name == "E"
+    A, B, C = E.items
+    assert A == ("A", 0)
+    assert B == ("B", 1)
+    assert C == ("C", 2)

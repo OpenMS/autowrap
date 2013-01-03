@@ -1,8 +1,6 @@
-import pdb
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
 import re
-from string import Template
-from DeclResolver import ResolvedClassOrEnum
+from DeclResolver import ResolvedClass
 
 from Types import CppType
 from Code import Code
@@ -95,7 +93,7 @@ class ConversionProvider(object):
     def __init__(self, decls):
 
         self.wrapped_types = [d.name for d in decls if isinstance(d,
-                                                          ResolvedClassOrEnum)]
+                                                          ResolvedClass)]
         self.ufr = UtilFunctionRegistry()
 
         self.customized = dict()
@@ -114,7 +112,7 @@ class ConversionProvider(object):
     def cy_decl_str(self, what):
         if isinstance(what, CppType):
             return self._cy_decl_str_for_type(what)
-        elif isinstance(what, ResolvedClassOrEnum):
+        elif isinstance(what, ResolvedClass):
             return self._cy_decl_str_for_decl(what)
         raise Exception("cy_decl for %s not implemented" % what)
 

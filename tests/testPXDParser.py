@@ -91,6 +91,27 @@ cdef extern from "":
     assert B == ("B", 1)
     assert C == ("C", 2)
 
+def test_class_and_enum():
+    A, E = autowrap.PXDParser.parse_str("""
+cdef extern from "":
+
+    cdef cppclass A:
+        A()
+
+    cdef enum E:
+                A, B, C
+    """)
+
+    assert A.name == "A"
+    method, = A.methods.values()[0]
+    assert method.name == "A"
+    assert len(method.arguments) == 0
+
+    assert E.name == "E"
+    A, B, C = E.items
+    assert A == ("A", 0)
+    assert B == ("B", 1)
+    assert C == ("C", 2)
 
 def test_multi_enum():
     E, F = autowrap.PXDParser.parse_str("""

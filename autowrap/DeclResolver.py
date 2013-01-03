@@ -44,6 +44,7 @@ __doc__ = """
 """
 
 def _split_targs(decl_str):
+    # TODO: use "Tint=T[int]" instead the notion below:
     # decl looks like T[X,Y*]
     # returns: "T", "[X,Y]", (CppType("X"), CppType("Y", is_ptr=True))
 
@@ -61,7 +62,8 @@ def _split_targs(decl_str):
         t_parts.append(type_)
     return base, t_part, t_parts
 
-class ResolvedClassOrEnum(object):
+
+class ResolvedClass(object):
     """ contains all info for generating wrapping code of
         resolved class.
         "Resolved" means that template parameters and typedefs are resolved.
@@ -123,7 +125,7 @@ def _transform(decls):
           - about inheritance of methods from other classes in class_decls
         )
     output:
-        list of instances of ResolvedClassOrEnum
+        list of instances of ResolvedClass
     """
     assert all(isinstance(d, PXDParser.BaseDecl) for d in decls)
 
@@ -135,12 +137,12 @@ def _transform(decls):
     enums     = filter_out(PXDParser.EnumDecl)
     classes   = filter_out(PXDParser.CppClassDecl)
 
-    td_mapping = _build_typdef_mapping(typedefs)
+    typedef_mapping = _build_typdef_mapping(typedefs)
 
-    functions = [_resolve_function(f, td_mapping) for f in functions]
+    functions = [_resolve_function(f, typedef_mapping) for f in functions]
 
     classes = _resolve_all_inheritances(classes)
-    classes = _resolve_templated_classes(classes, td_mapping)
+    classes = _resolve_templated_classes(classes, typedef_mapping)
 
     return classes + enums + functions
 
@@ -194,9 +196,9 @@ def _build_typdef_mapping(decls):
     return mapping
 
 
-def _resolve_function(decl, td_mapping):
+def _resolve_function(decl, typedef_mapping):
     # functions are methods without template mapping:
-    return _resolve_method(decl, dict(), td_mapping)
+    return _resolve_method(decl, dict(), typedef_mapping)
 
 def _resolve_all_inheritances(class_decls):
     """
@@ -287,7 +289,19 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     cdcl.attach_base_methods(transformed_methods)
 
 
-def _resolve_templated_classes(class_decls, td_mapping):
+def _build_local_typemap(t_param_mapping, typedef_mapping):
+    # for resolving typedefed types in template instance args:
+    local_map = dict((k, v.transform(typedef_mapping)) for (k, v) in \
+            t_param_mapping.items())
+
+    # for resolving 'free' typedefs in method args and result types:
+    if set(local_map) & set(typedef_mapping):
+        raise Exception("t_param_mapping and typedef_mapping intersects")
+    local_map.update(typedef_mapping)
+    return local_map
+
+
+def _resolve_templated_classes(class_decls, typedef_mapping):
     """
     generates concrete names of python classes.
 
@@ -302,64 +316,54 @@ def _resolve_templated_classes(class_decls, td_mapping):
 
     this least to two python classes B_int_float and B_pure,
     the first wraps C++ class B[int, float], the second wraps B[int,int]
-
     """
 
-    registered_template_instances = _create_alias_registry(class_decls)
+    wrap_inst_decls = _parse_wrap_instances_comments(class_decls)
     resolved_classes = []
 
-    #for inst_name in registered_template_instances.keys():
-    for alias, decl, t_param_mapping in registered_template_instances.values():
+    for alias, cdecl, t_param_mapping in wrap_inst_decls.values():
 
-        # for resolving typedefed types in template instance args:
-        local_mapping = dict((k, v.transform(td_mapping)) for (k, v) in \
-                t_param_mapping.items())
-
-        # for resolving 'free' typedefs in method args and result types:
-        if set(local_mapping) & set(td_mapping):
-            raise Exception("t_param_mapping and td_mapping intersects")
-        local_mapping.update(td_mapping)
-
+        local_map = _build_local_typemap(t_param_mapping, typedef_mapping)
         methods = []
-        for mdcl in decl.get_method_decls():
+        for mdcl in cdecl.get_method_decls():
             if mdcl.annotations.get("wrap-ignore"):
                 continue
-            inst = _resolve_method(mdcl, registered_template_instances, local_mapping)
-            # constructor:
-            if inst.name == decl.name:
+            inst = _resolve_method(mdcl, wrap_inst_decls, local_map)
+            # rename constructor:
+            if inst.name == cdecl.name:
                 inst.name = alias.base_type
             methods.append(inst)
-        if decl.template_parameters is not None:
-            tinstances = [local_mapping.get(n) for n in decl.template_parameters]
+        if cdecl.template_parameters is not None:
+            tinstncs = [local_map.get(n) for n in cdecl.template_parameters]
         else:
-            tinstances = None
-        resolved_classes.append(ResolvedClassOrEnum(alias.base_type, methods, tinstances,
-                                                    decl))
+            tinstncs = None
+        rclass = ResolvedClass(alias.base_type, methods, tinstncs, cdecl)
+        resolved_classes.append(rclass)
     return resolved_classes
 
 
-def _resolve_method(method_decl, registry, t_param_mapping):
+def _resolve_method(method_decl, wrap_inst_decls, type_map):
     """
     resolves aliases in return and argument types
     """
-    result_type = _resolve_alias(method_decl.result_type, registry,
-                                t_param_mapping)
+    result_type = _resolve_alias(method_decl.result_type, wrap_inst_decls,
+                                type_map)
     args = []
     for arg_name, arg_type in method_decl.arguments:
-        arg_type = _resolve_alias(arg_type, registry, t_param_mapping)
+        arg_type = _resolve_alias(arg_type, wrap_inst_decls, type_map)
         args.append((arg_name, arg_type))
     new_name = method_decl.annotations.get("wrap-as")
     return ResolvedMethodOrFunction(new_name or method_decl.name, result_type,
                                     args)
 
 
-def _resolve_alias(cpp_type, registry, t_param_mapping):
-    cpp_type = cpp_type.transform(t_param_mapping)
-    alias = registry.get(cpp_type, (cpp_type, None, None))
+def _resolve_alias(cpp_type, wrap_inst_decls, type_map):
+    cpp_type = cpp_type.transform(type_map)
+    alias = wrap_inst_decls.get(cpp_type, (cpp_type, None, None))
     return alias[0]
 
 
-def _create_alias_registry(class_decls):
+def _parse_wrap_instances_comments(class_decls):
     """ parses annotations of all classes and registers aliases for
         classes.
 
@@ -367,7 +371,7 @@ def _create_alias_registry(class_decls):
             #wrap-instances:
             #  AA[int]
 
-        generates an entry  'A[int]' : ( 'AA', cldA, {'U': 'int'} )
+        generates an entry  'A[int]' : ( 'AA', cldA, {'U': 'int'} ) in r
         where cldA is the class_decl of A.
     """
     r = OrderedDict()

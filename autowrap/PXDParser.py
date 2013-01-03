@@ -348,7 +348,7 @@ def parse_pxd_file(path):
                     body = s.body
                     if hasattr(body, "stats"):
                         for node in body.stats:
-                            if isinstance(node, CppClassNode):
+                            if True: #  isinstance(node, CppClassNode):
                                 yield node
                     else:
                         yield body
