@@ -130,12 +130,14 @@ class CodeGenerator(object):
 
 
     def create_wrapper_for_class(self, decl):
-        self.code.add("cdef class $name:", name=decl.name)
-        self.code.add("    cdef $cy_type * inst",
-                                cy_type= self.cp.cy_decl_str(decl))
-        self.code.add("    def __dealloc__(self):")
-        self.code.add("        if self.inst:")
-        self.code.add("            del self.inst")
+        name = decl.name
+        cy_type = self.cp.cy_decl_str(decl)
+        self.code.add("""
+               |cdef class $name:
+               |    cdef $cy_type * inst
+               |    def __dealloc__(self):
+               |        if self.inst:
+               |            del self.inst """, locals())
 
         for (name, methods) in decl.methods.items():
             if name == decl.name:
@@ -143,22 +145,23 @@ class CodeGenerator(object):
             else:
                 self.create_wrapper_for_method(decl, name, methods)
 
-    def create_wrapper_for_method(self, decl, name, methods):
+    def create_wrapper_for_method(self, decl, cpp_name, methods):
         if len(methods) == 1:
-            self.create_wrapper_for_nonoverloaded_method(decl, name, name,
-                    methods[0])
-
+            self.create_wrapper_for_nonoverloaded_method(decl, cpp_name,
+                                                         cpp_name, methods[0])
         else:
             for (i, method) in enumerate(methods):
-                local_name = "_%s_%d" % (name, i)
+                local_name = "_%s_%d" % (cpp_name, i)
                 self.create_wrapper_for_nonoverloaded_method(decl, local_name,
-                        name, method)
+                        cpp_name, method)
 
             meth_code = Code.Code()
-            meth_code.add("def $py_name(self, *args):", py_name=name)
-            meth_code.add("    sign = tuple(map(type, args))")
+            meth_code.add("""
+                   |def $cpp_name(self, *args):
+                   |    sign = tuple(map(type, args))
+                   """, locals())
             for (i, method) in enumerate(methods):
-                local_name = "_%s_%d" % (name, i)
+                local_name = "_%s_%d" % (cpp_name, i)
                 py_types = []
                 arg_types =  [t for (n,t) in method.arguments]
                 for arg_type in arg_types:
@@ -167,9 +170,10 @@ class CodeGenerator(object):
                 py_sign = ", ".join(py_types)
                 if py_sign != "":
                     py_sign += ","
-                meth_code.add("    if sign == ($py_sign):", py_sign=py_sign)
-                meth_code.add("        return self.$local_name(*args)",
-                                                    local_name=local_name)
+                meth_code.add("""
+                       |    if sign == ($py_sign):
+                       |        return self.$local_name(*args)
+                       """, locals())
 
             meth_code.add("    raise Exception('can not handle %s' % (sign,))")
             self.code.add(meth_code)
@@ -183,8 +187,9 @@ class CodeGenerator(object):
         cinfos = []
 
         py_args = ["self"]
-        for (__, t), n in zip(method.arguments, all_args):
-            cinfo = self.cp.get(t, n)
+        for i, (__, t), n in zip(xrange(9999), method.arguments, all_args):
+            arg = "arg%d" % i
+            cinfo = self.cp.get(t, n, arg)
             cinfos.append(cinfo)
             py_args.append("%s %s" % (cinfo.py_type, n))
 
@@ -196,18 +201,24 @@ class CodeGenerator(object):
         # generate input conversion
         for cinfo in cinfos:
             meth_code.add(cinfo.arg_check_code)
+        args = []
+        for i, cinfo in enumerate(cinfos):
+            arg = "arg%d" % i
+            from_py_code = cinfo.from_py_code
+            meth_code.add("    $arg = $from_py_code", locals())
+            args.append(cinfo.call_as)
 
-        # call c++ method with converted args
-        input_args = ", ".join(info.from_py_code for info in cinfos)
-        meth_code.add("    cdef $cy_type _result = self.inst.$meth_name($args)",
-                                cy_type = self.cp.cy_decl_str(method.result_type),
-                                meth_name = cpp_name, args =input_args)
+        # call c++ method with converted args and generate output conversion
+        input_args = ", ".join(args)
+        cy_type = self.cp.cy_decl_str(method.result_type)
 
-        # generate output conversion
         cinfo = self.cp.get(method.result_type, "_result")
-        meth_code.add("    cdef py_result = $to_py_code",
-                to_py_code = cinfo.to_py_code)
-        meth_code.add("    return py_result")
+        to_py_code = cinfo.to_py_code
+
+        meth_code.add("""
+                |    cdef $cy_type _result = self.inst.$cpp_name($input_args)
+                |    cdef py_result = $to_py_code
+                |    return py_result """, locals())
 
         self.code.add(meth_code)
 
@@ -216,20 +227,13 @@ class CodeGenerator(object):
             self.create_wrapper_for_nonoverloaded_constructor(class_decl,
                                                               "__init__",
                                                               methods[0])
-
         else:
-            for i, method in enumerate(methods):
-                local_name = "__init__%d" % i
-                self.create_wrapper_for_nonoverloaded_constructor(class_decl,
-                                                                  local_name,
-                                                                  method)
-
             init_code = Code.Code()
-            init_code.add("def __init__(self, *args):")
-            init_code.add("    sign = tuple(map(type, args))")
+            init_code.add("""def __init__(self, *args):
+                            |    sign = tuple(map(type, args))""")
 
             for i, method in enumerate(methods):
-                local_name = "__init__%d" % i
+                special_init_name = "_init_%d" % i
 
                 py_types = []
                 arg_types =  [t for (n,t) in method.arguments]
@@ -239,10 +243,12 @@ class CodeGenerator(object):
                 py_sign = ", ".join(py_types)
                 if py_sign != "":
                     py_sign += ","
-                init_code.add("    if sign == ($py_sign):", py_sign=py_sign)
-                init_code.add("        self.$local_name(*args)",
-                                                    local_name=local_name)
-                init_code.add("        return")
+                init_code.add("""    if sign == ($py_sign):
+                                |        self.$special_init_name(*args)
+                                |        return""", locals())
+
+                self.create_wrapper_for_nonoverloaded_constructor(class_decl,
+                                                     special_init_name, method)
 
             init_code.add("    raise Exception('can not handle %s' % (sign,))")
             self.code.add(init_code)
@@ -264,8 +270,7 @@ class CodeGenerator(object):
 
         py_args_str = ", ".join(py_args)
 
-        init_code.add("def $py_name($py_args_str):", py_name=py_name,
-                                                    py_args_str=py_args_str)
+        init_code.add("def $py_name($py_args_str):", locals())
 
         # generate input conversion
         for cinfo in cinfos:
@@ -294,10 +299,11 @@ class CodeGenerator(object):
                                        from_=import_from, name = cpp_decl.name)
 
     def create_std_cimports(self):
-        self.code.add("""from libcpp.string cimport string as std_string
-                        |from libcpp.vector cimport vector as std_vector
-                        |from cython.operator cimport dereference as deref,
-                        + preincrement as inc, address as address""")
+        self.code.add("""
+           |from libcpp.string cimport string as std_string
+           |from libcpp.vector cimport vector as std_vector
+           |from cython.operator cimport dereference as deref,
+           + preincrement as inc, address as address""")
 
 
 

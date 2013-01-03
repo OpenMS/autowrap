@@ -45,6 +45,8 @@ def testMinimal():
 
     assert minimal.create().compute(3) == 4
 
+    assert minimal.sumup([1,2,3]) == 6
+
 
     m2 = wrapped.Minimal(-1)
     assert m2.compute(3) == 3
@@ -53,6 +55,10 @@ def testMinimal():
     assert wrapped.ABCorD.B == 2
     assert wrapped.ABCorD.C == 3
     assert wrapped.ABCorD.D == 4
+
+    assert minimal.call([m2, minimal]) == 1
+
+
 
 
 

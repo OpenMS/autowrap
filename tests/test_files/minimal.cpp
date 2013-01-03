@@ -1,3 +1,4 @@
+#include <iostream>
 #include "minimal.hpp"
 
 Minimal::Minimal() : _i(0)
@@ -8,8 +9,9 @@ Minimal::Minimal(int i) : _i(i)
 {
 }
 
-Minimal::Minimal(const Minimal &m): _i(0)
+Minimal::Minimal(const Minimal &m)
 {
+    _i = m._i;
 }
 
 
@@ -56,10 +58,18 @@ Minimal Minimal::create() const
 }
 
 
-int Minimal::sumup(std::vector<int> what) const {
+int Minimal::sumup(std::vector<int> & what) const {
     int sum = 0;
     for (std::vector<int>::const_iterator it = what.begin(); it != what.end(); ++it)
         sum += *it;
     return sum;
 }
+int Minimal::call(std::vector<Minimal> & arg) const
+{
+    int sum = 0;
+    for (std::vector<Minimal>::const_iterator it = arg.begin(); it != arg.end(); ++it)
+        sum += it->compute(0);
+    return sum;
+}
+
 

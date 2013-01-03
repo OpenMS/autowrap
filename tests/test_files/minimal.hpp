@@ -21,7 +21,8 @@ class Minimal {
         int run(const Minimal &) const;
         int run2(Minimal *) const;
 
-        int sumup(std::vector<int>) const;
+        int sumup(std::vector<int> &) const;
+        int call(std::vector<Minimal> & arg) const;
 
         Minimal create() const;
 };
