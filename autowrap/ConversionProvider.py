@@ -203,21 +203,21 @@ class StdVectorConverter(TypeConverterBase):
         if t_t.base_type in self.names_of_classes_to_wrap:
             temp_var = "v%d" % arg_num
             code = Code().add("""
-                    |cdef std_vector[_$t_t] * $temp_var = new std_vector[_$t_t]()
-                    |cdef $t_t item
-                    |for item in $argument_var:
-                    |   $temp_var.push_back(deref(item.inst))
-                    """, locals())
+                |cdef std_vector[_$t_t] * $temp_var = new std_vector[_$t_t]()
+                |cdef $t_t item
+                |for item in $argument_var:
+                |   $temp_var.push_back(deref(item.inst))
+                """, locals())
             return code, "deref(%s)" % temp_var
 
         else:
             temp_var = "v%d" % arg_num
             code = Code().add("""
-                    |cdef std_vector[$t_t] * $temp_var = new std_vector[$t_t]()
-                    |cdef $t_t item
-                    |for item in $argument_var:
-                    |   $temp_var.push_back(item)
-                    """, locals())
+                |cdef std_vector[$t_t] * $temp_var = new std_vector[$t_t]()
+                |cdef $t_t item
+                |for item in $argument_var:
+                |   $temp_var.push_back(item)
+                """, locals())
             return code, "deref(%s)" % temp_var
 
 
