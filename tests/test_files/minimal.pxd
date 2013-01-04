@@ -5,7 +5,7 @@ cdef extern from "minimal.hpp":
 
     cdef cppclass Minimal:
         Minimal()  
-        Minimal(int)  # wrap-ignore
+        Minimal(int)  
         Minimal(std_vector[int])  # wrap-ignore
         Minimal(Minimal &)  # wrap-ignore
         int compute(int number)
