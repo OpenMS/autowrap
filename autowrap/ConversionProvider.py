@@ -19,6 +19,7 @@ class ConverterRegistry(object):
 
     def register(self, converter):
         assert isinstance(converter, TypeConverterBase)
+        converter._set_converter_registry(self)
         for base_type in converter.get_base_types():
             self.lookup[base_type].append(converter)
 
@@ -63,6 +64,9 @@ class TypeConverterBase(object):
 
     def set_names_of_classes_to_wrap(self, names_of_classes_to_wrap):
         self.names_of_classes_to_wrap = names_of_classes_to_wrap
+
+    def _set_converter_registry(self, r):
+        self.converters = r
 
     def get_base_types(self):
         """
@@ -173,6 +177,61 @@ class TypeToWrapConverter(TypeConverterBase):
                       |$output_py_var.inst = new _$cy_clz($input_cpp_var)
         """, locals())
 
+class StdVectorConverter(TypeConverterBase):
+
+    def get_base_types(self):
+        return "std_vector",
+
+    def matches(self, cpp_type):
+        return True
+
+    def matching_python_type(self, cpp_type):
+        return "list"
+
+    def type_check_expression(self, cpp_type, arg_var):
+        t_t, = cpp_type.template_args
+        inner_conv = self.converters.get(t_t)
+        assert inner_conv is not None, "arg type %s not supported" % t_t
+        inner_check = inner_conv.type_check_expression(t_t, "li")
+
+        return Code().add("""
+          |isinstance($arg_var, list) and all($inner_check for li in $arg_var)
+          """, locals()).render()
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        t_t, = cpp_type.template_args
+        if t_t.base_type in self.names_of_classes_to_wrap:
+            temp_var = "v%d" % arg_num
+            code = Code().add("""
+                    |cdef std_vector[_$t_t] * $temp_var = new std_vector[_$t_t]()
+                    |cdef $t_t item
+                    |for item in $argument_var:
+                    |   $temp_var.push_back(deref(item.inst))
+                    """, locals())
+            return code, "deref(%s)" % temp_var
+
+        else:
+            temp_var = "v%d" % arg_num
+            code = Code().add("""
+                    |cdef std_vector[$t_t] * $temp_var = new std_vector[$t_t]()
+                    |cdef $t_t item
+                    |for item in $argument_var:
+                    |   $temp_var.push_back(item)
+                    """, locals())
+            return code, "deref(%s)" % temp_var
+
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return None
+
+        assert not cpp_type.is_ptr
+
+        cy_clz = cpp_type.base_type
+        return Code().add("""
+                      |cdef $cy_clz $output_py_var = $cy_clz.__new__($cy_clz)
+                      |$output_py_var.inst = new _$cy_clz($input_cpp_var)
+        """, locals())
+
 
 class StdStringConverter(TypeConverterBase):
 
@@ -203,6 +262,7 @@ def setup_converter_registry(names_of_classes_to_wrap):
     converter.register(NumberConverter())
     converter.register(CharPtrConverter())
     converter.register(StdStringConverter())
+    converter.register(StdVectorConverter())
     for name in names_of_classes_to_wrap:
         converter.register(TypeToWrapConverter(name))
 

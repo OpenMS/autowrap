@@ -23,7 +23,6 @@ def testMinimal():
     os.remove(target)
     assert wrapped.__name__ == "wrapped"
 
-    pdb.set_trace() ############################## Breakpoint ##############################
     minimal=wrapped.Minimal()
     assert minimal.compute(3) == 4
 

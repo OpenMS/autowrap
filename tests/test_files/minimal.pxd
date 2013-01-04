@@ -6,8 +6,8 @@ cdef extern from "minimal.hpp":
     cdef cppclass Minimal:
         Minimal()  
         Minimal(int)  
-        Minimal(std_vector[int])  # wrap-ignore
-        Minimal(Minimal &)  # wrap-ignore
+        Minimal(std_vector[int])
+        Minimal(Minimal &) 
         int compute(int number)
         int compute(int number1, int number2)
         std_string compute(std_string)
@@ -19,8 +19,8 @@ cdef extern from "minimal.hpp":
         int run2(Minimal *p)
         Minimal create()  
 
-        int sumup(std_vector[int] what)  # wrap-ignore
-        int call(std_vector[Minimal] & what)    # wrap-ignore
+        int sumup(std_vector[int] what)
+        int call(std_vector[Minimal] & what)
 
     cdef enum ABCorD:
         A, B=2, C, D
