@@ -4,9 +4,9 @@ from libcpp.vector cimport vector as std_vector
 cdef extern from "minimal.hpp":
 
     cdef cppclass Minimal:
-        Minimal()
-        Minimal(int)
-        Minimal(std_vector[int])
+        Minimal()  
+        Minimal(int)  # wrap-ignore
+        Minimal(std_vector[int])  # wrap-ignore
         Minimal(Minimal &)  # wrap-ignore
         int compute(int number)
         int compute(int number1, int number2)
@@ -15,12 +15,12 @@ cdef extern from "minimal.hpp":
         int compute_int()
         std_string compute_str(std_string what)
         int compute_charp(char * what)
-        int run(Minimal & ref)
-        int run2(Minimal *p)
-        Minimal create()
+        int run(Minimal & ref)  # wrap-ignore
+        int run2(Minimal *p)  # wrap-ignore
+        Minimal create()  # wrap-ignore
 
-        int sumup(std_vector[int] what)
-        int call(std_vector[Minimal] & what)  
+        int sumup(std_vector[int] what)  # wrap-ignore
+        int call(std_vector[Minimal] & what)    # wrap-ignore
 
     cdef enum ABCorD:
         A, B=2, C, D

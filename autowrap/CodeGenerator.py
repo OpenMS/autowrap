@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 import os.path, sys
 
-from ConversionProvider import ConversionProvider
+from ConversionProvider import setup_converter_registry
 from DeclResolver import ResolvedClass
 
 import Code
@@ -13,9 +13,9 @@ def stdout_redirect(stream):
     sys.stdout = sys.__stdout__
 
 
-def argument_names(method):
-    return [n if (n and n != "self") else "in_%d" % i\
-            for i, (n, t) in enumerate(method.arguments)]
+def augmented_args(method):
+    return [(t, n if (n and n != "self") else "in_%d" % i)\
+                                  for i, (n, t) in enumerate(method.arguments)]
 
 
 class Tee(object):
@@ -94,16 +94,20 @@ class CodeGenerator(object):
         self.decls = decls
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
-        self.cp = ConversionProvider(decls)
+
+        self.class_decls = [d for d in decls if isinstance(d, ResolvedClass)]
+        class_names = [c.name for c in self.class_decls]
+
+        self.cr = setup_converter_registry(class_names)
+
         self.code = Code.Code()
 
     def setup_cimport_paths(self):
-        for decl in self.decls:
-            if isinstance(decl, ResolvedClass):
-                pxd_path = decl.cpp_decl.pxd_path
-                pxd_dir = os.path.dirname(pxd_path)
-                test_for_module_markers(pxd_dir, self.target_dir)
-                decl.pxd_import_path = cimport_path(pxd_path, self.target_dir)
+        for decl in self.class_decls:
+            pxd_path = decl.cpp_decl.pxd_path
+            pxd_dir = os.path.dirname(pxd_path)
+            test_for_module_markers(pxd_dir, self.target_dir)
+            decl.pxd_import_path = cimport_path(pxd_path, self.target_dir)
 
     def create_pyx_file(self, debug=False):
         self.setup_cimport_paths()
@@ -116,7 +120,6 @@ class CodeGenerator(object):
 
         code = self.code.render()
         code += "\n\n"
-        code += self.cp.render_utils()
 
         if debug:
             print code
@@ -131,7 +134,7 @@ class CodeGenerator(object):
 
     def create_wrapper_for_class(self, decl):
         name = decl.name
-        cy_type = self.cp.cy_decl_str(decl)
+        cy_type = self.cr.cy_decl_str(decl.type_)
         self.code.add("""
                |cdef class $name:
                |    cdef $cy_type * inst
@@ -139,125 +142,122 @@ class CodeGenerator(object):
                |        if self.inst:
                |            del self.inst """, locals())
 
+        cons_created = False
         for (name, methods) in decl.methods.items():
             if name == decl.name:
                 self.create_wrapper_for_constructor(decl, methods)
+                cons_created = True
             else:
                 self.create_wrapper_for_method(decl, name, methods)
+        assert cons_created, "no constructor for %s created" % name
+
+    def _create_overloaded_method_decl(self, code, cpp_name,
+                                       dispatched_m_names, methods):
+
+        code.add("""def $cpp_name(self, *args):""", locals())
+        for (dispatched_m_name, method) in zip(dispatched_m_names, methods):
+            args = augmented_args(method)
+            if not args:
+                check_expr = "not args"
+            else:
+                tns = [ (t, "args[%d]" % i) for i, (t, n) in enumerate(args)]
+                checks = ["len(args)==%d" % len(tns)]
+                checks += [self.cr.get(t).type_check_expression(t, n)\
+                                                            for (t, n) in tns]
+                check_expr = " and ".join( "(%s)" % c for c in checks)
+            code.add("""
+                    |    if $check_expr:
+                    |        return self.$dispatched_m_name(*args)
+                    """, locals())
+
+        code.add("    raise Exception('can not handle %s' % (args,))")
 
     def create_wrapper_for_method(self, decl, cpp_name, methods):
         if len(methods) == 1:
             self.create_wrapper_for_nonoverloaded_method(decl, cpp_name,
                                                          cpp_name, methods[0])
         else:
+            dispatched_m_names = []
             for (i, method) in enumerate(methods):
-                local_name = "_%s_%d" % (cpp_name, i)
-                self.create_wrapper_for_nonoverloaded_method(decl, local_name,
-                        cpp_name, method)
+                dispatched_m_name = "_%s_%d" % (cpp_name, i)
+                dispatched_m_names.append(dispatched_m_name)
+                self.create_wrapper_for_nonoverloaded_method(decl,
+                                                             dispatched_m_name,
+                                                             cpp_name,
+                                                             method)
 
             meth_code = Code.Code()
-            meth_code.add("""
-                   |def $cpp_name(self, *args):
-                   |    sign = tuple(map(type, args))
-                   """, locals())
-            for (i, method) in enumerate(methods):
-                local_name = "_%s_%d" % (cpp_name, i)
-                py_types = []
-                arg_types =  [t for (n,t) in method.arguments]
-                for arg_type in arg_types:
-                    cinfo = self.cp.get(arg_type, "")
-                    py_types.append(cinfo.py_type)
-                py_sign = ", ".join(py_types)
-                if py_sign != "":
-                    py_sign += ","
-                meth_code.add("""
-                       |    if sign == ($py_sign):
-                       |        return self.$local_name(*args)
-                       """, locals())
-
-            meth_code.add("    raise Exception('can not handle %s' % (sign,))")
+            self._create_overloaded_method_decl(meth_code, cpp_name,
+                                                           dispatched_m_names,
+                                                           methods)
             self.code.add(meth_code)
+
+    def _create_meth_decl_and_input_conversion(self, code, py_name, method):
+        args = augmented_args(method)
+
+        # collect conversion data for input args
+        py_signature_parts = []
+        input_conversion_codes = []
+        call_args = []
+        for arg_num, (t, n) in enumerate(args):
+            converter = self.cr.get(t)
+            py_type = converter.matching_python_type(t)
+            conv_code, call_as = converter.input_conversion(t, n, arg_num)
+            py_signature_parts.append("%s %s " % (py_type, n))
+            input_conversion_codes.append(conv_code)
+            call_args.append(call_as)
+
+        # create method decl statement
+        py_signature = ", ".join(["self"] + py_signature_parts)
+        code.add("def $py_name($py_signature):", locals())
+
+        # create code which convert python input args to c++ args of wrapped
+        # method:
+        for conv_code in input_conversion_codes:
+            code.add(conv_code)
+
+        call_args = ", ".join(call_args)
+        return call_args
 
     def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
                                                 method):
 
         meth_code = Code.Code()
 
-        meth_arg_names = argument_names(method)
-        cinfos = []
+        call_args = self._create_meth_decl_and_input_conversion(meth_code,
+                                                                py_name,
+                                                                method)
 
-        # collect info for converting input-args to args for cpp method:
-        for i, (__, arg_t), arg_name in zip(xrange(9999), method.arguments,
-                                            meth_arg_names):
-            cpp_meth_arg = "arg%d" % i
-            cinfo = self.cp.get(arg_t, arg_name, cpp_meth_arg)
-            cinfos.append(cinfo)
-
-
-        # create signature of python method
-        py_args = ["self"]
-        for (cinfo, arg_name) in zip(cinfos, meth_arg_names):
-            py_args.append("%s %s" % (cinfo.py_type, arg_name))
-        py_signature = ", ".join(py_args)
-
-        meth_code.add("def $py_name($py_signature):", locals())
-
-        # generate input check
-        for cinfo in cinfos:
-            meth_code.add(cinfo.arg_check_code)
-
-        # create variable for calling cpp method
-        cpp_meth_args = []
-        for i, cinfo in enumerate(cinfos):
-            cpp_meth_arg = "arg%d" % i
-            py_to_cpp_conv = cinfo.from_py_code
-            meth_code.add("    $cpp_meth_arg = $py_to_cpp_conv", locals())
-            cpp_meth_args.append(cinfo.call_as)
-
-        # call c++ method with converted args and generate output conversion
-        args_str = ", ".join(cpp_meth_args)
-        cy_result_type = self.cp.cy_decl_str(method.result_type)
-
-        cinfo = self.cp.get(method.result_type, "_r")
-        to_py_code = cinfo.to_py_code
-
+        # call wrapped method and convert result value back to python
+        res_t = method.result_type
+        cy_result_type = self.cr.cy_decl_str(res_t)
+        to_py_code = self.cr.get(method.result_type).output_conversion(res_t,
+                                                                   "_r",
+                                                                   "py_result")
         meth_code.add("""
-                |    cdef $cy_result_type _r = self.inst.$cpp_name($args_str)
-                |    cdef py_result = $to_py_code
-                |    return py_result """, locals())
+            |    cdef $cy_result_type _r = self.inst.$cpp_name($call_args)
+            |    $to_py_code
+            |    return py_result
+            """, locals())
 
         self.code.add(meth_code)
 
-    def create_wrapper_for_constructor(self, class_decl, methods):
-        if len(methods) == 1:
+    def create_wrapper_for_constructor(self, class_decl, constructors):
+        if len(constructors) == 1:
             self.create_wrapper_for_nonoverloaded_constructor(class_decl,
                                                               "__init__",
-                                                              methods[0])
+                                                              constructors[0])
         else:
-            init_code = Code.Code()
-            init_code.add("""def __init__(self, *args):
-                            |    sign = tuple(map(type, args))""")
-
-            for i, method in enumerate(methods):
-                special_init_name = "_init_%d" % i
-
-                py_types = []
-                arg_types =  [t for (n,t) in method.arguments]
-                for arg_type in arg_types:
-                    cinfo = self.cp.get(arg_type, "")
-                    py_types.append(cinfo.py_type)
-                py_sign = ", ".join(py_types)
-                if py_sign != "":
-                    py_sign += ","
-                init_code.add("""    if sign == ($py_sign):
-                                |        self.$special_init_name(*args)
-                                |        return""", locals())
-
+            dispatched_cons_names =[]
+            for (i, constructor) in enumerate(constructors):
+                dispatched_cons_name = "_init_%d" % i
+                dispatched_cons_names.append(dispatched_cons_name)
                 self.create_wrapper_for_nonoverloaded_constructor(class_decl,
-                                                     special_init_name, method)
-
-            init_code.add("    raise Exception('can not handle %s' % (sign,))")
-            self.code.add(init_code)
+                                             dispatched_cons_name, constructor)
+            cons_code = Code.Code()
+            self._create_overloaded_method_decl(cons_code, "__init__",
+                                           dispatched_cons_names, constructors)
+            self.code.add(cons_code)
 
 
     def create_wrapper_for_nonoverloaded_constructor(self, class_decl, py_name,
@@ -268,47 +268,18 @@ class CodeGenerator(object):
             c++ constructor is variable and given by `py_name`.
 
         """
-        # TODO: examples !!!
+        cons_code = Code.Code()
 
-        init_code = Code.Code()
+        call_args = self._create_meth_decl_and_input_conversion(cons_code,
+                                                                py_name,
+                                                                cons_decl)
 
-        cons_arg_names = argument_names(cons_decl)
-        cinfos = []
-
-        # collect info for converting input-args to args for cpp constructor:
-        for i, (__, arg_t), arg_name in zip(xrange(9999), cons_decl.arguments,
-                                            cons_arg_names):
-            cpp_cons_arg = "arg%d" % i
-            cinfo = self.cp.get(arg_t, arg_name, cpp_cons_arg)
-            cinfos.append(cinfo)
-
-        # create signature of python method:
-        py_args = ["self"]
-        for cinfo, arg_name in zip(cinfos, cons_arg_names):
-            py_args.append("%s %s" % (cinfo.py_type, arg_name))
-        py_signature = ", ".join(py_args)
-
-        init_code.add("def $py_name($py_signature):", locals())
-
-        # generate input check
-        for cinfo in cinfos:
-            init_code.add(cinfo.arg_check_code)
-
-        # create variables for calling cpp constructor:
-        cpp_cons_args = []
-        for i, cinfo in enumerate(cinfos):
-            cpp_cons_arg = "arg%d" % i
-            py_to_cpp_conv = cinfo.from_py_code
-            init_code.add("    $cpp_cons_arg = $py_to_cpp_conv", locals())
-            cpp_cons_args.append(cinfo.call_as)
-
-        # call c++ method with converted args
-        args = ", ".join(cpp_cons_args)
-        init_code.add("    self.inst = new $name($args)",
-                         name=self.cp.cy_decl_str(class_decl), args=args)
+        # create instance of wrapped class
+        name = self.cr.cy_decl_str(class_decl.type_)
+        cons_code.add("""    self.inst = new $name($call_args)""", locals())
 
         # add cons code to overall code:
-        self.code.add(init_code)
+        self.code.add(cons_code)
 
 
     def create_cimports(self):

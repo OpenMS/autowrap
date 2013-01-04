@@ -69,15 +69,15 @@ class ResolvedClass(object):
         "Resolved" means that template parameters and typedefs are resolved.
     """
 
-    def __init__(self, name, methods, tinstances=None, decl=None):
+    def __init__(self, name, methods, template_args=None, decl=None):
         self.name = name
         # resolve overloadings
         self.methods = OrderedDict()
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
-        self.tinstances = tinstances
         self.cpp_decl = decl
         self.items = getattr(decl, "items", [])
+        self.type_ = Types.CppType(name, template_args)
 
     def get_flattened_methods(self):
         return [m for methods in self.methods.values() for m in methods]
