@@ -25,6 +25,7 @@ class Minimal {
 
         int sumup(std::vector<int> &) const;
         int call(std::vector<Minimal> & arg) const;
+        int call2(std::vector<std::string> & arg) const;
 
         Minimal create() const;
 };

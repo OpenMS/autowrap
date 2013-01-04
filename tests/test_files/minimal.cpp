@@ -81,4 +81,12 @@ int Minimal::call(std::vector<Minimal> & arg) const
     return sum;
 }
 
+int Minimal::call2(std::vector<std::string> & arg) const
+{
+    int sum = 0;
+    for (std::vector<std::string>::const_iterator it = arg.begin(); it != arg.end(); ++it)
+        sum += it->size();
+    return sum;
+}
+
 

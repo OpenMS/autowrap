@@ -21,6 +21,7 @@ cdef extern from "minimal.hpp":
 
         int sumup(std_vector[int] what)
         int call(std_vector[Minimal] & what)
+        int call2(std_vector[std_string] & what)
 
     cdef enum ABCorD:
         A, B=2, C, D

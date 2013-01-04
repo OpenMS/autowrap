@@ -65,6 +65,8 @@ def testMinimal():
     m3 = wrapped.Minimal([1,2,3])
     assert m3.compute(0) == 4
 
+    assert  m3.call2(["a", "bc"]) == 3
+
 
 
 
