@@ -152,9 +152,11 @@ class CodeGenerator(object):
         assert cons_created, "no constructor for %s created" % name
 
     def _create_overloaded_method_decl(self, code, cpp_name,
-                                       dispatched_m_names, methods):
+                                      dispatched_m_names, methods, use_return):
 
         code.add("""def $cpp_name(self, *args):""", locals())
+
+        first_iteration = True
         for (dispatched_m_name, method) in zip(dispatched_m_names, methods):
             args = augmented_args(method)
             if not args:
@@ -165,12 +167,16 @@ class CodeGenerator(object):
                 checks += [self.cr.get(t).type_check_expression(t, n)\
                                                             for (t, n) in tns]
                 check_expr = " and ".join( "(%s)" % c for c in checks)
+            return_ = "return" if use_return else ""
+            if_elif = "if" if first_iteration else "elif"
             code.add("""
-                    |    if $check_expr:
-                    |        return self.$dispatched_m_name(*args)
+                    |    $if_elif $check_expr:
+                    |        $return_ self.$dispatched_m_name(*args)
                     """, locals())
+            first_iteration = False
 
-        code.add("    raise Exception('can not handle %s' % (args,))")
+        code.add("""    else:
+                   |        raise Exception('can not handle %s' % (args,))""")
 
     def create_wrapper_for_method(self, decl, cpp_name, methods):
         if len(methods) == 1:
@@ -189,7 +195,8 @@ class CodeGenerator(object):
             meth_code = Code.Code()
             self._create_overloaded_method_decl(meth_code, cpp_name,
                                                            dispatched_m_names,
-                                                           methods)
+                                                           methods,
+                                                           True)
             self.code.add(meth_code)
 
     def _create_meth_decl_and_input_conversion(self, code, py_name, method):
@@ -236,9 +243,11 @@ class CodeGenerator(object):
                                                                    "py_result")
         meth_code.add("""
             |    cdef $cy_result_type _r = self.inst.$cpp_name($call_args)
-            |    $to_py_code
-            |    return py_result
             """, locals())
+        if isinstance(to_py_code, basestring):
+            to_py_code = "    %s" % to_py_code
+        meth_code.add(to_py_code)
+        meth_code.add("    return py_result")
 
         self.code.add(meth_code)
 
@@ -255,8 +264,11 @@ class CodeGenerator(object):
                 self.create_wrapper_for_nonoverloaded_constructor(class_decl,
                                              dispatched_cons_name, constructor)
             cons_code = Code.Code()
-            self._create_overloaded_method_decl(cons_code, "__init__",
-                                           dispatched_cons_names, constructors)
+            self._create_overloaded_method_decl(cons_code,
+                                                "__init__",
+                                                dispatched_cons_names,
+                                                constructors,
+                                                False)
             self.code.add(cons_code)
 
 
@@ -302,6 +314,4 @@ class CodeGenerator(object):
            |from libcpp.vector cimport vector as std_vector
            |from cython.operator cimport dereference as deref,
            + preincrement as inc, address as address""")
-
-
 

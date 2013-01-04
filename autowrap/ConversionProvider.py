@@ -145,7 +145,7 @@ class TypeToWrapConverter(TypeConverterBase):
         return self.name_of_class_to_wrap,
 
     def matches(self, cpp_type):
-        return not cpp_type.is_ptr
+        return True
 
     def matching_python_type(self, cpp_type):
         return cpp_type.base_type
@@ -155,15 +155,22 @@ class TypeToWrapConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
-        call_as = "(deref(%s.inst))" % argument_var
+        bt = cpp_type.base_type
+        if cpp_type.is_ptr:
+            call_as = "<_%s *>(%s.inst)" % (bt, argument_var)
+        else:
+            call_as = "<_%s>deref(%s.inst)" % (bt, argument_var)
         return code, call_as
 
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        base_type = cpp_type.base_type
+
+        assert not cpp_type.is_ptr
+
+        cy_clz = cpp_type.base_type
         return Code().add("""
-               | $output_py_var = $base_type.__new__($base_type)
-               | $output_py_var.inst = adress($input_cpp_var)
+                      |cdef $cy_clz $output_py_var = $cy_clz.__new__($cy_clz)
+                      |$output_py_var.inst = new _$cy_clz($input_cpp_var)
         """, locals())
 
 

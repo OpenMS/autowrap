@@ -15,9 +15,9 @@ cdef extern from "minimal.hpp":
         int compute_int()
         std_string compute_str(std_string what)
         int compute_charp(char * what)
-        int run(Minimal & ref)  # wrap-ignore
-        int run2(Minimal *p)  # wrap-ignore
-        Minimal create()  # wrap-ignore
+        int run(Minimal & ref)  
+        int run2(Minimal *p)
+        Minimal create()  
 
         int sumup(std_vector[int] what)  # wrap-ignore
         int call(std_vector[Minimal] & what)    # wrap-ignore
