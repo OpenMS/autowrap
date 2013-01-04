@@ -169,8 +169,8 @@ cdef extern from "A.h":
         pass
     """)
     assert instance.name == "Ax"
-    assert map(str, instance.tinstances) == ["int *"], map(str,
-            instance.tinstances)
+    assert map(str, instance.type_.template_args) == ["int *"], map(str,
+            instance.type_.template_args)
 
 def test_multi_decls_in_one_file():
     inst1, inst2, enum = DeclResolver.resolve_decls_from_string("""
@@ -277,7 +277,7 @@ cdef extern from "X.h":
     Y fun(X *)
             """)
     assert resolved.name == "A"
-    tinstance, = resolved.tinstances
+    tinstance, = resolved.type_.template_args
     assert str(tinstance) == "int"
 
     foo, = resolved.methods.get("foo")
@@ -307,7 +307,7 @@ cdef extern from "X.h":
         B bar(X)
             """)
     assert resolved.name == "A"
-    tinstance, = resolved.tinstances
+    tinstance, = resolved.type_.template_args
 
     assert str(tinstance) == "int *", str(tinstance)
 
@@ -332,7 +332,7 @@ cdef extern from "X.h":
         C* bar(B)
             """)
     assert resolved.name == "A"
-    tinst1, tinst2 = resolved.tinstances
+    tinst1, tinst2 = resolved.type_.template_args
 
     assert str(tinst1) == "int *", str(tinst1)
     assert str(tinst2) == "int", str(tinst2)
