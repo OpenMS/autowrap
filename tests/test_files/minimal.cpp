@@ -108,7 +108,7 @@ std::vector<Minimal> Minimal::create_two() const{
 
 }
 
-bool Minimal::equals(const Minimal &other) const
+bool Minimal::operator==(const Minimal &other) const
 {
     return this->_i == other._i;
 }

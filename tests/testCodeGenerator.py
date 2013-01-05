@@ -64,12 +64,12 @@ def testMinimal():
     in_ = [m2, minimal]
     assert minimal.call(in_) == 1
     assert len(in_) == 3
-    assert m2.equals(in_[0])
-    assert minimal.equals(in_[1])
-    assert m2.equals(in_[2])
+    assert m2 == in_[0]
+    assert minimal == in_[1]
+    assert m2 == in_[2]
 
     m3 = copy.copy(m2)
-    assert m3.equals(m2)
+    assert m3 == m2
 
     m3 = wrapped.Minimal([1,2,3])
     assert m3.compute(0) == 4

@@ -27,7 +27,7 @@ class Minimal {
         int call(std::vector<Minimal> & arg) const;
         int call2(std::vector<std::string> & arg) const;
 
-        bool equals(const Minimal &other) const;
+        bool operator==(const Minimal &other) const;
 
         std::vector<std::string> message() const;
         std::vector<Minimal> create_two() const;

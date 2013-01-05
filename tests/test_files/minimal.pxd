@@ -24,7 +24,7 @@ cdef extern from "minimal.hpp":
         int call2(std_vector[std_string] & what)
         std_vector[std_string] message()
         std_vector[Minimal] create_two()
-        int equals(Minimal &)
+        int operator==(Minimal &)
 
     cdef enum ABCorD:
         A, B=2, C, D

@@ -231,6 +231,10 @@ class CodeGenerator(object):
     def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
                                                 method):
 
+        if cpp_name == "operator==":
+            self.create_special_eq_method(decl)
+            return
+
         meth_code = Code.Code()
 
         call_args, cleanups = self._create_meth_decl_and_input_conversion(meth_code,
@@ -319,6 +323,21 @@ class CodeGenerator(object):
 
         # add cons code to overall code:
         self.code.add(cons_code)
+
+    def create_special_eq_method(self, class_decl):
+        meth_code = Code.Code()
+        name = class_decl.name
+        meth_code.add("""
+           |def __richcmp__(self, other, op):
+           |   if op != 2:
+           |      raise Exception("richcmp for op %d not implmenented" % op)
+           |   if not isinstance(other, $name):
+           |       return False
+           |   cdef $name other_casted = other
+           |   cdef $name self_casted = self
+           |   return deref(self_casted.inst) == deref(other_casted.inst)
+           """, locals())
+        self.code.add(meth_code)
 
     def create_special_copy_method(self, class_decl):
         meth_code = Code.Code()
