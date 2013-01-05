@@ -189,22 +189,22 @@ class StdVectorConverter(TypeConverterBase):
         return "list"
 
     def type_check_expression(self, cpp_type, arg_var):
-        t_t, = cpp_type.template_args
-        inner_conv = self.converters.get(t_t)
-        assert inner_conv is not None, "arg type %s not supported" % t_t
-        inner_check = inner_conv.type_check_expression(t_t, "li")
+        tt, = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        assert inner_conv is not None, "arg type %s not supported" % tt
+        inner_check = inner_conv.type_check_expression(tt, "li")
 
         return Code().add("""
           |isinstance($arg_var, list) and all($inner_check for li in $arg_var)
           """, locals()).render()
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
-        t_t, = cpp_type.template_args
-        if t_t.base_type in self.names_of_classes_to_wrap:
+        tt, = cpp_type.template_args
+        if tt.base_type in self.names_of_classes_to_wrap:
             temp_var = "v%d" % arg_num
             code = Code().add("""
-                |cdef std_vector[_$t_t] * $temp_var = new std_vector[_$t_t]()
-                |cdef $t_t item
+                |cdef std_vector[_$tt] * $temp_var = new std_vector[_$tt]()
+                |cdef $tt item
                 |for item in $argument_var:
                 |   $temp_var.push_back(deref(item.inst))
                 """, locals())
@@ -213,8 +213,8 @@ class StdVectorConverter(TypeConverterBase):
         else:
             temp_var = "v%d" % arg_num
             code = Code().add("""
-                |cdef std_vector[$t_t] * $temp_var = new std_vector[$t_t]()
-                |cdef $t_t item
+                |cdef std_vector[$tt] * $temp_var = new std_vector[$tt]()
+                |cdef $tt item
                 |for item in $argument_var:
                 |   $temp_var.push_back(item)
                 """, locals())
@@ -222,15 +222,34 @@ class StdVectorConverter(TypeConverterBase):
 
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        return None
 
         assert not cpp_type.is_ptr
 
-        cy_clz = cpp_type.base_type
-        return Code().add("""
-                      |cdef $cy_clz $output_py_var = $cy_clz.__new__($cy_clz)
-                      |$output_py_var.inst = new _$cy_clz($input_cpp_var)
-        """, locals())
+        tt, = cpp_type.template_args
+        if tt.base_type in self.names_of_classes_to_wrap:
+            code = Code().add("""
+                |$output_py_var = []
+                |cdef std_vector[_$tt].iterator it = $input_cpp_var.begin()
+                |cdef $tt item
+                |while it != $input_cpp_var.end():
+                |   item = $tt.__new__($tt)
+                |   item.inst = new _$tt(deref(it))
+                |   $output_py_var.append(item)
+                |   inc(it)
+                """, locals())
+            return code
+
+        else:
+            code = Code().add("""
+                |$output_py_var = []
+                |cdef std_vector[$tt].iterator it = $input_cpp_var.begin()
+                |cdef $tt item
+                |while it != $input_cpp_var.end():
+                |   $output_py_var.append(deref(it))
+                |   inc(it)
+                """, locals())
+            return code
+
 
 
 class StdStringConverter(TypeConverterBase):

@@ -89,4 +89,19 @@ int Minimal::call2(std::vector<std::string> & arg) const
     return sum;
 }
 
+std::vector<std::string> Minimal::message() const {
+    std::vector<std::string> rv;
+    std::string s1("hello");
+    rv.push_back(s1);
+    return rv;
+}
+std::vector<Minimal> Minimal::create_two() const{
+    std::vector<Minimal> rv;
+    Minimal m(-1), mm(0);
+    rv.push_back(m);
+    rv.push_back(mm);
+    return rv;
+
+}
+
 

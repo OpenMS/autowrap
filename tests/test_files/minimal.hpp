@@ -27,5 +27,8 @@ class Minimal {
         int call(std::vector<Minimal> & arg) const;
         int call2(std::vector<std::string> & arg) const;
 
+        std::vector<std::string> message() const;
+        std::vector<Minimal> create_two() const;
+
         Minimal create() const;
 };

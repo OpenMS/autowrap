@@ -67,6 +67,13 @@ def testMinimal():
 
     assert  m3.call2(["a", "bc"]) == 3
 
+    msg, = m3.message()
+    assert msg == "hello"
+
+    m1, m2 = m3.create_two()
+    assert m1.compute(42) == 42
+    assert m2.compute(42) == 43
+
 
 
 
