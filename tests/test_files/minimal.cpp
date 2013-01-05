@@ -78,6 +78,8 @@ int Minimal::call(std::vector<Minimal> & arg) const
     int sum = 0;
     for (std::vector<Minimal>::const_iterator it = arg.begin(); it != arg.end(); ++it)
         sum += it->compute(0);
+    
+    arg.push_back(arg.at(0));
     return sum;
 }
 
@@ -86,6 +88,8 @@ int Minimal::call2(std::vector<std::string> & arg) const
     int sum = 0;
     for (std::vector<std::string>::const_iterator it = arg.begin(); it != arg.end(); ++it)
         sum += it->size();
+    std::string n("hi");
+    arg.push_back(n);
     return sum;
 }
 
@@ -104,4 +108,8 @@ std::vector<Minimal> Minimal::create_two() const{
 
 }
 
+bool Minimal::equals(const Minimal &other) const
+{
+    return this->_i == other._i;
+}
 

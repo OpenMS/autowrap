@@ -60,12 +60,19 @@ def testMinimal():
     assert wrapped.ABCorD.D == 4
 
 
-    assert minimal.call([m2, minimal]) == 1
+    in_ = [m2, minimal]
+    assert minimal.call(in_) == 1
+    assert len(in_) == 3
+    assert m2.equals(in_[0])
+    assert minimal.equals(in_[1])
+    assert m2.equals(in_[2])
 
     m3 = wrapped.Minimal([1,2,3])
     assert m3.compute(0) == 4
 
-    assert  m3.call2(["a", "bc"]) == 3
+    in_ = ["a", "bc"]
+    assert  m3.call2(in_) == 3
+    assert in_ == ["a", "bc", "hi"]
 
     msg, = m3.message()
     assert msg == "hello"

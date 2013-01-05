@@ -110,7 +110,8 @@ class NumberConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
         call_as = "(<int>%s)" % argument_var
-        return code, call_as
+        cleanup = ""
+        return code, call_as, cleanup
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <int>%s" % (output_py_var, input_cpp_var)
@@ -133,7 +134,8 @@ class CharPtrConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
         call_as = "(<char *>%s)" % argument_var
-        return code, call_as
+        cleanup = ""
+        return code, call_as, cleanup
 
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
@@ -164,7 +166,8 @@ class TypeToWrapConverter(TypeConverterBase):
             call_as = "<_%s *>(%s.inst)" % (bt, argument_var)
         else:
             call_as = "<_%s>deref(%s.inst)" % (bt, argument_var)
-        return code, call_as
+        cleanup = ""
+        return code, call_as, cleanup
 
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
@@ -208,7 +211,20 @@ class StdVectorConverter(TypeConverterBase):
                 |for item in $argument_var:
                 |   $temp_var.push_back(deref(item.inst))
                 """, locals())
-            return code, "deref(%s)" % temp_var
+            if cpp_type.is_ref:
+                cleanup_code = Code().add("""
+                    |cdef replace = []
+                    |cdef std_vector[_$tt].iterator it = $temp_var.begin()
+                    |while it != $temp_var.end():
+                    |   item = $tt.__new__($tt)
+                    |   item.inst = new _$tt(deref(it))
+                    |   replace.append(item)
+                    |   inc(it)
+                    |$argument_var[:] = replace
+                    """, locals())
+            else:
+                cleanup_code = ""
+            return code, "deref(%s)" % temp_var, cleanup_code
 
         else:
             temp_var = "v%d" % arg_num
@@ -218,7 +234,18 @@ class StdVectorConverter(TypeConverterBase):
                 |for item in $argument_var:
                 |   $temp_var.push_back(item)
                 """, locals())
-            return code, "deref(%s)" % temp_var
+            if cpp_type.is_ref:
+                cleanup_code = Code().add("""
+                    |cdef replace = []
+                    |cdef std_vector[$tt].iterator it = $temp_var.begin()
+                    |while it != $temp_var.end():
+                    |   replace.append(deref(it))
+                    |   inc(it)
+                    |$argument_var[:] = replace
+                    """, locals())
+            else:
+                cleanup_code = ""
+            return code, "deref(%s)" % temp_var, cleanup_code
 
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
@@ -266,7 +293,8 @@ class StdStringConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
         call_as = "(<std_string>%s)" % argument_var
-        return code, call_as
+        cleanup = ""
+        return code, call_as, cleanup
 
     def type_check_expression(self, cpp_type, argument_var):
         return "isinstance(%s, str)" % argument_var

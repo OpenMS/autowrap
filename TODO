@@ -1,6 +1,4 @@
 
-- std_vector[std_string] als output
-
 - f(std_vector[X] &)
 
 - copy_cons -> __copy__ method

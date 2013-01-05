@@ -205,13 +205,15 @@ class CodeGenerator(object):
         # collect conversion data for input args
         py_signature_parts = []
         input_conversion_codes = []
+        cleanups = []
         call_args = []
         for arg_num, (t, n) in enumerate(args):
             converter = self.cr.get(t)
             py_type = converter.matching_python_type(t)
-            conv_code, call_as = converter.input_conversion(t, n, arg_num)
+            conv_code, call_as, cleanup = converter.input_conversion(t, n, arg_num)
             py_signature_parts.append("%s %s " % (py_type, n))
             input_conversion_codes.append(conv_code)
+            cleanups.append(cleanup)
             call_args.append(call_as)
 
         # create method decl statement
@@ -224,14 +226,14 @@ class CodeGenerator(object):
             code.add(conv_code)
 
         call_args = ", ".join(call_args)
-        return call_args
+        return call_args, cleanups
 
     def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
                                                 method):
 
         meth_code = Code.Code()
 
-        call_args = self._create_meth_decl_and_input_conversion(meth_code,
+        call_args, cleanups = self._create_meth_decl_and_input_conversion(meth_code,
                                                                 py_name,
                                                                 method)
 
@@ -244,6 +246,14 @@ class CodeGenerator(object):
         meth_code.add("""
             |    cdef $cy_result_type _r = self.inst.$cpp_name($call_args)
             """, locals())
+
+        for cleanup in cleanups:
+            if not cleanup:
+                continue
+            if isinstance(cleanup, basestring):
+                cleanup = "    %s" % cleanup
+            meth_code.add(cleanup)
+
         if isinstance(to_py_code, basestring):
             to_py_code = "    %s" % to_py_code
         meth_code.add(to_py_code)
@@ -282,13 +292,20 @@ class CodeGenerator(object):
         """
         cons_code = Code.Code()
 
-        call_args = self._create_meth_decl_and_input_conversion(cons_code,
+        call_args, cleanups = self._create_meth_decl_and_input_conversion(cons_code,
                                                                 py_name,
                                                                 cons_decl)
 
         # create instance of wrapped class
         name = self.cr.cy_decl_str(class_decl.type_)
         cons_code.add("""    self.inst = new $name($call_args)""", locals())
+
+        for cleanup in cleanups:
+            if not cleanup:
+                continue
+            if isinstance(cleanup, basestring):
+                cleanup = "    %s" % cleanup
+            meth_code.add(cleanup)
 
         # add cons code to overall code:
         self.code.add(cons_code)
