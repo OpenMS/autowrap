@@ -1,5 +1,5 @@
 
-- f(std_vector[X] &)
+- f(std_vector[X] &) # in_as_out:0
 
 - copy_cons -> __copy__ method
 

@@ -261,14 +261,24 @@ class CodeGenerator(object):
 
         self.code.add(meth_code)
 
+
     def create_wrapper_for_constructor(self, class_decl, constructors):
-        if len(constructors) == 1:
+        real_constructors = []
+        for cons in constructors:
+            if len(cons.arguments) == 1:
+                (n, t), = cons.arguments
+                if t.base_type == class_decl.name and t.is_ref:
+                    self.create_special_copy_method(class_decl)
+                    continue
+            real_constructors.append(cons)
+
+        if len(real_constructors) == 1:
             self.create_wrapper_for_nonoverloaded_constructor(class_decl,
                                                               "__init__",
-                                                              constructors[0])
+                                                              real_constructors[0])
         else:
             dispatched_cons_names =[]
-            for (i, constructor) in enumerate(constructors):
+            for (i, constructor) in enumerate(real_constructors):
                 dispatched_cons_name = "_init_%d" % i
                 dispatched_cons_names.append(dispatched_cons_name)
                 self.create_wrapper_for_nonoverloaded_constructor(class_decl,
@@ -310,6 +320,15 @@ class CodeGenerator(object):
         # add cons code to overall code:
         self.code.add(cons_code)
 
+    def create_special_copy_method(self, class_decl):
+        meth_code = Code.Code()
+        name = class_decl.name
+        meth_code.add("""def __copy__(self):
+                        |   cdef $name rv = $name.__new__($name)
+                        |   rv.inst = new _$name(deref(self.inst))
+                        |   return rv
+                        """, locals())
+        self.code.add(meth_code)
 
     def create_cimports(self):
         self.create_std_cimports()

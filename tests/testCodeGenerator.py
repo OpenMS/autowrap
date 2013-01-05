@@ -6,6 +6,7 @@ import autowrap.Utils
 import autowrap
 
 import os
+import copy
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
@@ -66,6 +67,9 @@ def testMinimal():
     assert m2.equals(in_[0])
     assert minimal.equals(in_[1])
     assert m2.equals(in_[2])
+
+    m3 = copy.copy(m2)
+    assert m3.equals(m2)
 
     m3 = wrapped.Minimal([1,2,3])
     assert m3.compute(0) == 4
