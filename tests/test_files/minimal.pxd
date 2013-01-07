@@ -23,7 +23,7 @@ cdef extern from "minimal.hpp":
         Minimal create()  
 
         int sumup(std_vector[int] what)
-        int call(std_vector[Minimal] & what)
+        int call(std_vector[Minimal] & what) # ref-arg-out:0
         int call2(std_vector[std_string] & what)
         std_vector[std_string] message()
         std_vector[Minimal] create_two()

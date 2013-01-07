@@ -73,7 +73,7 @@ def parse_line_annotations(node, lines):
             if ":" in f:
                 key, value = f.split(":", 1)
             else:
-                key, value = f, 1
+                key, value = f, True
         result[key] = value
     return result
 

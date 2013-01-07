@@ -234,6 +234,8 @@ class CodeGenerator(object):
 
         meth_code = Code.Code()
 
+        print method.name, method.annotations
+
         call_args, cleanups =\
                          self._create_meth_decl_and_input_conversion(meth_code,
                                                                      py_name,
