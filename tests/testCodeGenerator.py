@@ -85,6 +85,14 @@ def testMinimal():
     assert m1.compute(42) == 42
     assert m2.compute(42) == 43
 
+    assert m2.enumTest(wrapped.ABCorD.A) == wrapped.ABCorD.A
+    try:
+        m2.enumTest(1)
+    except:
+        pass
+    else:
+        assert False, "expected exception"
+
 
 
 

@@ -137,12 +137,24 @@ def _transform(decls):
     enums     = filter_out(PXDParser.EnumDecl)
     classes   = filter_out(PXDParser.CppClassDecl)
 
-    typedef_mapping = _build_typdef_mapping(typedefs)
+    # register enums as type aliases:
+    enum_mapping = dict()
+    for e in enums:
+        enum_mapping[e.name] = Types.CppType(e.name, enum_items=e.items)
 
-    functions = [_resolve_function(f, typedef_mapping) for f in functions]
+    type_mapping = _build_typdef_mapping(typedefs)
+
+    intersecting_names = set(type_mapping) & set(enum_mapping)
+    if intersecting_names:
+        n = intersecting_names.pop()
+        raise Exception("%s is decleared as enums and typedef alias" % n)
+
+    type_mapping.update(enum_mapping)
+
+    functions = [_resolve_function(f, type_mapping) for f in functions]
 
     classes = _resolve_all_inheritances(classes)
-    classes = _resolve_templated_classes(classes, typedef_mapping)
+    classes = _resolve_templated_classes(classes, type_mapping)
 
     return classes + enums + functions
 

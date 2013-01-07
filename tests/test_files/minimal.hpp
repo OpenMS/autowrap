@@ -1,6 +1,11 @@
 #include <string>
 #include <vector>
 
+enum ABCorD {
+        A, B=2, C, D
+};
+
+
 class Minimal {
 
     private:
@@ -33,4 +38,6 @@ class Minimal {
         std::vector<Minimal> create_two() const;
 
         Minimal create() const;
+
+        enum ABCorD enumTest(enum ABCorD) const;
 };

@@ -113,3 +113,8 @@ bool Minimal::operator==(const Minimal &other) const
     return this->_i == other._i;
 }
 
+enum ABCorD Minimal::enumTest(enum ABCorD i) const
+{
+    return i;
+}
+

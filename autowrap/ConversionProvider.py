@@ -1,3 +1,4 @@
+import pdb
 from collections import namedtuple
 import re
 from collections import defaultdict
@@ -16,6 +17,7 @@ class ConverterRegistry(object):
 
     def __init__(self):
         self.lookup = defaultdict(list)
+        self.enum_converter = None
 
     def register(self, converter):
         assert isinstance(converter, TypeConverterBase)
@@ -23,7 +25,17 @@ class ConverterRegistry(object):
         for base_type in converter.get_base_types():
             self.lookup[base_type].append(converter)
 
+    def register_enum_converter(self, converter):
+        assert isinstance(converter, TypeConverterBase)
+        converter._set_converter_registry(self)
+        self.enum_converter = converter
+
+
     def get(self, cpp_type):
+
+        if cpp_type.is_enum:
+            return self.enum_converter
+
         rv = [conv for conv in self.lookup[cpp_type.base_type]\
                    if conv.matches(cpp_type)]
         if len(rv)>1:
@@ -45,7 +57,7 @@ class ConverterRegistry(object):
         else:
             targs = ""
 
-        if type_.base_type in self.names_of_classes_to_wrap:
+        if type_.base_type in self.names_of_classes_to_wrap or type_.is_enum:
             base = "_%s" % type_.base_type
         else:
             base = type_.base_type
@@ -53,7 +65,6 @@ class ConverterRegistry(object):
         if type_.is_ptr:
             base += " * "
         return "%s%s" % (base, targs)
-
 
 
 
@@ -110,6 +121,31 @@ class NumberConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
         call_as = "(<int>%s)" % argument_var
+        cleanup = ""
+        return code, call_as, cleanup
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return "%s = <int>%s" % (output_py_var, input_cpp_var)
+
+
+class EnumConverter(TypeConverterBase):
+
+    def get_base_types(self):
+        return "int",
+
+    def matches(self, cpp_type):
+        return cpp_type.is_enum and not cpp_type.is_ptr
+
+    def matching_python_type(self, cpp_type):
+        return "int"
+
+    def type_check_expression(self, cpp_type, argument_var):
+        values = ", ".join([str(v) for (__, v) in cpp_type.enum_items])
+        return "%s in [%s]" % (argument_var, values)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        code = ""
+        call_as = "(<_%s>%s)" % (cpp_type.base_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
@@ -313,6 +349,7 @@ def setup_converter_registry(names_of_classes_to_wrap):
     for name in names_of_classes_to_wrap:
         converter.register(TypeToWrapConverter(name))
 
+    converter.register_enum_converter(EnumConverter())
     converter.set_names_of_classes_to_wrap(names_of_classes_to_wrap)
 
     return converter

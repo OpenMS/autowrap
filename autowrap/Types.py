@@ -9,12 +9,13 @@ class CppType(object):
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
     def __init__(self, base_type, template_args = None, is_ptr=False,
-                 is_ref=False, is_unsigned = False, is_enum=False):
+                 is_ref=False, is_unsigned = False, enum_items=None):
         self.base_type =  "void" if base_type is None else base_type
         self.is_ptr = is_ptr
         self.is_ref = is_ref
         self.is_unsigned = is_unsigned
-        self.is_enum = is_enum
+        self.is_enum = enum_items is not None
+        self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
 
     def transform(self, typemap):

@@ -3,6 +3,7 @@ import os.path, sys
 
 from ConversionProvider import setup_converter_registry
 from DeclResolver import ResolvedClass
+from PXDParser import EnumDecl
 
 import Code
 
@@ -13,27 +14,11 @@ def stdout_redirect(stream):
     sys.stdout = sys.__stdout__
 
 
-def augmented_args(method):
+def augment_arg_names(method):
+    """ replaces missing arg_names with "in_%d" % i, where i is the position
+        number of the arg """
     return [(t, n if (n and n != "self") else "in_%d" % i)\
                                   for i, (n, t) in enumerate(method.arguments)]
-
-
-class Tee(object):
-
-    def __init__(self, *fps):
-        self.fps = fps
-
-    def write(self, *a):
-        for fp in self.fps:
-            fp.write(*a)
-
-    def writelines(self, *a):
-        for fp in self.fps:
-            fp.writelines(*a)
-
-    def flush(self, *a):
-        for fp in self.fps:
-            fp.flush(*a)
 
 
 def _normalize(path):
@@ -96,6 +81,7 @@ class CodeGenerator(object):
         self.target_dir  = os.path.dirname(self.target_path)
 
         self.class_decls = [d for d in decls if isinstance(d, ResolvedClass)]
+        self.enum_decls = [d for d in decls if isinstance(d, EnumDecl)]
         class_names = [c.name for c in self.class_decls]
 
         self.cr = setup_converter_registry(class_names)
@@ -105,6 +91,12 @@ class CodeGenerator(object):
     def setup_cimport_paths(self):
         for decl in self.class_decls:
             pxd_path = decl.cpp_decl.pxd_path
+            pxd_dir = os.path.dirname(pxd_path)
+            test_for_module_markers(pxd_dir, self.target_dir)
+            decl.pxd_import_path = cimport_path(pxd_path, self.target_dir)
+
+        for decl in self.enum_decls:
+            pxd_path = decl.pxd_path
             pxd_dir = os.path.dirname(pxd_path)
             test_for_module_markers(pxd_dir, self.target_dir)
             decl.pxd_import_path = cimport_path(pxd_path, self.target_dir)
@@ -158,7 +150,7 @@ class CodeGenerator(object):
 
         first_iteration = True
         for (dispatched_m_name, method) in zip(dispatched_m_names, methods):
-            args = augmented_args(method)
+            args = augment_arg_names(method)
             if not args:
                 check_expr = "not args"
             else:
@@ -200,21 +192,24 @@ class CodeGenerator(object):
             self.code.add(meth_code)
 
     def _create_meth_decl_and_input_conversion(self, code, py_name, method):
-        args = augmented_args(method)
+        args = augment_arg_names(method)
 
         # collect conversion data for input args
         py_signature_parts = []
         input_conversion_codes = []
         cleanups = []
         call_args = []
+        checks = []
         for arg_num, (t, n) in enumerate(args):
             converter = self.cr.get(t)
             py_type = converter.matching_python_type(t)
-            conv_code, call_as, cleanup = converter.input_conversion(t, n, arg_num)
+            conv_code, call_as, cleanup =\
+                                      converter.input_conversion(t, n, arg_num)
             py_signature_parts.append("%s %s " % (py_type, n))
             input_conversion_codes.append(conv_code)
             cleanups.append(cleanup)
             call_args.append(call_as)
+            checks.append((n, converter.type_check_expression(t, n)))
 
         # create method decl statement
         py_signature = ", ".join(["self"] + py_signature_parts)
@@ -222,6 +217,8 @@ class CodeGenerator(object):
 
         # create code which convert python input args to c++ args of wrapped
         # method:
+        for n, check in checks:
+            code.add("    assert %s, 'arg %s invalid'" % (check, n))
         for conv_code in input_conversion_codes:
             code.add(conv_code)
 
@@ -237,9 +234,10 @@ class CodeGenerator(object):
 
         meth_code = Code.Code()
 
-        call_args, cleanups = self._create_meth_decl_and_input_conversion(meth_code,
-                                                                py_name,
-                                                                method)
+        call_args, cleanups =\
+                         self._create_meth_decl_and_input_conversion(meth_code,
+                                                                     py_name,
+                                                                     method)
 
         # call wrapped method and convert result value back to python
         res_t = method.result_type
@@ -278,8 +276,7 @@ class CodeGenerator(object):
 
         if len(real_constructors) == 1:
             self.create_wrapper_for_nonoverloaded_constructor(class_decl,
-                                                              "__init__",
-                                                              real_constructors[0])
+                                              "__init__", real_constructors[0])
         else:
             dispatched_cons_names =[]
             for (i, constructor) in enumerate(real_constructors):
@@ -306,9 +303,10 @@ class CodeGenerator(object):
         """
         cons_code = Code.Code()
 
-        call_args, cleanups = self._create_meth_decl_and_input_conversion(cons_code,
-                                                                py_name,
-                                                                cons_decl)
+        call_args, cleanups =\
+                         self._create_meth_decl_and_input_conversion(cons_code,
+                                                                     py_name,
+                                                                     cons_decl)
 
         # create instance of wrapped class
         name = self.cr.cy_decl_str(class_decl.type_)
@@ -352,15 +350,19 @@ class CodeGenerator(object):
     def create_cimports(self):
         self.create_std_cimports()
         for decl in self.decls:
-            if isinstance(decl, ResolvedClass):
+            if isinstance(decl, EnumDecl):
+                cpp_decl = decl
+            elif isinstance(decl, ResolvedClass):
                 cpp_decl = decl.cpp_decl
-                rel_pxd_path = os.path.relpath(cpp_decl.pxd_path,
-                                               self.target_path)
-                cython_dir_name = rel_pxd_path.replace(os.sep, ".")
-                if os.altsep:
-                    cython_dir_name = cython_dir_name.replace(os.altsep, ".")
-                import_from = decl.pxd_import_path
-                self.code.add("from $from_ cimport $name as _$name",
+            else:
+                continue
+
+            rel_pxd_path = os.path.relpath(cpp_decl.pxd_path, self.target_path)
+            cython_dir_name = rel_pxd_path.replace(os.sep, ".")
+            if os.altsep:
+                cython_dir_name = cython_dir_name.replace(os.altsep, ".")
+            import_from = decl.pxd_import_path
+            self.code.add("from $from_ cimport $name as _$name",
                                        from_=import_from, name = cpp_decl.name)
 
     def create_std_cimports(self):

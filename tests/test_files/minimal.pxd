@@ -3,6 +3,9 @@ from libcpp.vector cimport vector as std_vector
 
 cdef extern from "minimal.hpp":
 
+    cdef enum ABCorD:
+        A, B=2, C, D
+
     cdef cppclass Minimal:
         Minimal()  
         Minimal(int)  
@@ -25,7 +28,6 @@ cdef extern from "minimal.hpp":
         std_vector[std_string] message()
         std_vector[Minimal] create_two()
         int operator==(Minimal &)
+        ABCorD enumTest(ABCorD)
 
-    cdef enum ABCorD:
-        A, B=2, C, D
            
