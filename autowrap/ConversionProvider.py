@@ -9,8 +9,13 @@ from Code import Code
 
 
 def mangle(s):
-    s = s.replace("(", "_")
-    s = s.replace(")", "_")
+    s = s.replace("(", "_l_")
+    s = s.replace(")", "_r_")
+    s = s.replace("<", "_lt_")
+    s = s.replace(">", "_gt_")
+    s = s.replace("[", "_lb_")
+    s = s.replace("]", "_rb_")
+    s = s.replace(".", "_dot_")
     return s
 
 class ConverterRegistry(object):
@@ -96,6 +101,9 @@ class TypeConverterBase(object):
         for second level lookup in registry
         """
         raise NotImplementedError()
+
+    def call_method(self, cy_res_type, cy_call_str):
+        return "cdef %s _r = %s" % (cy_res_type, cy_call_str)
 
     def matching_python_type(self, cpp_type):
         raise NotImplementedError()
@@ -211,6 +219,9 @@ class TypeToWrapConverter(TypeConverterBase):
         cleanup = ""
         return code, call_as, cleanup
 
+    def call_method(self, cy_res_type, cy_call_str):
+
+        return "cdef %s * _r = new %s(%s)" % (cy_res_type, cy_res_type, cy_call_str)
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
@@ -219,7 +230,7 @@ class TypeToWrapConverter(TypeConverterBase):
         cy_clz = cpp_type.base_type
         return Code().add("""
                       |cdef $cy_clz $output_py_var = $cy_clz.__new__($cy_clz)
-                      |$output_py_var.inst = new _$cy_clz($input_cpp_var)
+                      |$output_py_var.inst = _r # new _$cy_clz($input_cpp_var)
         """, locals())
 
 class StdVectorConverter(TypeConverterBase):

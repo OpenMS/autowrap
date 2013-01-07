@@ -173,7 +173,8 @@ class CodeGenerator(object):
     def create_wrapper_for_method(self, decl, cpp_name, methods):
         if len(methods) == 1:
             self.create_wrapper_for_nonoverloaded_method(decl, cpp_name,
-                                                         cpp_name, methods[0])
+                                                         cpp_name, methods[0],
+                                                         )
         else:
             dispatched_m_names = []
             for (i, method) in enumerate(methods):
@@ -182,7 +183,8 @@ class CodeGenerator(object):
                 self.create_wrapper_for_nonoverloaded_method(decl,
                                                              dispatched_m_name,
                                                              cpp_name,
-                                                             method)
+                                                             method,
+                                                             )
 
             meth_code = Code.Code()
             self._create_overloaded_method_decl(meth_code, cpp_name,
@@ -227,7 +229,7 @@ class CodeGenerator(object):
         return call_args, cleanups, in_types
 
     def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
-                                                method):
+            method):
 
         if cpp_name == "operator==":
             self.create_special_eq_method(decl)
@@ -246,8 +248,14 @@ class CodeGenerator(object):
 
 
         call_args_str = ", ".join(call_args)
+
+        cy_call_str = "self.inst.%s(%s)" % (cpp_name, call_args_str)
+
+        out_converter = self.cr.get(res_t)
+        full_call_stmt = out_converter.call_method(cy_result_type, cy_call_str)
+
         meth_code.add("""
-            |    cdef $cy_result_type _r = self.inst.$cpp_name($call_args_str)
+            |    $full_call_stmt
             """, locals())
 
         for cleanup in cleanups:
@@ -270,9 +278,8 @@ class CodeGenerator(object):
                         to_py_code = "    %s" % to_py_code
                     meth_code.add(to_py_code)
 
-        to_py_code = self.cr.get(res_t).output_conversion(res_t,
-                                                          "_r",
-                                                          "py_result")
+        to_py_code = out_converter.output_conversion(res_t, "_r", "py_result")
+
         if isinstance(to_py_code, basestring):
             to_py_code = "    %s" % to_py_code
         meth_code.add(to_py_code)

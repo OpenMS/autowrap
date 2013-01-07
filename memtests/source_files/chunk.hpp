@@ -10,10 +10,12 @@ class Chunk {
 
     public:
 
+        /*
     Chunk(): debug(0) { 
 
         memory = new int[1024*1024];  // 1 MB
     }
+    */
 
 
     Chunk(bool _debug): debug(_debug) {

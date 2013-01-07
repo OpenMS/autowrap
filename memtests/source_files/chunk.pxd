@@ -3,7 +3,7 @@ from libcpp.vector cimport vector as std_vector
 cdef extern  from "chunk.hpp":
 
     cdef cppclass Chunk:
-        Chunk()
+        #Chunk()  # no-wrap
         Chunk(int debug)
         Chunk(Chunk &)
 
