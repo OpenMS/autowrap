@@ -200,6 +200,7 @@ class CodeGenerator(object):
         cleanups = []
         call_args = []
         checks = []
+        in_types = []
         for arg_num, (t, n) in enumerate(args):
             converter = self.cr.get(t)
             py_type = converter.matching_python_type(t)
@@ -209,6 +210,7 @@ class CodeGenerator(object):
             input_conversion_codes.append(conv_code)
             cleanups.append(cleanup)
             call_args.append(call_as)
+            in_types.append(t)
             checks.append((n, converter.type_check_expression(t, n)))
 
         # create method decl statement
@@ -222,8 +224,7 @@ class CodeGenerator(object):
         for conv_code in input_conversion_codes:
             code.add(conv_code)
 
-        call_args = ", ".join(call_args)
-        return call_args, cleanups
+        return call_args, cleanups, in_types
 
     def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
                                                 method):
@@ -234,9 +235,7 @@ class CodeGenerator(object):
 
         meth_code = Code.Code()
 
-        print method.name, method.annotations
-
-        call_args, cleanups =\
+        call_args, cleanups, in_types =\
                          self._create_meth_decl_and_input_conversion(meth_code,
                                                                      py_name,
                                                                      method)
@@ -244,11 +243,11 @@ class CodeGenerator(object):
         # call wrapped method and convert result value back to python
         res_t = method.result_type
         cy_result_type = self.cr.cy_decl_str(res_t)
-        to_py_code = self.cr.get(method.result_type).output_conversion(res_t,
-                                                                   "_r",
-                                                                   "py_result")
+
+
+        call_args_str = ", ".join(call_args)
         meth_code.add("""
-            |    cdef $cy_result_type _r = self.inst.$cpp_name($call_args)
+            |    cdef $cy_result_type _r = self.inst.$cpp_name($call_args_str)
             """, locals())
 
         for cleanup in cleanups:
@@ -258,10 +257,26 @@ class CodeGenerator(object):
                 cleanup = "    %s" % cleanup
             meth_code.add(cleanup)
 
+        out_vars = ["py_result"]
+        if "ref-arg-out" in method.decl.annotations:
+            out_ixs = map(int, method.decl.annotations["ref-arg-out"])
+            for i, (type_, call_arg) in enumerate(zip(in_types, call_args)):
+                if i in out_ixs:
+                    to_py_code = self.cr.get(type_).output_conversion(type_,
+                                                                    call_arg,
+                                                                    "pyr_%d" %i)
+                    out_vars.append("pyr_%d" % i)
+                    if isinstance(to_py_code, basestring):
+                        to_py_code = "    %s" % to_py_code
+                    meth_code.add(to_py_code)
+
+        to_py_code = self.cr.get(res_t).output_conversion(res_t,
+                                                          "_r",
+                                                          "py_result")
         if isinstance(to_py_code, basestring):
             to_py_code = "    %s" % to_py_code
         meth_code.add(to_py_code)
-        meth_code.add("    return py_result")
+        meth_code.add("    return %s" % (", ".join(out_vars)))
 
         self.code.add(meth_code)
 
@@ -305,14 +320,15 @@ class CodeGenerator(object):
         """
         cons_code = Code.Code()
 
-        call_args, cleanups =\
+        call_args, cleanups, in_types =\
                          self._create_meth_decl_and_input_conversion(cons_code,
                                                                      py_name,
                                                                      cons_decl)
 
         # create instance of wrapped class
+        call_args_str = ", ".join(call_args)
         name = self.cr.cy_decl_str(class_decl.type_)
-        cons_code.add("""    self.inst = new $name($call_args)""", locals())
+        cons_code.add("""    self.inst = new $name($call_args_str)""", locals())
 
         for cleanup in cleanups:
             if not cleanup:

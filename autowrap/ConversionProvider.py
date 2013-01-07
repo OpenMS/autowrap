@@ -7,6 +7,12 @@ from DeclResolver import ResolvedClass
 from Types import CppType
 from Code import Code
 
+
+def mangle(s):
+    s = s.replace("(", "_")
+    s = s.replace(")", "_")
+    return s
+
 class ConverterRegistry(object):
     """
     Works with two level lookup: first find converters which support base_type,
@@ -290,26 +296,30 @@ class StdVectorConverter(TypeConverterBase):
 
         tt, = cpp_type.template_args
         if tt.base_type in self.names_of_classes_to_wrap:
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
             code = Code().add("""
                 |$output_py_var = []
-                |cdef std_vector[_$tt].iterator it = $input_cpp_var.begin()
-                |cdef $tt item
-                |while it != $input_cpp_var.end():
-                |   item = $tt.__new__($tt)
-                |   item.inst = new _$tt(deref(it))
-                |   $output_py_var.append(item)
-                |   inc(it)
+                |cdef std_vector[_$tt].iterator $it = $input_cpp_var.begin()
+                |cdef $tt $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $tt.__new__($tt)
+                |   $item.inst = new _$tt(deref($it))
+                |   $output_py_var.append($item)
+                |   inc($it)
                 """, locals())
             return code
 
         else:
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
             code = Code().add("""
                 |$output_py_var = []
-                |cdef std_vector[$tt].iterator it = $input_cpp_var.begin()
-                |cdef $tt item
-                |while it != $input_cpp_var.end():
-                |   $output_py_var.append(deref(it))
-                |   inc(it)
+                |cdef std_vector[$tt].iterator $it = $input_cpp_var.begin()
+                |cdef $tt $item
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var.append(deref($it))
+                |   inc($it)
                 """, locals())
             return code
 

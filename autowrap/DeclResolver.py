@@ -93,10 +93,11 @@ class ResolvedMethodOrFunction(object):
         "resolved" means that template parameters are resolved.
     """
 
-    def __init__(self, name, result_type, arguments):
+    def __init__(self, name, result_type, arguments, decl):
         self.name = name
         self.result_type = result_type
         self.arguments = arguments
+        self.decl = decl
 
     def __str__(self):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
@@ -366,7 +367,7 @@ def _resolve_method(method_decl, wrap_inst_decls, type_map):
         args.append((arg_name, arg_type))
     new_name = method_decl.annotations.get("wrap-as")
     return ResolvedMethodOrFunction(new_name or method_decl.name, result_type,
-                                    args)
+                                    args, method_decl)
 
 
 def _resolve_alias(cpp_type, wrap_inst_decls, type_map):
