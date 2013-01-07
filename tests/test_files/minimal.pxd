@@ -9,7 +9,7 @@ cdef extern from "minimal.hpp":
     cdef cppclass Minimal:
         Minimal()  
         Minimal(int)  
-        Minimal(std_vector[int])
+        Mwrappedinimal(std_vector[int])
         Minimal(Minimal &) 
         int compute(int number)
         int compute(int number1, int number2)

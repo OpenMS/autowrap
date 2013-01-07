@@ -1,8 +1,4 @@
 
-- f(std_vector[X] &) # in_as_out:0
-
-- memleak check
-
 - auto_ptr von boost ein bauen ! 
 
 - iteratoren !
