@@ -102,7 +102,8 @@ class TypeConverterBase(object):
         """
         raise NotImplementedError()
 
-    def call_method(self, cy_res_type, cy_call_str):
+    def call_method(self, res_type, cy_call_str):
+        cy_res_type = self.converters.cy_decl_str(res_type)
         return "cdef %s _r = %s" % (cy_res_type, cy_call_str)
 
     def matching_python_type(self, cpp_type):
@@ -117,6 +118,35 @@ class TypeConverterBase(object):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         raise NotImplementedError()
 
+
+class VoidConverter(TypeConverterBase):
+
+    def get_base_types(self):
+        """
+        for first level lookup in registry
+        """
+        return "void",
+
+    def matches(self, cpp_type):
+        """
+        for second level lookup in registry
+        """
+        return not cpp_type.is_ptr
+
+    def call_method(self, res_type, cy_call_str):
+        return cy_call_str
+
+    def matching_python_type(self, cpp_type):
+        raise NotImplementedError("void has no matching python type")
+
+    def type_check_expression(self, cpp_type, argument_var):
+        raise NotImplementedError("void has no matching python type")
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        raise NotImplementedError("void has no matching python type")
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return None
 
 class NumberConverter(TypeConverterBase):
 
@@ -219,9 +249,14 @@ class TypeToWrapConverter(TypeConverterBase):
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, cy_res_type, cy_call_str):
+    def call_method(self, res_type, cy_call_str):
+        t = res_type.base_type
 
-        return "cdef %s * _r = new %s(%s)" % (cy_res_type, cy_res_type, cy_call_str)
+        if res_type.is_ref:
+            pass
+
+        return "cdef _%s * _r = new _%s(%s)" % (t, t, cy_call_str)
+
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
@@ -300,6 +335,10 @@ class StdVectorConverter(TypeConverterBase):
                 cleanup_code = ""
             return code, "deref(%s)" % temp_var, cleanup_code
 
+    def call_method(self, res_type, cy_call_str):
+        # cy_res_type = self.converters.cy_decl_str(res_type)
+        return "_r = %s" % (cy_call_str)
+
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
@@ -367,6 +406,7 @@ def setup_converter_registry(names_of_classes_to_wrap):
     converter.register(CharPtrConverter())
     converter.register(StdStringConverter())
     converter.register(StdVectorConverter())
+    converter.register(VoidConverter())
     for name in names_of_classes_to_wrap:
         converter.register(TypeToWrapConverter(name))
 

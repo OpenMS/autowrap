@@ -24,7 +24,7 @@ cdef class IterTest:
     def __iter__(self):
         assert self.inst != NULL
 
-        cdef cpplist[int].iterator it = self.inst.begin()
+        it = self.inst.begin()
         while it != self.inst.end():
             yield <int> deref(it)
             preinc(it)

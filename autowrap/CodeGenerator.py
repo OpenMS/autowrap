@@ -1,10 +1,13 @@
-import pdb
 from contextlib import contextmanager
-import os.path, sys
+import os.path
+import sys
+import re
+from collections import defaultdict
 
 from ConversionProvider import setup_converter_registry
 from DeclResolver import ResolvedClass
 from PXDParser import EnumDecl
+from Types import CppType
 
 import Code
 
@@ -85,6 +88,12 @@ if 0:
         return ".".join(parts[::-1])
 
 
+def fixed_include_dirs():
+    import pkg_resources
+    boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
+    data = pkg_resources.resource_filename("autowrap", "data_files")
+    return [boost, data]
+
 class CodeGenerator(object):
 
     def __init__(self, decls, target_path=None):
@@ -102,10 +111,7 @@ class CodeGenerator(object):
 
 
     def get_include_dirs(self):
-        import pkg_resources
-        boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
-        data = pkg_resources.resource_filename("autowrap", "data_files")
-        return [boost, data, self.pxd_dir]
+        return fixed_include_dirs() + [self.pxd_dir]
 
     def setup_cimport_paths(self):
 
@@ -124,7 +130,8 @@ class CodeGenerator(object):
             pxd_file = os.path.basename(pxd_path)
             decl.pxd_import_path, __ = os.path.splitext(pxd_file)
 
-        assert len(pxd_dirs) == 1, "pxd files must be located in same directory"
+        assert len(pxd_dirs) == 1, \
+                                  "pxd files must be located in same directory"
 
         self.pxd_dir = pxd_dirs.pop()
 
@@ -146,6 +153,53 @@ class CodeGenerator(object):
         with open(self.target_path, "w") as fp:
             print >> fp, code
 
+    def filterout_iterators(self, methods):
+        def parse(anno):
+            m = re.match("(\S+)\((\S+)\)", anno)
+            assert m is not None, "invalid iter annotation"
+            name, type_name = m.groups()
+            return name, CppType(type_name)
+
+        begin_iterators = dict()
+        end_iterators = dict()
+        non_iter_methods = defaultdict(list)
+        for name, mi in methods.items():
+            for method in mi:
+                annotations = method.decl.annotations
+                if "wrap-iter-begin" in annotations:
+                    py_name, res_type = parse(annotations["wrap-iter-begin"])
+                    begin_iterators[py_name] = (method, res_type)
+                elif "wrap-iter-end" in annotations:
+                    py_name, res_type = parse(annotations["wrap-iter-end"])
+                    end_iterators[py_name] = (method, res_type)
+                else:
+                    non_iter_methods[name].append(method)
+
+        begin_names = set(begin_iterators.keys())
+        end_names = set(end_iterators.keys())
+        common_names = begin_names & end_names
+        if begin_names != end_names:
+            # TODO: diesen fall testen
+            raise Exception("iter declarations not balanced")
+
+        for py_name in common_names:
+            __, res_type_begin = begin_iterators[py_name]
+            __, res_type_end = end_iterators[py_name]
+            assert res_type_begin == res_type_end, \
+                                                "iter value types do not match"
+
+        begin_methods = dict( (n, m) for n, (m, __) in begin_iterators.items())
+        end_methods = dict( (n, m) for n, (m, __) in end_iterators.items())
+        res_types = dict( (n, t) for n, (__, t) in end_iterators.items())
+
+
+        iterators = dict()
+        for n in common_names:
+            iterators[n] = (begin_methods[n], end_methods[n], res_types[n])
+
+        return iterators, non_iter_methods
+
+
     def create_wrapper_for_enum(self, decl):
         self.code.add("cdef class $name:", name=decl.name)
         for (name, value) in decl.items:
@@ -159,17 +213,41 @@ class CodeGenerator(object):
                |cdef class $name:
                |    cdef $cy_type * inst
                |    def __dealloc__(self):
-               |        if self.inst:
-               |            del self.inst """, locals())
+               |         del self.inst
+               """, locals())
 
         cons_created = False
-        for (name, methods) in decl.methods.items():
+
+        iterators, non_iter_methods = self.filterout_iterators(decl.methods)
+
+        for (name, methods) in non_iter_methods.items():
             if name == decl.name:
                 self.create_wrapper_for_constructor(decl, methods)
                 cons_created = True
             else:
                 self.create_wrapper_for_method(decl, name, methods)
         assert cons_created, "no constructor for %s created" % name
+
+        self._create_iter_methods(iterators)
+
+    def _create_iter_methods(self, iterators):
+        for name, (begin_decl, end_decl, res_type) in iterators.items():
+            meth_code = Code.Code()
+            begin_name = begin_decl.name
+            end_name = end_decl.name
+
+            base_type = res_type.base_type
+            meth_code.add("""def $name(self):
+                            |    it = self.inst.$begin_name()
+                            |    cdef $base_type out
+                            |    while it != self.inst.$end_name():
+                            |        out = $base_type.__new__($base_type)
+                            |        out.inst = new _$base_type(deref(it))
+                            |        yield out
+                            |        inc(it)
+                            """, locals())
+
+            self.code.add(meth_code)
 
     def _create_overloaded_method_decl(self, code, cpp_name,
                                       dispatched_m_names, methods, use_return):
@@ -280,11 +358,14 @@ class CodeGenerator(object):
         cy_call_str = "self.inst.%s(%s)" % (cpp_name, call_args_str)
 
         out_converter = self.cr.get(res_t)
-        full_call_stmt = out_converter.call_method(cy_result_type, cy_call_str)
+        full_call_stmt = out_converter.call_method(res_t, cy_call_str)
 
-        meth_code.add("""
-            |    $full_call_stmt
-            """, locals())
+        if isinstance(full_call_stmt, basestring):
+            meth_code.add("""
+                |    $full_call_stmt
+                """, locals())
+        else:
+            meth_code.add(full_call_stmt)
 
         for cleanup in cleanups:
             if not cleanup:
@@ -308,10 +389,12 @@ class CodeGenerator(object):
 
         to_py_code = out_converter.output_conversion(res_t, "_r", "py_result")
 
-        if isinstance(to_py_code, basestring):
-            to_py_code = "    %s" % to_py_code
-        meth_code.add(to_py_code)
-        meth_code.add("    return %s" % (", ".join(out_vars)))
+        if to_py_code is not None:  # for non void return value
+
+            if isinstance(to_py_code, basestring):
+                to_py_code = "    %s" % to_py_code
+            meth_code.add(to_py_code)
+            meth_code.add("    return %s" % (", ".join(out_vars)))
 
         self.code.add(meth_code)
 
@@ -422,7 +505,6 @@ class CodeGenerator(object):
         self.code.add("""
            |from libcpp.string cimport string as std_string
            |from libcpp.vector cimport vector as std_vector
-           |from smart_ptr cimport shared_ptr
            |from cython.operator cimport dereference as deref,
            + preincrement as inc, address as address""")
 

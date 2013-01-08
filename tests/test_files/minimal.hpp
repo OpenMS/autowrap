@@ -10,6 +10,7 @@ class Minimal {
 
     private:
         int _i;
+        std::vector<Minimal> _mi;
 
     public:
 
@@ -38,7 +39,15 @@ class Minimal {
         std::vector<std::string> message() const;
         std::vector<Minimal> create_two() const;
 
+        void setVector(std::vector<Minimal> in);
+        std::vector<Minimal> getVector() const;
+
+        std::vector<Minimal>::iterator begin();
+        std::vector<Minimal>::iterator end();
+
         Minimal create() const;
+
+        Minimal & getRef();
 
         enum ABCorD enumTest(enum ABCorD) const;
 };

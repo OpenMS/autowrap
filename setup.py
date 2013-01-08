@@ -1,8 +1,9 @@
 # the following  import fixes/avoids some nostests issue
-# see http://bugs.python.org/issue15881
+# see 
 
 try:
-    import multiprocessing
+    #import multiprocessing
+    pass
 except ImportError:
     pass
 

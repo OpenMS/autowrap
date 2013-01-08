@@ -9,7 +9,9 @@ from Cython.Distutils import build_ext
 
 ext = Extension("%(name)s", sources = %(source_files)s, language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = [])
+        extra_compile_args = [],
+        extra_link_args = [],
+        )
 
 setup(cmdclass = {'build_ext' : build_ext},
       name="%(name)s",
@@ -28,6 +30,7 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     import os.path
     import shutil
     import tempfile
+    import subprocess
 
     tempdir = tempfile.mkdtemp()
     if debug:
@@ -62,13 +65,18 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print "-"*70
         print
 
-    assert os.system("python setup.py build_ext --force --inplace") == 0
+    assert subprocess.Popen("python setup.py build_ext --force --inplace",
+            shell=True).wait() == 0
+    print "BUILT"
+    #Popen("mycmd" + " myarg", shell=True).wait()
     result = __import__(name)
+    print "imported"
     if debug:
         print "imported", result
 
     sys.path = sys.path[1:]
     os.chdir(now)
+    print result
     return result
 
 

@@ -7,10 +7,10 @@ cdef extern from "minimal.hpp":
         A, B=2, C, D
 
     cdef cppclass Minimal:
-        Minimal() 
-        Minimal(int)  
+        Minimal()
+        Minimal(int)
         Minimal(std_vector[int])
-        Minimal(Minimal &) 
+        Minimal(Minimal &)
         std_string compute(std_string)
         int compute(int number1, int number2)
         int compute(int number)
@@ -18,9 +18,16 @@ cdef extern from "minimal.hpp":
         int compute_int()
         std_string compute_str(std_string what)
         int compute_charp(char * what)
-        int run(Minimal & ref)  
+        int run(Minimal & ref)
         int run2(Minimal *p)
-        Minimal create()  
+        Minimal create()
+        Minimal & getRef()   # wrap-ignore
+
+        void setVector(std_vector[Minimal])
+        std_vector[Minimal] getVector()
+
+        std_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
+        std_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
 
         int sumup(std_vector[int] what)
         int call(std_vector[Minimal] what) # ref-arg-out:0
@@ -29,5 +36,3 @@ cdef extern from "minimal.hpp":
         std_vector[Minimal] create_two()
         int operator==(Minimal &)
         ABCorD enumTest(ABCorD)
-
-           

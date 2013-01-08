@@ -1,22 +1,23 @@
 #include <iostream>
 #include "minimal.hpp"
 
-Minimal::Minimal() : _i(0)
+Minimal::Minimal() : _i(0), _mi()
 {
 }
 
-Minimal::Minimal(std::vector<int> const & ii)
+Minimal::Minimal(std::vector<int> const & ii): _mi()
 {
     _i = ii.size();
 }
 
-Minimal::Minimal(int i) : _i(i)
+Minimal::Minimal(int i) : _i(i), _mi()
 {
 }
 
 Minimal::Minimal(const Minimal &m)
 {
     _i = m._i;
+    _mi = m._mi;
 }
 
 
@@ -66,6 +67,10 @@ Minimal Minimal::create() const
     return result;
 }
 
+Minimal & Minimal::getRef()
+{
+    return *this;
+}
 
 int Minimal::sumup(std::vector<int> & what) const {
     int sum = 0;
@@ -118,3 +123,21 @@ enum ABCorD Minimal::enumTest(enum ABCorD i) const
     return i;
 }
 
+void Minimal::setVector(std::vector<Minimal> in)
+{
+    this->_mi = in;
+};
+
+std::vector<Minimal> Minimal::getVector() const
+{
+    return this->_mi;
+};
+
+std::vector<Minimal>::iterator Minimal::begin() 
+{
+    return this->_mi.begin();
+}
+std::vector<Minimal>::iterator Minimal::end()
+{
+    return this->_mi.end();
+}

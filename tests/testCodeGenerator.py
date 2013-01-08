@@ -9,8 +9,44 @@ import copy
 
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
-package, __ = os.path.split(os.path.dirname(os.path.abspath(__file__)))
 
+def testSharedPtr():
+
+
+    target = os.path.join(test_files, "shared_ptr_test.pyx")
+    include_dirs = autowrap.CodeGenerator.fixed_include_dirs() + [test_files]
+    m = autowrap.Utils.compile_and_import("m", [target, ],
+                                                include_dirs)
+    assert m.__name__ == "m"
+
+    h1 = m.Holder("uwe")
+    assert h1.count() == 1
+    assert h1.size() == 3
+    h2 = h1.getRef()
+    h3 = h1.getCopy()
+    assert h1.count() == 2
+    assert h1.size() == 3
+
+    assert h2.count() == 2
+    assert h2.size() == 3
+
+    assert h3.count() == 1
+    assert h3.size() == 3
+
+    h2.addX()
+    assert h1.count() == 2
+    assert h1.size() == 4
+
+    assert h2.count() == 2
+    assert h2.size() == 4
+
+    assert h3.count() == 1
+    assert h3.size() == 3
+
+    del h2
+
+    assert h1.count() == 1
+    assert h1.size() == 4
 
 def testMinimal():
     target = os.path.join(test_files, "minimal_wrapper.pyx")
@@ -21,7 +57,7 @@ def testMinimal():
     cpp_source = os.path.join(test_files, "minimal.cpp")
 
     wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source],
-                                                include_dirs) # + [package, boost_dir, data_files_dir])
+                                                include_dirs)
     os.remove(target)
     assert wrapped.__name__ == "wrapped"
 
@@ -95,6 +131,21 @@ def testMinimal():
     else:
         assert False, "expected exception"
 
+    m2.setVector([m2,m1,m3])
+    a, b, c = m2.getVector()
+    assert a == m2
+    assert b == m1
+    assert c == m3
+
+    a, b, c = list(m2) # call __iter__
+    assert a == m2
+    assert b == m1
+    assert c == m3
+
+
+
+if __name__ == "__main__":
+    testMinimal()
 
 
 
