@@ -23,6 +23,7 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
 
     if include_dirs is None:
         include_dirs = []
+
     debug = kws.get("debug")
     import os.path
     import shutil

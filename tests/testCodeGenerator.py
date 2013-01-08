@@ -1,4 +1,3 @@
-import pdb
 import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
@@ -8,19 +7,21 @@ import autowrap
 import os
 import copy
 
+
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
+package, __ = os.path.split(os.path.dirname(os.path.abspath(__file__)))
+
 
 def testMinimal():
     target = os.path.join(test_files, "minimal_wrapper.pyx")
 
-    autowrap.parse_and_generate_code("minimal.pxd",
-            root=test_files, target=target,  debug=True)
+    include_dirs = autowrap.parse_and_generate_code("minimal.pxd",
+                                root=test_files, target=target,  debug=True)
 
     cpp_source = os.path.join(test_files, "minimal.cpp")
 
-
     wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source],
-                                                [test_files])
+                                                include_dirs) # + [package, boost_dir, data_files_dir])
     os.remove(target)
     assert wrapped.__name__ == "wrapped"
 
