@@ -2,8 +2,7 @@
 # see 
 
 try:
-    #import multiprocessing
-    pass
+    import multiprocessing
 except ImportError:
     pass
 

@@ -211,9 +211,9 @@ class CodeGenerator(object):
         cy_type = self.cr.cy_decl_str(decl.type_)
         self.code.add("""
                |cdef class $name:
-               |    cdef $cy_type * inst
+               |    cdef shared_ptr[$cy_type] inst
                |    def __dealloc__(self):
-               |         del self.inst
+               |         self.inst.reset()
                """, locals())
 
         cons_created = False
@@ -238,11 +238,12 @@ class CodeGenerator(object):
 
             base_type = res_type.base_type
             meth_code.add("""def $name(self):
-                            |    it = self.inst.$begin_name()
+                            |    it = self.inst.get().$begin_name()
                             |    cdef $base_type out
-                            |    while it != self.inst.$end_name():
+                            |    while it != self.inst.get().$end_name():
                             |        out = $base_type.__new__($base_type)
-                            |        out.inst = new _$base_type(deref(it))
+                            |        out.inst =
+                            + shared_ptr[_$base_type](new _$base_type(deref(it)))
                             |        yield out
                             |        inc(it)
                             """, locals())
@@ -355,7 +356,7 @@ class CodeGenerator(object):
 
         call_args_str = ", ".join(call_args)
 
-        cy_call_str = "self.inst.%s(%s)" % (cpp_name, call_args_str)
+        cy_call_str = "self.inst.get().%s(%s)" % (cpp_name, call_args_str)
 
         out_converter = self.cr.get(res_t)
         full_call_stmt = out_converter.call_method(res_t, cy_call_str)
@@ -446,7 +447,7 @@ class CodeGenerator(object):
         # create instance of wrapped class
         call_args_str = ", ".join(call_args)
         name = self.cr.cy_decl_str(class_decl.type_)
-        cons_code.add("""    self.inst = new $name($call_args_str)""", locals())
+        cons_code.add("""    self.inst = shared_ptr[$name](new $name($call_args_str))""", locals())
 
         for cleanup in cleanups:
             if not cleanup:
@@ -469,7 +470,7 @@ class CodeGenerator(object):
            |       return False
            |   cdef $name other_casted = other
            |   cdef $name self_casted = self
-           |   return deref(self_casted.inst) == deref(other_casted.inst)
+           |   return deref(self_casted.inst.get()) == deref(other_casted.inst.get())
            """, locals())
         self.code.add(meth_code)
 
@@ -478,7 +479,7 @@ class CodeGenerator(object):
         name = class_decl.name
         meth_code.add("""def __copy__(self):
                         |   cdef $name rv = $name.__new__($name)
-                        |   rv.inst = new _$name(deref(self.inst))
+                        |   rv.inst = shared_ptr[_$name](new _$name(deref(self.inst.get())))
                         |   return rv
                         """, locals())
         self.code.add(meth_code)
@@ -505,6 +506,7 @@ class CodeGenerator(object):
         self.code.add("""
            |from libcpp.string cimport string as std_string
            |from libcpp.vector cimport vector as std_vector
+           |from smart_ptr cimport shared_ptr
            |from cython.operator cimport dereference as deref,
            + preincrement as inc, address as address""")
 

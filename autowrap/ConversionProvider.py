@@ -243,9 +243,9 @@ class TypeToWrapConverter(TypeConverterBase):
         code = ""
         bt = cpp_type.base_type
         if cpp_type.is_ptr:
-            call_as = "<_%s *>(%s.inst)" % (bt, argument_var)
+            call_as = "<_%s *>(%s.inst.get())" % (bt, argument_var)
         else:
-            call_as = "<_%s>deref(%s.inst)" % (bt, argument_var)
+            call_as = "<_%s>deref(%s.inst.get())" % (bt, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
@@ -265,7 +265,7 @@ class TypeToWrapConverter(TypeConverterBase):
         cy_clz = cpp_type.base_type
         return Code().add("""
                       |cdef $cy_clz $output_py_var = $cy_clz.__new__($cy_clz)
-                      |$output_py_var.inst = _r # new _$cy_clz($input_cpp_var)
+                      |$output_py_var.inst = shared_ptr[_$cy_clz]($input_cpp_var) # new _$cy_clz($input_cpp_var)
         """, locals())
 
 class StdVectorConverter(TypeConverterBase):
@@ -297,7 +297,7 @@ class StdVectorConverter(TypeConverterBase):
                 |cdef std_vector[_$tt] * $temp_var = new std_vector[_$tt]()
                 |cdef $tt item
                 |for item in $argument_var:
-                |   $temp_var.push_back(deref(item.inst))
+                |   $temp_var.push_back(deref(item.inst.get()))
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
@@ -305,7 +305,7 @@ class StdVectorConverter(TypeConverterBase):
                     |cdef std_vector[_$tt].iterator it = $temp_var.begin()
                     |while it != $temp_var.end():
                     |   item = $tt.__new__($tt)
-                    |   item.inst = new _$tt(deref(it))
+                    |   item.inst = shared_ptr[_$tt](new _$tt(deref(it)))
                     |   replace.append(item)
                     |   inc(it)
                     |$argument_var[:] = replace
@@ -354,7 +354,7 @@ class StdVectorConverter(TypeConverterBase):
                 |cdef $tt $item
                 |while $it != $input_cpp_var.end():
                 |   $item = $tt.__new__($tt)
-                |   $item.inst = new _$tt(deref($it))
+                |   $item.inst = shared_ptr[_$tt](new _$tt(deref($it)))
                 |   $output_py_var.append($item)
                 |   inc($it)
                 """, locals())

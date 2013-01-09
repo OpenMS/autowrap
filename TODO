@@ -15,6 +15,24 @@
 ideen:
 
   1) wenn methode M von X eine Ref auf Y zurückgibt:
+
+     idee: reference holder objekt als pointer sollte mit cython
+     (cython schiebt variable dekl im c++ code nach vorne, z.b
+      T & x;
+      was so nicht geht, da referenz ja initalisierte werdne muss
+      statt desen:
+      holder[T] * X;
+
+      und später:
+
+        X.setReference(wrapped.inst.method_which_returns_ref(..))
+
+     als holder im wrappeb object.
+     original objekt als shared_ptr mitspeichern damit die gespeicherte
+     refernz (hoffentlich) erhalten bleibt.
+
+     -----------
+
      - alle wrapped objekte haben shared_ptr
      - methode M returns Proxy mit shared_ptr to X und name von M
      - proxy wrapped methoden von R durch impliziten aufruf der methode M
@@ -25,5 +43,10 @@ ideen:
 
 
   2) sicheres wrappen von non const iteratoren:
+
      - iterobject speichert shared_ptr auf das orignal objekt
+
+     - iterobject speicher iterator selbst, damit kann man
+       methoden des referenzierten objekts deim iterobjekt anhängen
+       und so bleiben inplace modifiationen erhalten
 
