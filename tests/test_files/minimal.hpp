@@ -32,6 +32,8 @@ class Minimal {
         int run(const Minimal &) const;
         int run2(Minimal *) const;
 
+        unsigned int test_special_converter(unsigned int l) const;
+
         int sumup(std::vector<int> &) const;
         int call(std::vector<Minimal> & arg) const;
         int call2(std::vector<std::string> & arg) const;

@@ -51,6 +51,37 @@ def testSharedPtr():
 def testMinimal():
     target = os.path.join(test_files, "minimal_wrapper.pyx")
 
+    from autowrap.ConversionProvider import (TypeConverterBase,
+                                             special_converters)
+
+    class SpecialIntConverter(TypeConverterBase):
+
+        def get_base_types(self):
+            return "int",
+
+        def matches(self, cpp_type):
+            return  cpp_type.is_unsigned
+
+        def matching_python_type(self, cpp_type):
+            return "int"
+
+        def type_check_expression(self, cpp_type, argument_var):
+            return "isinstance(%s, int)" % (argument_var,)
+
+        def input_conversion(self, cpp_type, argument_var, arg_num):
+            code = ""
+            # here we inject special behavoir for testing if this converter
+            # was called !
+            call_as = "(1 + <int>%s)" % argument_var
+            cleanup = ""
+            return code, call_as, cleanup
+
+        def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+            return "%s = <int>%s" % (output_py_var, input_cpp_var)
+
+    special_converters.append(SpecialIntConverter())
+
+
     include_dirs = autowrap.parse_and_generate_code("minimal.pxd",
                                 root=test_files, target=target,  debug=True)
 
@@ -70,6 +101,10 @@ def testMinimal():
     assert minimal.compute_str("emzed") == "dezme"
 
     assert minimal.compute_int() == 42
+
+    # the c++ code of test_special_converter returns the same value, but
+    # our special converter above modifies the function, so:
+    assert minimal.test_special_converter(0) == 1
 
     try:
         minimal.compute(3.0)

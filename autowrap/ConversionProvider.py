@@ -1,4 +1,3 @@
-import pdb
 from collections import namedtuple
 import re
 from collections import defaultdict
@@ -31,8 +30,14 @@ class ConverterRegistry(object):
         self.enum_converter = None
 
     def register(self, converter):
+
         assert isinstance(converter, TypeConverterBase)
         converter._set_converter_registry(self)
+
+        # we take a defaultdict(list) for lookup as base_type is only some kind
+        # of "hash value" to speedup lookup. what finally counts is the matches
+        # method of the converters, see get() below:
+
         for base_type in converter.get_base_types():
             self.lookup[base_type].append(converter)
 
@@ -49,11 +54,12 @@ class ConverterRegistry(object):
 
         rv = [conv for conv in self.lookup[cpp_type.base_type]\
                    if conv.matches(cpp_type)]
-        if len(rv)>1:
-            raise Exception("multiple converters for %s" % cpp_type)
         if len(rv)<1:
             raise Exception("no converter for %s" % cpp_type)
-        return rv[0]
+
+        # allways take the latest converter which allows overwriting existing
+        # standard converters !
+        return rv[-1]
 
     def set_names_of_classes_to_wrap(self, names_of_classes_to_wrap):
         for converters in self.lookup.values():
@@ -149,9 +155,13 @@ class VoidConverter(TypeConverterBase):
         return None
 
 class NumberConverter(TypeConverterBase):
-
+    
+    """
+    wraps long and int. "long" base_type is converted to "int" by the
+    cython parser !
+    """
     def get_base_types(self):
-        return "int", "long"
+        return "int",
 
     def matches(self, cpp_type):
         return not cpp_type.is_ptr
@@ -401,19 +411,39 @@ class StdStringConverter(TypeConverterBase):
         return "%s = <std_string>%s" % (output_py_var, input_cpp_var)
 
 
+special_converters = []
+
+
 def setup_converter_registry(names_of_classes_to_wrap):
 
-    converter = ConverterRegistry()
-    converter.register(NumberConverter())
-    converter.register(CharPtrConverter())
-    converter.register(StdStringConverter())
-    converter.register(StdVectorConverter())
-    converter.register(VoidConverter())
+    converters = ConverterRegistry()
+    converters.register(NumberConverter())
+    converters.register(CharPtrConverter())
+    converters.register(StdStringConverter())
+    converters.register(StdVectorConverter())
+    converters.register(VoidConverter())
+
     for name in names_of_classes_to_wrap:
-        converter.register(TypeToWrapConverter(name))
+        converters.register(TypeToWrapConverter(name))
 
-    converter.register_enum_converter(EnumConverter())
-    converter.set_names_of_classes_to_wrap(names_of_classes_to_wrap)
+    # now special converters which may overlap / overwrite the already
+    # registered  converters of types to wrap:
+    for converter in special_converters:
+        converters.register(converter)
 
-    return converter
+    converters.register_enum_converter(EnumConverter())
+    converters.set_names_of_classes_to_wrap(names_of_classes_to_wrap)
+
+    return converters
+
+# now one can externally register own converters:
+# 
+# from autowrap.ConversionProvider import TypeConverterBase, special_converters
+#
+# class MyConverter(TypeConverterBase):
+#     ...
+#
+# special_converters.append(MyConverter())
+#
+
 

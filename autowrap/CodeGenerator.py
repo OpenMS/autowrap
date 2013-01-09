@@ -351,14 +351,11 @@ class CodeGenerator(object):
                                                                      method)
 
         # call wrapped method and convert result value back to python
-        res_t = method.result_type
-        cy_result_type = self.cr.cy_decl_str(res_t)
-
 
         call_args_str = ", ".join(call_args)
-
         cy_call_str = "self.inst.get().%s(%s)" % (cpp_name, call_args_str)
 
+        res_t = method.result_type
         out_converter = self.cr.get(res_t)
         full_call_stmt = out_converter.call_method(res_t, cy_call_str)
 

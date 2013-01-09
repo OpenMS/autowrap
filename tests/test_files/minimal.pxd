@@ -23,6 +23,8 @@ cdef extern from "minimal.hpp":
         int run2(Minimal *p)
         Minimal create()
         Minimal & getRef()   # wrap-ignore
+        
+        unsigned int test_special_converter(unsigned int)
 
         void setVector(std_vector[Minimal])
         std_vector[Minimal] getVector()
