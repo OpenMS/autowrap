@@ -29,7 +29,6 @@ setup(name="autowrap",
                'autowrap = autowrap.Main:main',
            ]
       },
-      install_requires=["cython", ],
       setup_requires=["nose", ],
 
      )

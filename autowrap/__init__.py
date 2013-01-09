@@ -12,6 +12,7 @@ def generate_code(decls, target, **kw):
     return includes
 
 def parse_and_generate_code(*files, **kw):
+    assert "target" in kw
     return generate_code(parse(*files, **kw), **kw)
 
 
