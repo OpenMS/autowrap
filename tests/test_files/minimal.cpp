@@ -25,6 +25,11 @@ int Minimal::compute(int i)  const{
     return i+_i + 1;
 }
 
+const char * Minimal::pass_charptr(const char * p)  const{
+    return p;
+}
+
+
 int Minimal::compute(int i, int j)  const{
     return i+j;
 }

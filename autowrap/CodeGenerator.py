@@ -139,6 +139,7 @@ class CodeGenerator(object):
     def create_pyx_file(self, debug=False):
         self.setup_cimport_paths()
         self.create_cimports()
+        self.create_includes()
         for decl in self.decls:
             if decl.items:
                 self.create_wrapper_for_enum(decl)
@@ -509,4 +510,11 @@ class CodeGenerator(object):
            |from smart_ptr cimport shared_ptr
            |from cython.operator cimport dereference as deref,
            + preincrement as inc, address as address""")
+
+    def create_includes(self):
+        self.code.add("""
+                |cdef extern from "autowrap_tools.hpp":
+                |    char * _cast_const_away(char *)
+                """)
+
 

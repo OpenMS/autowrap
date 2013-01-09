@@ -217,9 +217,11 @@ class CharPtrConverter(TypeConverterBase):
         cleanup = ""
         return code, call_as, cleanup
 
+    def call_method(self, res_type, cy_call_str):
+        return "cdef char  * _r = _cast_const_away(%s)" % cy_call_str
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        return "%s = <char *>%s" % (output_py_var, input_cpp_var)
+        return "%s = <char *>(%s)" % (output_py_var, input_cpp_var)
 
 
 class TypeToWrapConverter(TypeConverterBase):
