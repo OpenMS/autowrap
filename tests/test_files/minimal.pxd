@@ -14,6 +14,7 @@ cdef extern from "minimal.hpp":
         std_string compute(std_string)
         int compute(int number1, int number2)
         int compute(int number)
+        float compute(float number)
         int compute_int(int)
         int compute_int()
         char * pass_charptr(char *) # has const char * in orig, !

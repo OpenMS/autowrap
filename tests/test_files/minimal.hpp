@@ -20,6 +20,7 @@ class Minimal {
         Minimal(const Minimal &);
 
         int compute(int i) const;
+        float compute(float i) const;
         int compute(int, int) const;
         std::string compute(std::string s) const;
 

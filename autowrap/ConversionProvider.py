@@ -154,8 +154,8 @@ class VoidConverter(TypeConverterBase):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return None
 
-class NumberConverter(TypeConverterBase):
-    
+class IntegerConverter(TypeConverterBase):
+
     """
     wraps long and int. "long" base_type is converted to "int" by the
     cython parser !
@@ -180,6 +180,35 @@ class NumberConverter(TypeConverterBase):
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <int>%s" % (output_py_var, input_cpp_var)
+
+# TODO: common base class for float, int, str conversion
+
+class FloatConverter(TypeConverterBase):
+
+    """
+    wraps long and int. "long" base_type is converted to "int" by the
+    cython parser !
+    """
+    def get_base_types(self):
+        return "float", "double",
+
+    def matches(self, cpp_type):
+        return not cpp_type.is_ptr
+
+    def matching_python_type(self, cpp_type):
+        return "float"
+
+    def type_check_expression(self, cpp_type, argument_var):
+        return "isinstance(%s, float)" % (argument_var,)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        code = ""
+        call_as = "(<float>%s)" % argument_var
+        cleanup = ""
+        return code, call_as, cleanup
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return "%s = <float>%s" % (output_py_var, input_cpp_var)
 
 
 class EnumConverter(TypeConverterBase):
@@ -417,7 +446,8 @@ special_converters = []
 def setup_converter_registry(names_of_classes_to_wrap):
 
     converters = ConverterRegistry()
-    converters.register(NumberConverter())
+    converters.register(IntegerConverter())
+    converters.register(FloatConverter())
     converters.register(CharPtrConverter())
     converters.register(StdStringConverter())
     converters.register(StdVectorConverter())
@@ -437,7 +467,7 @@ def setup_converter_registry(names_of_classes_to_wrap):
     return converters
 
 # now one can externally register own converters:
-# 
+#
 # from autowrap.ConversionProvider import TypeConverterBase, special_converters
 #
 # class MyConverter(TypeConverterBase):

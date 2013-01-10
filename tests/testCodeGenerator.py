@@ -94,6 +94,8 @@ def testMinimal():
 
     minimal=wrapped.Minimal()
     assert minimal.compute(3) == 4
+    # overloaded for float:
+    assert minimal.compute(0.0) == 42.0
 
     assert minimal.compute(1, 2) == 3
     assert minimal.compute_int(4) == 5
@@ -107,7 +109,7 @@ def testMinimal():
     assert minimal.test_special_converter(0) == 1
 
     try:
-        minimal.compute(3.0)
+        minimal.compute(None)
     except:
         pass
     else:

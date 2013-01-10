@@ -284,6 +284,10 @@ class CodeGenerator(object):
                                                          cpp_name, methods[0],
                                                          )
         else:
+            # TODO: what happens if two distinct c++ types as float, double
+            # map to the same python type ??
+            # -> 1) detection
+            # -> 2) force method renaming
             dispatched_m_names = []
             for (i, method) in enumerate(methods):
                 dispatched_m_name = "_%s_%d" % (cpp_name, i)
