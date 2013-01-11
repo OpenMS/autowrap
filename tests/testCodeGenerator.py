@@ -50,7 +50,6 @@ def testSharedPtr():
     assert h1.size() == 4
 
 def testMinimal():
-    target = os.path.join(test_files, "minimal_wrapper.pyx")
 
     from autowrap.ConversionProvider import (TypeConverterBase,
                                              special_converters)
@@ -82,6 +81,7 @@ def testMinimal():
 
     special_converters.append(SpecialIntConverter())
 
+    target = os.path.join(test_files, "minimal_wrapper.pyx")
 
     include_dirs = autowrap.parse_and_generate_code("minimal.pxd",
                                 root=test_files, target=target,  debug=True)
@@ -181,6 +181,26 @@ def testMinimal():
     assert b == m1
     assert c == m3
 
+
+def testTemplated():
+
+    target = os.path.join(test_files, "templated_wrapper.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code("templated.pxd",
+                                root=test_files, target=target,  debug=True)
+
+    cpp_source = os.path.join(test_files, "templated.cpp")
+    cpp_sources = []
+
+    wrapped = autowrap.Utils.compile_and_import("wrapped",
+                                                [target] + cpp_sources,
+                                                include_dirs)
+    os.remove(target)
+    assert wrapped.__name__ == "wrapped"
+
+    t = wrapped.T(42)
+    templated = wrapped.Templated(t)
+    assert templated.get().get() == 42
 
 
 if __name__ == "__main__":
