@@ -161,7 +161,7 @@ class IntegerConverter(TypeConverterBase):
     cython parser !
     """
     def get_base_types(self):
-        return "int",
+        return "int", "bool"
 
     def matches(self, cpp_type):
         return not cpp_type.is_ptr
@@ -174,12 +174,12 @@ class IntegerConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
-        call_as = "(<int>%s)" % argument_var
+        call_as = "(<%s>%s)" % (cpp_type.base_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        return "%s = <int>%s" % (output_py_var, input_cpp_var)
+        return "%s = <%s>%s" % (output_py_var, cpp_type.base_type, input_cpp_var)
 
 # TODO: common base class for float, int, str conversion
 
@@ -312,7 +312,7 @@ class TypeToWrapConverter(TypeConverterBase):
 class StdVectorConverter(TypeConverterBase):
 
     def get_base_types(self):
-        return "std_vector",
+        return "libcpp_vector",
 
     def matches(self, cpp_type):
         return True
@@ -335,7 +335,7 @@ class StdVectorConverter(TypeConverterBase):
         if tt.base_type in self.names_of_classes_to_wrap:
             temp_var = "v%d" % arg_num
             code = Code().add("""
-                |cdef std_vector[_$tt] * $temp_var = new std_vector[_$tt]()
+                |cdef libcpp_vector[_$tt] * $temp_var = new libcpp_vector[_$tt]()
                 |cdef $tt item
                 |for item in $argument_var:
                 |   $temp_var.push_back(deref(item.inst.get()))
@@ -343,7 +343,7 @@ class StdVectorConverter(TypeConverterBase):
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
                     |cdef replace = []
-                    |cdef std_vector[_$tt].iterator it = $temp_var.begin()
+                    |cdef libcpp_vector[_$tt].iterator it = $temp_var.begin()
                     |while it != $temp_var.end():
                     |   item = $tt.__new__($tt)
                     |   item.inst = shared_ptr[_$tt](new _$tt(deref(it)))
@@ -358,7 +358,7 @@ class StdVectorConverter(TypeConverterBase):
         else:
             temp_var = "v%d" % arg_num
             code = Code().add("""
-                |cdef std_vector[$tt] * $temp_var = new std_vector[$tt]()
+                |cdef libcpp_vector[$tt] * $temp_var = new libcpp_vector[$tt]()
                 |cdef $tt item
                 |for item in $argument_var:
                 |   $temp_var.push_back(item)
@@ -366,7 +366,7 @@ class StdVectorConverter(TypeConverterBase):
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
                     |cdef replace = []
-                    |cdef std_vector[$tt].iterator it = $temp_var.begin()
+                    |cdef libcpp_vector[$tt].iterator it = $temp_var.begin()
                     |while it != $temp_var.end():
                     |   replace.append(deref(it))
                     |   inc(it)
@@ -391,7 +391,7 @@ class StdVectorConverter(TypeConverterBase):
             item = mangle("item_" + output_py_var)
             code = Code().add("""
                 |$output_py_var = []
-                |cdef std_vector[_$tt].iterator $it = $input_cpp_var.begin()
+                |cdef libcpp_vector[_$tt].iterator $it = $input_cpp_var.begin()
                 |cdef $tt $item
                 |while $it != $input_cpp_var.end():
                 |   $item = $tt.__new__($tt)
@@ -406,7 +406,7 @@ class StdVectorConverter(TypeConverterBase):
             item = mangle("item_" + output_py_var)
             code = Code().add("""
                 |$output_py_var = []
-                |cdef std_vector[$tt].iterator $it = $input_cpp_var.begin()
+                |cdef libcpp_vector[$tt].iterator $it = $input_cpp_var.begin()
                 |cdef $tt $item
                 |while $it != $input_cpp_var.end():
                 |   $output_py_var.append(deref($it))
@@ -419,7 +419,7 @@ class StdVectorConverter(TypeConverterBase):
 class StdStringConverter(TypeConverterBase):
 
     def get_base_types(self):
-        return "std_string",
+        return "libcpp_string",
 
     def matches(self, cpp_type):
         return not cpp_type.is_ptr
@@ -429,7 +429,7 @@ class StdStringConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
-        call_as = "(<std_string>%s)" % argument_var
+        call_as = "(<libcpp_string>%s)" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
@@ -437,7 +437,7 @@ class StdStringConverter(TypeConverterBase):
         return "isinstance(%s, str)" % argument_var
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        return "%s = <std_string>%s" % (output_py_var, input_cpp_var)
+        return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
 
 
 special_converters = []

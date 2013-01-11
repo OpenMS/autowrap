@@ -1,5 +1,5 @@
-from libcpp.string cimport string as std_string
-from libcpp.vector cimport vector as std_vector
+from libcpp.string cimport string as libcpp_string
+from libcpp.vector cimport vector as libcpp_vector
 
 cdef extern from "minimal.hpp":
 
@@ -9,16 +9,16 @@ cdef extern from "minimal.hpp":
     cdef cppclass Minimal:
         Minimal()
         Minimal(int)
-        Minimal(std_vector[int])
+        Minimal(libcpp_vector[int])
         Minimal(Minimal &)
-        std_string compute(std_string)
+        libcpp_string compute(libcpp_string)
         int compute(int number1, int number2)
         int compute(int number)
         float compute(float number)
         int compute_int(int)
         int compute_int()
         char * pass_charptr(char *) # has const char * in orig, !
-        std_string compute_str(std_string what)
+        libcpp_string compute_str(libcpp_string what)
         int compute_charp(char * what)
         int run(Minimal & ref)
         int run2(Minimal *p)
@@ -27,16 +27,16 @@ cdef extern from "minimal.hpp":
         
         unsigned int test_special_converter(unsigned int)
 
-        void setVector(std_vector[Minimal])
-        std_vector[Minimal] getVector()
+        void setVector(libcpp_vector[Minimal])
+        libcpp_vector[Minimal] getVector()
 
-        std_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
-        std_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
+        libcpp_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
+        libcpp_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
 
-        int sumup(std_vector[int] what)
-        int call(std_vector[Minimal] what) # ref-arg-out:0
-        int call2(std_vector[std_string] & what)
-        std_vector[std_string] message()
-        std_vector[Minimal] create_two()
+        int sumup(libcpp_vector[int] what)
+        int call(libcpp_vector[Minimal] what) # ref-arg-out:0
+        int call2(libcpp_vector[libcpp_string] & what)
+        libcpp_vector[libcpp_string] message()
+        libcpp_vector[Minimal] create_two()
         int operator==(Minimal &)
         ABCorD enumTest(ABCorD)

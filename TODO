@@ -3,6 +3,12 @@
 
 - pyOpenMS v0.1
 
+- cimports sammeln und im hautpfile einfügen
+
+- deklarierte klassen vs zu wrappende dklassen, erstere werden ja
+  auch mit underscore eingeleiget
+  -> cimport auch für nicht gewrappte klasen !
+
 - umbenenneno von methoden, z.b ist "set" in python kein methoden name
 
 - begin(), end() mit param, eg

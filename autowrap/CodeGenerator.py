@@ -212,6 +212,7 @@ class CodeGenerator(object):
         cy_type = self.cr.cy_decl_str(decl.type_)
         self.code.add("""
                |cdef class $name:
+               |    __doc__ = "doc"
                |    cdef shared_ptr[$cy_type] inst
                |    def __dealloc__(self):
                |         self.inst.reset()
@@ -329,7 +330,8 @@ class CodeGenerator(object):
 
         # create method decl statement
         py_signature = ", ".join(["self"] + py_signature_parts)
-        code.add("def $py_name($py_signature):", locals())
+        code.add("""def $py_name($py_signature):
+                   |    __doc__ = "doc" """, locals())
 
         # create code which convert python input args to c++ args of wrapped
         # method:
@@ -506,8 +508,9 @@ class CodeGenerator(object):
 
     def create_std_cimports(self):
         self.code.add("""
-           |from libcpp.string cimport string as std_string
-           |from libcpp.vector cimport vector as std_vector
+           |from  libcpp.string  cimport string as libcpp_string
+           |from  libcpp.vector  cimport vector as libcpp_vector
+           |from  libcpp.pair    cimport pair as libcpp_pair
            |from smart_ptr cimport shared_ptr
            |from cython.operator cimport dereference as deref,
            + preincrement as inc, address as address""")

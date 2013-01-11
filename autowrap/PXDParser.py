@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -342,14 +343,19 @@ def parse_pxd_file(path):
     root = pipeline[0](source)  # only parser
 
     def iter_bodies(tree):
+        try:
+            for n in tree.body.stats[0].stats:
+                # cimports at head of file
+                yield n
+        except:
+            pass
         if hasattr(tree.body, "stats"):
             for s in tree.body.stats:
                 if isinstance(s, CDefExternNode):
                     body = s.body
                     if hasattr(body, "stats"):
                         for node in body.stats:
-                            if True: #  isinstance(node, CppClassNode):
-                                yield node
+                            yield node
                     else:
                         yield body
         elif hasattr(tree.body, "body"):
@@ -360,21 +366,23 @@ def parse_pxd_file(path):
 
     lines = open(path).readlines()
 
+    def cimport(b, _, __):
+        print "cimport", b.module_name, "as", b.as_name
+
     handlers = { CEnumDefNode : EnumDecl.fromTree,
                  CppClassNode : CppClassDecl.fromTree,
                  CTypeDefNode : CTypeDefDecl.fromTree,
                  CVarDefNode  : CppMethodOrFunctionDecl.fromTree,
+                 CImportStatNode  : cimport,
                  }
 
     result = []
     for body in iter_bodies(root):
-        # print body
         handler = handlers.get(type(body))
         if handler is not None:
             result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):
-                # print " ", node
                 handler = handlers.get(type(node))
                 if handler is not None:
                     result.append(handler(node, lines, path))

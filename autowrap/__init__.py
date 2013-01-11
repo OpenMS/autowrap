@@ -1,5 +1,6 @@
 import DeclResolver
 import CodeGenerator
+import PXDParser
 
 def parse(*files, **kw):
     return DeclResolver.resolve_decls_from_files(*files, **kw)
