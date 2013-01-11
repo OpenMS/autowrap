@@ -1,3 +1,4 @@
+import pdb
 from collections import namedtuple
 import re
 from collections import defaultdict
@@ -338,9 +339,12 @@ class StdVectorConverter(TypeConverterBase):
         if tt.base_type in self.names_of_classes_to_wrap:
             temp_var = "v%d" % arg_num
             base_type = tt.base_type
+            inner = self.converters.cy_decl_str(tt)
+            cy_tt = tt.base_type
             item = "item%d" % arg_num
             code = Code().add("""
-                |cdef libcpp_vector[_$tt] * $temp_var = new libcpp_vector[_$tt]()
+                |cdef libcpp_vector[$inner] * $temp_var
+                + = new libcpp_vector[$inner]()
                 |cdef $base_type $item
                 |for $item in $argument_var:
                 |   $temp_var.push_back(deref($item.inst.get()))
@@ -348,10 +352,10 @@ class StdVectorConverter(TypeConverterBase):
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
                     |cdef replace = []
-                    |cdef libcpp_vector[_$tt].iterator it = $temp_var.begin()
+                    |cdef libcpp_vector[$inner].iterator it = $temp_var.begin()
                     |while it != $temp_var.end():
-                    |   $item = $tt.__new__($tt)
-                    |   $item.inst = shared_ptr[_$tt](new _$tt(deref(it)))
+                    |   $item = $cy_tt.__new__($cy_tt)
+                    |   $item.inst = shared_ptr[$inner](new $inner(deref(it)))
                     |   replace.append($item)
                     |   inc(it)
                     |$argument_var[:] = replace
@@ -393,15 +397,17 @@ class StdVectorConverter(TypeConverterBase):
 
         tt, = cpp_type.template_args
         if tt.base_type in self.names_of_classes_to_wrap:
+            cy_tt = tt.base_type
+            inner = self.converters.cy_decl_str(tt)
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
             code = Code().add("""
                 |$output_py_var = []
-                |cdef libcpp_vector[_$tt].iterator $it = $input_cpp_var.begin()
-                |cdef $tt $item
+                |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt $item
                 |while $it != $input_cpp_var.end():
-                |   $item = $tt.__new__($tt)
-                |   $item.inst = shared_ptr[_$tt](new _$tt(deref($it)))
+                |   $item = $cy_tt.__new__($cy_tt)
+                |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
                 |   $output_py_var.append($item)
                 |   inc($it)
                 """, locals())

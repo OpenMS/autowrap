@@ -12,4 +12,7 @@ cdef extern from "templated.hpp":
         # wrap-instances:
         #   Templated[T]
         Templated(X)
+        Templated(Templated[X]) # wrap-ignore
         X get()
+        int summup(libcpp_vector[Templated[X]] & v)
+        libcpp_vector[Templated[X]] reverse(libcpp_vector[Templated[X]] v)

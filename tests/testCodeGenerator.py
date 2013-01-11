@@ -194,15 +194,23 @@ def testTemplated():
     cpp_source = os.path.join(test_files, "templated.cpp")
     cpp_sources = []
 
-    wrapped = autowrap.Utils.compile_and_import("wrapped",
+    twrapped = autowrap.Utils.compile_and_import("twrapped",
                                                 [target] + cpp_sources,
                                                 include_dirs)
     os.remove(target)
-    assert wrapped.__name__ == "wrapped"
+    assert twrapped.__name__ == "twrapped"
 
-    t = wrapped.T(42)
-    templated = wrapped.Templated(t)
+    t = twrapped.T(42)
+    templated = twrapped.Templated(t)
     assert templated.get().get() == 42
+
+    in_ = [templated, templated]
+    assert templated.summup(in_) == 42+42
+    __, __, tn = in_
+    assert tn.get().get() == 11
+
+    tn, __, __ = templated.reverse(in_)
+    assert tn.get().get() == 11
 
 
 if __name__ == "__main__":
