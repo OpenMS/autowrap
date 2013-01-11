@@ -27,7 +27,6 @@ class ConverterRegistry(object):
 
     def __init__(self):
         self.lookup = defaultdict(list)
-        self.enum_converter = None
 
     def register(self, converter):
 
@@ -41,16 +40,8 @@ class ConverterRegistry(object):
         for base_type in converter.get_base_types():
             self.lookup[base_type].append(converter)
 
-    def register_enum_converter(self, converter):
-        assert isinstance(converter, TypeConverterBase)
-        converter._set_converter_registry(self)
-        self.enum_converter = converter
-
 
     def get(self, cpp_type):
-
-        if cpp_type.is_enum:
-            return self.enum_converter
 
         rv = [conv for conv in self.lookup[cpp_type.base_type]\
                    if conv.matches(cpp_type)]
@@ -66,6 +57,12 @@ class ConverterRegistry(object):
             for converter in converters:
                 converter.set_names_of_classes_to_wrap(names_of_classes_to_wrap)
         self.names_of_classes_to_wrap = names_of_classes_to_wrap
+
+    def set_names_of_enums_to_wrap(self, names_of_enums_to_wrap):
+        for converters in self.lookup.values():
+            for converter in converters:
+                converter.set_names_of_enums_to_wrap(names_of_enums_to_wrap)
+        self.names_of_enums_to_wrap = names_of_enums_to_wrap
 
     def cy_decl_str(self, type_):
         if type_.template_args is not None:
@@ -92,6 +89,9 @@ class TypeConverterBase(object):
 
     def set_names_of_classes_to_wrap(self, names_of_classes_to_wrap):
         self.names_of_classes_to_wrap = names_of_classes_to_wrap
+
+    def set_names_of_enums_to_wrap(self, names_of_enums_to_wrap):
+        self.names_of_enums_to_wrap = names_of_enums_to_wrap
 
     def _set_converter_registry(self, r):
         self.converters = r
@@ -213,11 +213,14 @@ class FloatConverter(TypeConverterBase):
 
 class EnumConverter(TypeConverterBase):
 
+    def __init__(self, name):
+        self.name = name
+
     def get_base_types(self):
-        return "int",
+        return self.name,
 
     def matches(self, cpp_type):
-        return cpp_type.is_enum and not cpp_type.is_ptr
+        return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type):
         return "int"
@@ -334,9 +337,10 @@ class StdVectorConverter(TypeConverterBase):
         tt, = cpp_type.template_args
         if tt.base_type in self.names_of_classes_to_wrap:
             temp_var = "v%d" % arg_num
+            base_type = tt.base_type
             code = Code().add("""
                 |cdef libcpp_vector[_$tt] * $temp_var = new libcpp_vector[_$tt]()
-                |cdef $tt item
+                |cdef $base_type item
                 |for item in $argument_var:
                 |   $temp_var.push_back(deref(item.inst.get()))
                 """, locals())
@@ -443,7 +447,7 @@ class StdStringConverter(TypeConverterBase):
 special_converters = []
 
 
-def setup_converter_registry(names_of_classes_to_wrap):
+def setup_converter_registry(names_of_classes_to_wrap, names_of_enums_to_wrap):
 
     converters = ConverterRegistry()
     converters.register(IntegerConverter())
@@ -456,13 +460,16 @@ def setup_converter_registry(names_of_classes_to_wrap):
     for name in names_of_classes_to_wrap:
         converters.register(TypeToWrapConverter(name))
 
+    for name in names_of_enums_to_wrap:
+        converters.register(EnumConverter(name))
+
     # now special converters which may overlap / overwrite the already
     # registered  converters of types to wrap:
     for converter in special_converters:
         converters.register(converter)
 
-    converters.register_enum_converter(EnumConverter())
     converters.set_names_of_classes_to_wrap(names_of_classes_to_wrap)
+    converters.set_names_of_enums_to_wrap(names_of_enums_to_wrap)
 
     return converters
 

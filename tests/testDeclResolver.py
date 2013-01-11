@@ -90,6 +90,7 @@ def test_singular():
                                 "list[float] &", None, None, None,
                                 "float"], second_arg_types
 
+
 def test_multi_inherit():
     resolved = _resolve("A.pxd", "B.pxd", "C.pxd", "D.pxd")
 
@@ -142,13 +143,13 @@ def test_cycle_detection_in_class_hierarchy2():
     _resolve("Cycle2.pxd", "Cycle0.pxd", "Cycle1.pxd")
 
 
-@expect_exception
-def test_template_class_without_wrapas():
-    DeclResolver.resolve_decls_from_string("""
-cdef extern from "A.h":
-    cdef cppclass A[U]:
-            A()
-                   """)
+#@expect_exception
+#def test_template_class_without_wrapas():
+    #DeclResolver.resolve_decls_from_string("""
+#cdef extern from "A.h":
+    #cdef cppclass A[U]:
+            #A()
+                   #""")
 
 def test_non_template_class_with_annotation():
     instance, = DeclResolver.resolve_decls_from_string("""

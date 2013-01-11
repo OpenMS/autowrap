@@ -63,6 +63,14 @@ def _split_targs(decl_str):
     return base, t_part, t_parts
 
 
+class ResolvedEnum(object):
+    def __init__(self, decl):
+        self.name = decl.name
+        self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+        self.cpp_decl = decl
+        self.items = decl.items
+        self.type_ = Types.CppType(self.name, enum_items=self.items)
+
 class ResolvedClass(object):
     """ contains all info for generating wrapping code of
         resolved class.
@@ -78,6 +86,7 @@ class ResolvedClass(object):
         self.cpp_decl = decl
         self.items = getattr(decl, "items", [])
         self.type_ = Types.CppType(name, template_args)
+        self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
 
     def get_flattened_methods(self):
         return [m for methods in self.methods.values() for m in methods]
@@ -153,6 +162,8 @@ def _transform(decls):
     type_mapping.update(enum_mapping)
 
     functions = [_resolve_function(f, type_mapping) for f in functions]
+
+    enums = [ResolvedEnum(e) for e in enums]
 
     classes = _resolve_all_inheritances(classes)
     classes = _resolve_templated_classes(classes, type_mapping)
@@ -389,8 +400,9 @@ def _parse_wrap_instances_comments(class_decls):
     """
     r = OrderedDict()
     for cdcl in class_decls:
-        if cdcl.annotations.get("wrap-ignore", False):
-            continue
+
+        #if cdcl.annotations.get("wrap-ignore"):
+            #continue
 
         inst_annotations = cdcl.annotations.get("wrap-instances")
 
@@ -403,6 +415,7 @@ def _parse_wrap_instances_comments(class_decls):
             for instance_decl_str in inst_annotations:
                 _register_alias(cdcl, instance_decl_str, r)
         else:
+            continue
             raise Exception("templated class %s in %s has no 'wrap-instances'"
                             "annotations. declare instances or supress "
                             "wrapping with 'wrap-ignore' annotation" % (

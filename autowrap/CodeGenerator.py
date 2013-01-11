@@ -5,8 +5,7 @@ import re
 from collections import defaultdict
 
 from ConversionProvider import setup_converter_registry
-from DeclResolver import ResolvedClass
-from PXDParser import EnumDecl
+from DeclResolver import ResolvedClass, ResolvedEnum
 from Types import CppType
 
 import Code
@@ -97,15 +96,16 @@ def fixed_include_dirs():
 class CodeGenerator(object):
 
     def __init__(self, decls, target_path=None):
-        self.decls = decls
+        self.decls = sorted(decls, key = lambda decl: decl.name)
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
 
         self.class_decls = [d for d in decls if isinstance(d, ResolvedClass)]
-        self.enum_decls = [d for d in decls if isinstance(d, EnumDecl)]
+        self.enum_decls = [d for d in decls if isinstance(d, ResolvedEnum)]
         class_names = [c.name for c in self.class_decls]
+        enum_names = [c.name for c in self.enum_decls]
 
-        self.cr = setup_converter_registry(class_names)
+        self.cr = setup_converter_registry(class_names, enum_names)
 
         self.code = Code.Code()
 
@@ -116,15 +116,8 @@ class CodeGenerator(object):
     def setup_cimport_paths(self):
 
         pxd_dirs = set()
-        for decl in self.class_decls:
+        for decl in self.class_decls + self.enum_decls:
             pxd_path = os.path.abspath(decl.cpp_decl.pxd_path)
-            pxd_dir = os.path.dirname(pxd_path)
-            pxd_dirs.add(pxd_dir)
-            pxd_file = os.path.basename(pxd_path)
-            decl.pxd_import_path, __ = os.path.splitext(pxd_file)
-
-        for decl in self.enum_decls:
-            pxd_path = decl.pxd_path
             pxd_dir = os.path.dirname(pxd_path)
             pxd_dirs.add(pxd_dir)
             pxd_file = os.path.basename(pxd_path)
@@ -141,10 +134,14 @@ class CodeGenerator(object):
         self.create_cimports()
         self.create_includes()
         for decl in self.decls:
-            if decl.items:
+            if decl.wrap_ignore:
+                continue
+            if isinstance(decl, ResolvedEnum):
                 self.create_wrapper_for_enum(decl)
-            else:
+            elif isinstance(decl, ResolvedClass):
                 self.create_wrapper_for_class(decl)
+            else:
+                raise Exception("can not handle %s" % decl)
 
         code = self.code.render()
         code += "\n\n"
@@ -212,7 +209,6 @@ class CodeGenerator(object):
         cy_type = self.cr.cy_decl_str(decl.type_)
         self.code.add("""
                |cdef class $name:
-               |    __doc__ = "doc"
                |    cdef shared_ptr[$cy_type] inst
                |    def __dealloc__(self):
                |         self.inst.reset()
@@ -330,8 +326,7 @@ class CodeGenerator(object):
 
         # create method decl statement
         py_signature = ", ".join(["self"] + py_signature_parts)
-        code.add("""def $py_name($py_signature):
-                   |    __doc__ = "doc" """, locals())
+        code.add("""def $py_name($py_signature):""", locals())
 
         # create code which convert python input args to c++ args of wrapped
         # method:
@@ -491,8 +486,8 @@ class CodeGenerator(object):
     def create_cimports(self):
         self.create_std_cimports()
         for decl in self.decls:
-            if isinstance(decl, EnumDecl):
-                cpp_decl = decl
+            if isinstance(decl, ResolvedEnum):
+                cpp_decl = decl.cpp_decl
             elif isinstance(decl, ResolvedClass):
                 cpp_decl = decl.cpp_decl
             else:

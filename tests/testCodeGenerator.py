@@ -95,11 +95,6 @@ def testMinimal():
 
     minimal=wrapped.Minimal()
 
-    for k in dir(minimal):
-        print k, repr(getattr(getattr(minimal, k), "__doc__"))
-        print
-
-
     assert minimal.compute(3) == 4
     # overloaded for float:
     assert minimal.compute(0.0) == 42.0
