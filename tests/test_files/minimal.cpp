@@ -145,6 +145,11 @@ std::vector<Minimal> Minimal::getVector() const
     return this->_mi;
 };
 
+int Minimal::test2Lists(const std::vector<Minimal> & v1, const std::vector<int> & v2 ) const
+{
+    return v1.size() + v2.size();
+};
+
 std::vector<Minimal>::iterator Minimal::begin() 
 {
     return this->_mi.begin();

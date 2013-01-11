@@ -24,11 +24,13 @@ cdef extern from "minimal.hpp":
         int run2(Minimal *p)
         Minimal create()
         Minimal & getRef()   # wrap-ignore
-        
+
         unsigned int test_special_converter(unsigned int)
 
         void setVector(libcpp_vector[Minimal])
         libcpp_vector[Minimal] getVector()
+
+        int test2Lists(libcpp_vector[Minimal], libcpp_vector[int])
 
         libcpp_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
         libcpp_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)

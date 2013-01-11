@@ -47,6 +47,8 @@ class Minimal {
         void setVector(std::vector<Minimal> in);
         std::vector<Minimal> getVector() const;
 
+        int test2Lists(const std::vector<Minimal> &, const std::vector<int> &) const;
+
         std::vector<Minimal>::iterator begin();
         std::vector<Minimal>::iterator end();
 

@@ -181,6 +181,8 @@ def testMinimal():
     assert b == m1
     assert c == m3
 
+    assert m2.test2Lists([m1], [1,2]) == 3
+
 
 def testTemplated():
 

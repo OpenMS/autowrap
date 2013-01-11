@@ -338,20 +338,21 @@ class StdVectorConverter(TypeConverterBase):
         if tt.base_type in self.names_of_classes_to_wrap:
             temp_var = "v%d" % arg_num
             base_type = tt.base_type
+            item = "item%d" % arg_num
             code = Code().add("""
                 |cdef libcpp_vector[_$tt] * $temp_var = new libcpp_vector[_$tt]()
-                |cdef $base_type item
-                |for item in $argument_var:
-                |   $temp_var.push_back(deref(item.inst.get()))
+                |cdef $base_type $item
+                |for $item in $argument_var:
+                |   $temp_var.push_back(deref($item.inst.get()))
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
                     |cdef replace = []
                     |cdef libcpp_vector[_$tt].iterator it = $temp_var.begin()
                     |while it != $temp_var.end():
-                    |   item = $tt.__new__($tt)
-                    |   item.inst = shared_ptr[_$tt](new _$tt(deref(it)))
-                    |   replace.append(item)
+                    |   $item = $tt.__new__($tt)
+                    |   $item.inst = shared_ptr[_$tt](new _$tt(deref(it)))
+                    |   replace.append($item)
                     |   inc(it)
                     |$argument_var[:] = replace
                     """, locals())
@@ -361,11 +362,12 @@ class StdVectorConverter(TypeConverterBase):
 
         else:
             temp_var = "v%d" % arg_num
+            item = "item%d" % arg_num
             code = Code().add("""
                 |cdef libcpp_vector[$tt] * $temp_var = new libcpp_vector[$tt]()
-                |cdef $tt item
-                |for item in $argument_var:
-                |   $temp_var.push_back(item)
+                |cdef $tt $item
+                |for $item in $argument_var:
+                |   $temp_var.push_back($item)
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
