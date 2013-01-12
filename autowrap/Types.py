@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 import copy
 import re
@@ -82,11 +81,6 @@ class CppType(object):
                 (other.base_type, other.is_ptr, other.is_ref, other.is_unsigned,
                      other.is_enum, other.template_args)
 
-    def without_ref(self):
-        rv = copy.copy(self)
-        rv.is_ref = False
-        return rv
-
     def copy(self):
         return copy.copy(self)
 
@@ -116,28 +110,45 @@ class CppType(object):
 
         if (is_ptr is not None and is_ptr != self.is_ptr):
             return False
-
         if (is_ref is not None and is_ref != self.is_ref):
             return False
-
         if (is_unsigned is not None and is_unsigned != self.is_unsigned):
             return False
-
         if (is_enum is not None and is_enum != self.is_enum):
             return False
-
         if (template_args is not None and template_args != self.template_args):
             return False
-
         return True
 
     @staticmethod
-    def parseDeclaration(as_string):
-        base_type, t_str = re.match("(\w+)(\[.*\])?", as_string).groups()
+    def from_string(str_):
+        base_type, t_str = re.match("([a-zA-Z ][a-zA-Z0-9 \*&]*)(\[.*\])?", str_).groups()
         if t_str is None:
-            return CppType(base_type)
+            orig_for_error_message = base_type
+            base_type = base_type.strip()
+            unsigned, ptr, ref = False, False, False
+            if base_type.startswith("unsigned"):
+                unsigned = True
+                base_type = base_type[8:].lstrip()
+            if base_type.endswith("*"):
+                ptr = True
+                base_type= base_type[:-1].rstrip()
+            elif base_type.endswith("&"):
+                ref = True
+                base_type= base_type[:-1].rstrip()
+            if base_type.endswith("*") or base_type.endswith("&"):
+                raise Exception("can not parse %s" % orig_for_error_message)
+            if base_type.startswith("unsigned"):
+                raise Exception("can not parse %s" % orig_for_error_message)
+            if " " in base_type:
+                raise Exception("can not parse %s" % orig_for_error_message)
+            return CppType(base_type,
+                           is_unsigned=unsigned,
+                           is_ptr=ptr,
+                           is_ref=ref)
+
         t_args = t_str[1:-1].split(",")
-        t_types = [ CppType.parseDeclaration(t.strip()) for t in t_args ]
+        t_types = [ CppType.from_string(t.strip()) for t in t_args ]
         return CppType(base_type, t_types)
 
 
