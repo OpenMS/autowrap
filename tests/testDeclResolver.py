@@ -94,7 +94,37 @@ def test_singular():
 
 
 def test_multi_inherit():
-    resolved = _resolve("A.pxd", "B.pxd", "C.pxd", "D.pxd")
+    resolved = DeclResolver.resolve_decls_from_string("""
+cdef extern from "A.h":
+    cdef cppclass A[U]:
+        # wrap-ignore
+        void Afun(U, int)
+
+cdef extern from "B.h":
+    cdef cppclass B[X]:
+        # wrap-ignore
+        # wrap-inherits:
+        #     A[X]
+        X BIdentity(X)
+
+cdef extern from "C.h":
+    cdef cppclass C[Y]:
+        # wrap-ignore
+        # wrap-inherits:
+        #     A[Y]
+        void Cint(int, Y)
+
+cdef extern from "D.h":
+    cdef cppclass D[F, G]:
+        # wrap-inherits:
+        #  B[G]
+        #  C[F]
+        #
+        # wrap-instances:
+        #  D1[float,int]
+        #  D2[int,float]
+        pass
+    """)
 
     data = dict()
     for class_instance in resolved:
@@ -113,7 +143,6 @@ def test_multi_inherit():
                             ['void', u'Afun', 'int', 'int'],
                             ['float', u'BIdentity', 'float'],
                             ['void', u'Cint', 'int', 'int']]}
-
 
 def expect_exception(fun):
     def wrapper(*a, **kw):
