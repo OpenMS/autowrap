@@ -33,6 +33,12 @@ class Templated {
             return _x;
         }
 
+        int getTwice(const Templated<X> &ti) const
+        {
+            return ti.get().get();
+        }
+
+
         int summup(std::vector<Templated<X> > &v)
         {
             int sum = 0;

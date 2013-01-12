@@ -287,10 +287,11 @@ class TypeToWrapConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
         bt = cpp_type.base_type
+        cy_type = self.converters.cy_decl_str(cpp_type)
         if cpp_type.is_ptr:
-            call_as = "<_%s *>(%s.inst.get())" % (bt, argument_var)
+            call_as = "<%s>(%s.inst.get())" % (cy_type, argument_var)
         else:
-            call_as = "<_%s>deref(%s.inst.get())" % (bt, argument_var)
+            call_as = "<%s>deref(%s.inst.get())" % (cy_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 

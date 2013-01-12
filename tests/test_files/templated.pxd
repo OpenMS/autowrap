@@ -16,3 +16,4 @@ cdef extern from "templated.hpp":
         X get()
         int summup(libcpp_vector[Templated[X]] & v)
         libcpp_vector[Templated[X]] reverse(libcpp_vector[Templated[X]] v)
+        int getTwice(Templated[X])

@@ -437,6 +437,6 @@ def _register_alias(cdcl, instance_decl_str, r):
     # maps 'T[int]' -> ( CppType('Tint'), cdcl, { 'X': 'int' })
     #r[cdcl.name + t_part] = (Types.CppType(alias), cdcl, t_param_mapping)
     t_type = Types.CppType(cdcl.name, t_instances)
-    r[t_type] = (Types.CppType(alias), cdcl, t_param_mapping)
+    r[t_type] = (Types.CppType(alias, t_instances), cdcl, t_param_mapping)
 
 
