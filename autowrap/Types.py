@@ -87,8 +87,18 @@ class CppType(object):
             raise Exception("recursion check failed")
         seen_base_types.add(self.base_type)
         for t in self.template_args or []:
-            # copy is needed, else checking B[X,X] would fail
+            # copy is needed, else B[X,X] would fail
             t._check_for_recursion(seen_base_types.copy())
+
+    def all_occuring_base_types(self):
+        base_types = set()
+        self._collect_base_types(base_types)
+        return base_types
+
+    def _collect_base_types(self, base_types):
+        base_types.add(self.base_type)
+        for t in self.template_args or []:
+            t._collect_base_types(base_types)
 
     @staticmethod
     def from_string(str_):

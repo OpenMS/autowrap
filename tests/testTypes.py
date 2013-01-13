@@ -101,6 +101,23 @@ def _check(type_, trans, expected_str_repres):
         lines.append("got: %s, expected: %s" % (out, expected_str_repres))
         assert False, "\n".join(lines)
 
+
+def test_base_type_collecting():
+
+    def check(t, tobe):
+        collected = "".join(sorted(t.all_occuring_base_types()))
+        if collected != tobe:
+            msg = "input '%s', collected '%s'" % (t, collected)
+            assert False, msg
+
+    check(CppType.from_string("A"), "A")
+    check(CppType.from_string("A[B]"), "AB")
+    check(CppType.from_string("A[B,C]"), "ABC")
+    check(CppType.from_string("A[B[C]]"), "ABC")
+    check(CppType.from_string("A[B[C],D]"), "ABCD")
+    check(CppType.from_string("A[B[C[D]]]"), "ABCD")
+
+
 def test_transform():
 
     A = CppType("A")
