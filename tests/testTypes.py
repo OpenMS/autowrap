@@ -1,4 +1,6 @@
+import pdb
 from autowrap.Types import CppType
+from utils import expect_exception
 
 def testTypeParse():
     _testType("unsigned int")
@@ -51,11 +53,79 @@ def testTypeParse():
 def _testType(t):
     assert t == str(CppType.from_string(t)) ==  t, str(CppType.from_string(t))
 
+@expect_exception
 def _testErr(s):
+    CppType.from_string(s)
+
+def test_check_for_recursion():
+    _test_check_for_recursion_1()
+    _test_check_for_recursion_2()
+
+def _test_check_for_recursion_1():
+    CppType.from_string("A").check_for_recursion()
+    CppType.from_string("A[B]").check_for_recursion()
+    CppType.from_string("A[B,B]").check_for_recursion()
+    CppType.from_string("A[B,C]").check_for_recursion()
+    CppType.from_string("A[B[C],C]").check_for_recursion()
+    CppType.from_string("A[B[C],D]").check_for_recursion()
+    CppType.from_string("A[B[C],D[E]]").check_for_recursion()
+    CppType.from_string("A[B[C],D[E],D]").check_for_recursion()
+    CppType.from_string("A[B[C],D[E],B]").check_for_recursion()
+
+def _test_check_for_recursion_2():
+    _assert_exeception_when_testing("A[A]")
+    _assert_exeception_when_testing("A[B[A]]")
+    _assert_exeception_when_testing("A[B[A],C]")
+    _assert_exeception_when_testing("A[C,B[A]]")
+    _assert_exeception_when_testing("A[B[C[A]]]")
+    _assert_exeception_when_testing("A[B[D,C[A]]]")
+    _assert_exeception_when_testing("A[B[D,C[A],D]]")
+
+def _assert_exeception_when_testing(str_):
     try:
-        CppType.from_string(s)
-    except:
-        pass
+        CppType.from_string(str_).check_for_recursion()
+    except Exception, e:
+        estr = str(e)
+        if not estr.startswith("recursion check for "):
+            if not estr.endswith(" failed"):
+                raise e
     else:
-        assert False, "'%s' did not throw exception" % s
+        assert False, "invalid type '%s' passed test" % str_
+
+def _check(type_, trans, expected_str_repres):
+    out = str(type_.transformed(trans))
+    if out != expected_str_repres:
+        lines = ["transform %s with:" % type_]
+        for k, v in trans.items():
+            lines.append("  %s -> %s" % (k, v))
+        lines.append("got: %s, expected: %s" % (out, expected_str_repres))
+        assert False, "\n".join(lines)
+
+def test_transform():
+
+    A = CppType("A")
+    B = CppType("B")
+    X = CppType("X")
+
+    trans = dict(A=X)
+    trans2 = dict(A=CppType("C", [X]))
+    _check(A, trans2, "C[X]")
+    _check(A, trans, "X")
+
+    B_A = CppType("B", [A])
+    _check(B_A, trans, "B[X]")
+    _check(B_A, trans2, "B[C[X]]")
+
+    B_A_A = CppType("B", [A, A])
+    _check(B_A_A, trans, "B[X,X]")
+    _check(B_A_A, trans2, "B[C[X],C[X]]")
+
+    B_A_C = CppType("B", [A, CppType("D")])
+    assert str(B_A_C) == "B[A,D]"
+    _check(B_A_C, trans, "B[X,D]")
+    _check(B_A_C, trans2, "B[C[X],D]")
+
+
+
+
 

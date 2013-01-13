@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 import copy
 import re
@@ -17,72 +18,48 @@ class CppType(object):
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
 
-    def transform(self, typemap):
+    def transformed(self, typemap):
+        copied = self.copy()
+        copied._transform(typemap, 0)
+        copied.check_for_recursion()
+        return copied
 
-        if self.template_args is not None:
-            template_args = [t.transform(typemap) for t in self.template_args]
-            template_args = tuple(template_args)
-        else:
-            template_args = None
+    def _transform(self, typemap, indent):
 
-        mapped_type = typemap.get(self.base_type)
+        aliased_t = typemap.get(self.base_type)
+        if aliased_t is not None:
+            if self.template_args is not None:
+                if aliased_t.template_args is not None:
+                    raise Exception("invalid transform")
+                self._overwrite_base_type(aliased_t)
+            else:
+                self._overwrite_base_type(aliased_t)
+                self.template_args = aliased_t.template_args
+        for t in self.template_args or []:
+            t._transform(typemap, indent+1)
 
-        if mapped_type is None:
-            mapped_type = self.copy()
-            mapped_type.template_args = template_args
-            return mapped_type
-
-        mapped_type = mapped_type.copy()
-        mapped_type.template_args = template_args
-
-        if mapped_type.is_ptr and self.is_ptr:
-            raise Exception("double ptr not supported")
-
-        mapped_type.is_ptr = mapped_type.is_ptr or self.is_ptr
-
-        if self.is_ref and mapped_type.is_ptr:
-            raise  Exception("mix of ptr and ref not supported")
-
-        mapped_type.is_ref = mapped_type.is_ref or self.is_ref
-
-        if self.is_unsigned:
-            raise  Exception("self.is_unsigned not supported")
-
-        if self.is_enum:
-            raise  Exception("self.is_enum not supported")
-
-        return mapped_type
+    def _overwrite_base_type(self, other):
+        if self.is_ptr and other.is_ptr:
+            raise Exception("double ptr alias not supported")
+        if self.is_ref and other.is_ref:
+            raise Exception("double ref alias not supported")
+        if self.is_ptr and other.is_ref:
+            raise Exception("mixing ptr and ref not supported")
+        self.base_type = other.base_type
+        self.is_ptr = self.is_ptr and other.is_ptr
+        self.is_ref = self.is_ref and other.is_ref
+        self.is_unsigned = self.is_unsigned and other.is_unsigned
 
     def __hash__(self):
-
-        if self.template_args is None:
-            thash = hash(None)
-        else:
-            # this one is recursive:
-            if not isinstance(self.template_args, tuple):
-                raise Exception("implementation invalid")
-            thash = hash(self.template_args)
-        return hash((self.base_type, self.is_ptr, self.is_ref,
-                    self.is_unsigned, self.is_enum, thash))
+        """ for using Types as dict keys """
+        return hash(str(self))
 
     def __eq__(self, other):
         """ for using Types as dict keys """
-        # this one is recursive if we have template_args !
-        if not isinstance(other, self.__class__):
-            return False
-        if self.template_args is not None\
-           and not isinstance(self.template_args, tuple):
-                raise Exception("implementation invalid")
-        if other.template_args is not None\
-           and not isinstance(other.template_args, tuple):
-                raise Exception("implementation invalid")
-        return  (self.base_type, self.is_ptr, self.is_ref, self.is_unsigned,
-                     self.is_enum, self.template_args ) == \
-                (other.base_type, other.is_ptr, other.is_ref, other.is_unsigned,
-                     other.is_enum, other.template_args)
+        return str(self) == str(other)
 
     def copy(self):
-        return copy.copy(self)
+        return copy.deepcopy(self)
 
     def __str__(self):
         unsigned = "unsigned" if self.is_unsigned else ""
@@ -97,28 +74,21 @@ class CppType(object):
         result = "%s %s%s %s" % (unsigned, self.base_type, inner, ptr or ref)
         return result.strip() # if unsigned is "" or ptr is "" and ref is ""
 
-    def _matches(self, base_type, **kw):
+    def check_for_recursion(self):
+        try:
+            self._check_for_recursion(set())
+        except Exception, e:
+            if str(e) != "recursion check failed":
+                raise e
+            raise Exception("re check for '%s' failed" % self)
 
-        is_ptr = kw.get("is_ptr")
-        is_ref = kw.get("is_ref")
-        is_unsigned = kw.get("is_runsigned")
-        template_args = kw.get("template_args")
-        is_enum = kw.get("is_enum")
-
-        if self.base_type != base_type:
-            return False
-
-        if (is_ptr is not None and is_ptr != self.is_ptr):
-            return False
-        if (is_ref is not None and is_ref != self.is_ref):
-            return False
-        if (is_unsigned is not None and is_unsigned != self.is_unsigned):
-            return False
-        if (is_enum is not None and is_enum != self.is_enum):
-            return False
-        if (template_args is not None and template_args != self.template_args):
-            return False
-        return True
+    def _check_for_recursion(self, seen_base_types):
+        if self.base_type in seen_base_types:
+            raise Exception("recursion check failed")
+        seen_base_types.add(self.base_type)
+        for t in self.template_args or []:
+            # copy is needed, else checking B[X,X] would fail
+            t._check_for_recursion(seen_base_types.copy())
 
     @staticmethod
     def from_string(str_):
