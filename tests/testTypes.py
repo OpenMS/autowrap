@@ -1,4 +1,3 @@
-import pdb
 from autowrap.Types import CppType
 from utils import expect_exception
 
@@ -143,6 +142,34 @@ def test_transform():
     _check(B_A_C, trans2, "B[C[X],D]")
 
 
+def test_inv_transform():
+    A = CppType.from_string("A")
+    AX = CppType.from_string("A[X]")
+    AXX = CppType.from_string("A[X,X]")
+    ABX = CppType.from_string("A[B[X]]")
+    ABXX = CppType.from_string("A[B[X],X]")
 
+    T=CppType.from_string("T")
+
+    def check(t, map_, expected):
+        is_ = str(t.inv_transformed(map_))
+        assert is_ == expected, is_
+
+    map1 = dict(Z=A)
+    check(A, map1, "Z")
+    check(AX, map1, "A[X]")
+
+    map2 = dict(Z=CppType.from_string("B[X]"))
+    check(ABX, map2, "A[Z]")
+    check(ABXX, map2, "A[Z,X]")
+
+    ABXp = ABX.copy()
+    ABXp.is_ptr = True
+    check(ABXp, map2, "A[Z] *")
+
+    ABXXp = ABXX.copy()
+    ABXXp.template_args[0].is_ptr = True
+
+    check(ABXXp, map2, "A[Z *,X]")
 
 

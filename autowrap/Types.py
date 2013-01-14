@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 import copy
 import re
@@ -38,6 +37,33 @@ class CppType(object):
         for t in self.template_args or []:
             t._transform(typemap, indent+1)
 
+    def _rm_flags(self):
+        rv = self.copy()
+        rv.is_ptr = rv.is_ref = False
+        return rv
+
+    def inv_transformed(self, typemap):
+        inv_typemap = dict((v, CppType(k)) for (k,v) in typemap.items())
+        for k, v in inv_typemap.items():
+            print " ", str(k), "->", v
+        return self._inv_transform(inv_typemap)
+
+    def _inv_transform(self, inv_typemap):
+        pure = self._rm_flags()
+        print "in", str(self), str(pure)
+        if pure in inv_typemap:
+            res = inv_typemap.get(pure)
+            if self.is_ptr:
+                res.is_ptr = True
+            elif self.is_ref:
+                res.is_ref = True
+            return res
+        if self.template_args is not None:
+            trans_targs = [t._inv_transform(inv_typemap) for t in
+                    self.template_args]
+            self.template_args = trans_targs
+        return self
+
     def _overwrite_base_type(self, other):
         if self.is_ptr and other.is_ptr:
             raise Exception("double ptr alias not supported")
@@ -57,6 +83,10 @@ class CppType(object):
     def __eq__(self, other):
         """ for using Types as dict keys """
         return str(self) == str(other)
+
+    def __ne__(self, other):
+        """ for using Types as dict keys """
+        return str(self) != str(other)
 
     def copy(self):
         return copy.deepcopy(self)
