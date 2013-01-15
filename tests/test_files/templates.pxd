@@ -4,8 +4,8 @@ cdef extern from "Templates.hpp":
 
     cdef cppclass Templates[A,B]:
         # wrap-instances:
-        #    TemplatesInt[int,int]
-        #    TemplatesMixed[int,float]
+        #    TemplatesInt := Templates[int,int]
+        #    TemplatesMixed := Templates[int,float]
         Templates(A a, B b)
         A getA()
         B getB()

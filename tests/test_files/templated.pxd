@@ -10,7 +10,7 @@ cdef extern from "templated.hpp":
 
     cdef cppclass Templated[X]:
         # wrap-instances:
-        #   Templated[T]
+        #   Templated := Templated[T]
         Templated(X)
         Templated(Templated[X]) # wrap-ignore
         X get()

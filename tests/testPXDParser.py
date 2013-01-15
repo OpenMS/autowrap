@@ -3,6 +3,8 @@ import os
 
 from  autowrap.Types import CppType as CppType
 
+from utils import expect_exception
+
 def _parse(pxdFileName):
     test_file = os.path.join(os.path.dirname(__file__),
                              'test_files',
@@ -204,17 +206,13 @@ cdef extern from "A.h":
     assert str(decl1.type_) == "unsigned int"
     assert str(decl2.type_) == "int *", str(decl2.type_)
 
+@expect_exception
 def test_doubleptr():
 
-    try:
-        autowrap.PXDParser.parse_str("""
+    autowrap.PXDParser.parse_str("""
 cdef extern from "A.h":
     void fun(int **)
         """)
-    except:
-        pass
-    else:
-        assert False, "expected exception"
 
 def test_aliased_ptr():
     d1, d2 = autowrap.PXDParser.parse_str("""

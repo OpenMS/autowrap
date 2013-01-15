@@ -44,13 +44,10 @@ class CppType(object):
 
     def inv_transformed(self, typemap):
         inv_typemap = dict((v, CppType(k)) for (k,v) in typemap.items())
-        for k, v in inv_typemap.items():
-            print " ", str(k), "->", v
         return self._inv_transform(inv_typemap)
 
     def _inv_transform(self, inv_typemap):
         pure = self._rm_flags()
-        print "in", str(self), str(pure)
         if pure in inv_typemap:
             res = inv_typemap.get(pure)
             if self.is_ptr:
@@ -72,9 +69,9 @@ class CppType(object):
         if self.is_ptr and other.is_ref:
             raise Exception("mixing ptr and ref not supported")
         self.base_type = other.base_type
-        self.is_ptr = self.is_ptr and other.is_ptr
-        self.is_ref = self.is_ref and other.is_ref
-        self.is_unsigned = self.is_unsigned and other.is_unsigned
+        self.is_ptr = self.is_ptr or other.is_ptr
+        self.is_ref = self.is_ref or other.is_ref
+        self.is_unsigned = self.is_unsigned or other.is_unsigned
 
     def __hash__(self):
         """ for using Types as dict keys """
@@ -132,7 +129,17 @@ class CppType(object):
 
     @staticmethod
     def from_string(str_):
-        base_type, t_str = re.match("([a-zA-Z ][a-zA-Z0-9 \*&]*)(\[.*\])?", str_).groups()
+        try:
+            return CppType._from_string(str_)
+        except:
+            raise Exception("could not parse '%s'" % str_)
+
+    @staticmethod
+    def _from_string(str_):
+        matched = re.match("([a-zA-Z ][a-zA-Z0-9 \*&]*)(\[.*\])?", str_)
+        if matched is None:
+            raise Exception("can not parse '%s'" % str_)
+        base_type, t_str = matched.groups()
         if t_str is None:
             orig_for_error_message = base_type
             base_type = base_type.strip()

@@ -4,7 +4,7 @@ cdef extern from "int_container_class.hpp":
 
     cdef cppclass X[T]:
         # wrap-instances:
-        #    Xint[int]
+        #    Xint := X[int]
         X()             # wrap-ignore
         X(T i)
         X(X[T] &)       # wrap-ignore
@@ -13,7 +13,7 @@ cdef extern from "int_container_class.hpp":
 
     cdef cppclass XContainer[T]:
         # wrap-instances:
-        #    XContainerInt[int]
+        #    XContainerInt := XContainer[int]
         XContainer()
         void push_back(X[T] val)
         int  size()
