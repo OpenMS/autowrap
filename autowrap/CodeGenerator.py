@@ -146,7 +146,8 @@ class CodeGenerator(object):
             elif isinstance(inst, ResolvedClass):
                 self.create_wrapper_for_class(inst)
             else:
-                raise Exception("can not handle %s" % inst)
+                raise Exception("can not create wrapper for %s "\
+                                "(%s)" % (inst.__class__, inst))
 
         code = self.code.render()
         code += "\n\n"

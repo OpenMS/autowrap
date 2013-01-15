@@ -252,7 +252,6 @@ class CppMethodOrFunctionDecl(BaseDecl):
                                                       pxd_path)
         self.result_type = result_type
         self.arguments = arguments
-        self.wrap = not self.annotations.get("ignore", False)
 
     def transformed(self, typemap):
         result_type = self.result_type.transformed(typemap)

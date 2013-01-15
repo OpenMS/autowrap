@@ -175,7 +175,7 @@ def testMinimal():
     assert m2.test2Lists([m1], [1,2]) == 3
 
 
-def testTemplated():
+def test_templated():
 
     target = os.path.join(test_files, "templated_wrapper.pyx")
 
@@ -202,6 +202,11 @@ def testTemplated():
 
     tn, __, __ = templated.reverse(in_)
     assert tn.get().get() == 11
+
+    y = twrapped.Y()
+    _, __, tn = y.passs(in_)
+    assert tn.get().get() == 11
+
 
 
 # todo: wrapped tempaltes as input of free functions and mehtods of other

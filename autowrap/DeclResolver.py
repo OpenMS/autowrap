@@ -86,6 +86,7 @@ class ResolvedMethodOrFunction(object):
         self.result_type = result_type
         self.arguments = arguments
         self.decl = decl
+        self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
 
     def __str__(self):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]

@@ -56,3 +56,15 @@ class Templated {
         };
 
 };
+
+
+class Y  {
+
+    public:
+        std::vector<Templated<T> > passs(std::vector<Templated<T> > &x)
+        {
+            return x;
+        };
+};
+
+
