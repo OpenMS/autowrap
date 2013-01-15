@@ -95,17 +95,22 @@ def fixed_include_dirs():
 
 class CodeGenerator(object):
 
-    def __init__(self, decls, target_path=None):
-        self.decls = sorted(decls, key = lambda decl: decl.name)
+    def __init__(self, instances, instance_mapping, target_path=None):
+        self.instances = sorted(instances, key = lambda decl: decl.name)
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
 
-        self.class_decls = [d for d in decls if isinstance(d, ResolvedClass)]
-        self.enum_decls = [d for d in decls if isinstance(d, ResolvedEnum)]
-        class_names = [c.name for c in self.class_decls]
-        enum_names = [c.name for c in self.enum_decls]
+        self.classes = [d for d in instances if isinstance(d, ResolvedClass)]
+        self.enums = [d for d in instances if isinstance(d, ResolvedEnum)]
 
-        self.cr = setup_converter_registry(class_names, enum_names)
+        self.instance_mapping = instance_mapping
+
+        class_names = [c.name for c in self.classes]
+        enum_names = [c.name for c in self.enums]
+
+        self.cr = setup_converter_registry(self.classes,
+                                           self.enums,
+                                           instance_mapping)
 
         self.code = Code.Code()
 
@@ -116,12 +121,12 @@ class CodeGenerator(object):
     def setup_cimport_paths(self):
 
         pxd_dirs = set()
-        for decl in self.class_decls + self.enum_decls:
-            pxd_path = os.path.abspath(decl.cpp_decl.pxd_path)
+        for inst in self.classes + self.enums:
+            pxd_path = os.path.abspath(inst.cpp_decl.pxd_path)
             pxd_dir = os.path.dirname(pxd_path)
             pxd_dirs.add(pxd_dir)
             pxd_file = os.path.basename(pxd_path)
-            decl.pxd_import_path, __ = os.path.splitext(pxd_file)
+            inst.pxd_import_path, __ = os.path.splitext(pxd_file)
 
         assert len(pxd_dirs) == 1, \
                                   "pxd files must be located in same directory"
@@ -133,15 +138,15 @@ class CodeGenerator(object):
         self.setup_cimport_paths()
         self.create_cimports()
         self.create_includes()
-        for decl in self.decls:
-            if decl.wrap_ignore:
+        for inst in self.instances:
+            if inst.wrap_ignore:
                 continue
-            if isinstance(decl, ResolvedEnum):
-                self.create_wrapper_for_enum(decl)
-            elif isinstance(decl, ResolvedClass):
-                self.create_wrapper_for_class(decl)
+            if isinstance(inst, ResolvedEnum):
+                self.create_wrapper_for_enum(inst)
+            elif isinstance(inst, ResolvedClass):
+                self.create_wrapper_for_class(inst)
             else:
-                raise Exception("can not handle %s" % decl)
+                raise Exception("can not handle %s" % inst)
 
         code = self.code.render()
         code += "\n\n"
@@ -206,7 +211,7 @@ class CodeGenerator(object):
 
     def create_wrapper_for_class(self, decl):
         name = decl.name
-        cy_type = self.cr.cy_decl_str(decl.type_)
+        cy_type = self.cr.cy_decl_str(name)
         self.code.add("""
                |cdef class $name:
                |    cdef shared_ptr[$cy_type] inst
@@ -445,8 +450,9 @@ class CodeGenerator(object):
 
         # create instance of wrapped class
         call_args_str = ", ".join(call_args)
-        name = self.cr.cy_decl_str(class_decl.type_)
-        cons_code.add("""    self.inst = shared_ptr[$name](new $name($call_args_str))""", locals())
+        name = class_decl.name
+        cy_type = self.cr.cy_decl_str(name)
+        cons_code.add("""    self.inst = shared_ptr[$cy_type](new $cy_type($call_args_str))""", locals())
 
         for cleanup in cleanups:
             if not cleanup:
@@ -485,7 +491,7 @@ class CodeGenerator(object):
 
     def create_cimports(self):
         self.create_std_cimports()
-        for decl in self.decls:
+        for decl in self.instances:
             if isinstance(decl, ResolvedEnum):
                 cpp_decl = decl.cpp_decl
             elif isinstance(decl, ResolvedClass):

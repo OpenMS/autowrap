@@ -8,6 +8,7 @@ import autowrap
 import os
 import copy
 
+from utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
@@ -110,13 +111,7 @@ def testMinimal():
     # our special converter above modifies the function, so:
     assert minimal.test_special_converter(0) == 1
 
-    try:
-        minimal.compute(None)
-    except:
-        pass
-    else:
-        assert False, "expected exception"
-
+    expect_exception(lambda: minimal.compute(None))()
 
     assert minimal.compute_charp("uwe") == 3
 
@@ -163,12 +158,8 @@ def testMinimal():
     assert m2.compute(42) == 43
 
     assert m2.enumTest(wrapped.ABCorD.A) == wrapped.ABCorD.A
-    try:
-        m2.enumTest(1)
-    except:
-        pass
-    else:
-        assert False, "expected exception"
+
+    expect_exception(lambda: m2.enumTest(1))()
 
     m2.setVector([m2,m1,m3])
     a, b, c = m2.getVector()
@@ -211,6 +202,12 @@ def testTemplated():
 
     tn, __, __ = templated.reverse(in_)
     assert tn.get().get() == 11
+
+
+# todo: wrapped tempaltes as input of free functions and mehtods of other
+# # classes
+#
+#
 
 
 if __name__ == "__main__":

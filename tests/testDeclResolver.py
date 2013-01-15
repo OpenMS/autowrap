@@ -1,25 +1,127 @@
-import pdb
 import autowrap.DeclResolver as DeclResolver
 import autowrap.PXDParser
 import os
-import autowrap.Utils
+from autowrap.Types import CppType
+from autowrap.Utils import print_map
+
+from utils import expect_exception
 
 #TODO: use parse_str so that the pxd code is next to the testing code
 
+
+def test_inst_decl_parser():
+    name, type_ = DeclResolver.parse_inst_decl("A := B[]")
+    assert name =="A" and str(type_) == "B[]", (str(name), str(type_))
+    name, type_ = DeclResolver.parse_inst_decl("A := B[X]")
+    assert name =="A" and str(type_) == "B[X]", (str(name), str(type_))
+    name, type_ = DeclResolver.parse_inst_decl("A := B[X*]")
+    assert name =="A" and str(type_) == "B[X]", (str(name), str(type_))
+    name, type_ = DeclResolver.parse_inst_decl("A := B[X,Y]")
+    assert name =="A" and str(type_) == "B[X,Y]", (str(name), str(type_))
+    name, type_ = DeclResolver.parse_inst_decl("A := B[X,Y*]")
+    assert name =="A" and str(type_) == "B[X,Y*]", (str(name), str(type_))
+
+
+
+def test_function_resolution():
+    funs, instance_mapping = DeclResolver.resolve_decls_from_string("""
+cdef extern from "A.h":
+    ctypedef int X
+    ctypedef float Y
+    Y fun(X i)
+    C[Y] gun(C[X] i)
+    """)
+
+    funs = sorted(funs, key = lambda fun: fun.name)
+    fun, gun = funs
+
+    assert str(fun.result_type) == "float"
+    (n, t), = fun.arguments
+    assert str(t) == "int"
+    assert n == "i"
+
+    assert str(gun.result_type) == "C[float]"
+    (n, t), = gun.arguments
+    assert str(t) == "C[int]"
+    assert n == "i"
+
+def test_method_resolution():
+    (class_,), instance_mapping = DeclResolver.resolve_decls_from_string("""
+cdef extern from "A.h":
+    ctypedef int X
+    ctypedef float Y
+    cdef cppclass T:
+        Y fun(X i)
+        C[Y] gun(C[X] i)
+    """)
+
+    assert class_.name == "T"
+    fun, = class_.methods.get("fun")
+    assert str(fun.result_type) == "float"
+    (n, t), = fun.arguments
+    assert str(t) == "int"
+    assert n == "i"
+
+    gun, = class_.methods.get("gun")
+    assert str(gun.result_type) == "C[float]"
+    (n, t), = gun.arguments
+    assert str(t) == "C[int]"
+    assert n == "i"
+
+
+def test_method_resolution_in_template_class():
+    (class_,), instance_mapping = DeclResolver.resolve_decls_from_string("""
+cdef extern from "A.h":
+    ctypedef int X
+    cdef cppclass T[Y]:
+        # wrap-instances:
+        #   T := T[float]
+        Y fun(X i)
+        C[Y] gun(C[X] i)
+        T[Y] hun(T[Y] j)
+
+    """)
+
+    assert class_.name == "T"
+    fun, = class_.methods.get("fun")
+    assert str(fun.result_type) == "float"
+    (n, t), = fun.arguments
+    assert str(t) == "int"
+    assert n == "i"
+
+    gun, = class_.methods.get("gun")
+    assert str(gun.result_type) == "C[float]"
+    (n, t), = gun.arguments
+    assert str(t) == "C[int]"
+    assert n == "i"
+
+    gun, = class_.methods.get("hun")
+    assert str(gun.result_type) == "T"
+    (n, t), = gun.arguments
+    assert str(t) == "T"
+    assert n == "j"
+
+def test_inst_decl_parser():
+    name, type_ = DeclResolver.parse_inst_decl("T:=int")
+    assert name == "T"
+    assert str(type_) == "int"
 
 def _resolve(*names):
     root = os.path.join(os.path.dirname(__file__), "test_files")
     return autowrap.DeclResolver.resolve_decls_from_files(*names, root=root)
 
+
 def test_simple():
-    cdcl, enumdcl = _resolve("minimal.pxd")
+    (cdcl, enumdcl), map_ = _resolve("minimal.pxd")
     assert cdcl.name == "Minimal"
     assert enumdcl.name == "ABCorD"
+    assert sorted(map_.keys()) == ["ABCorD", "Minimal"]
+    assert sorted(map(str, map_.values())) == ["ABCorD", "Minimal"]
 
 def test_singular():
-    return  
     # TODO: this test is broken !
-    resolved = _resolve("templates.pxd")
+    return 
+    resolved, map_ = _resolve("templates.pxd")
 
     assert len(resolved) == 2, len(resolved)
     res0, res1 = resolved
@@ -94,7 +196,7 @@ def test_singular():
 
 
 def test_multi_inherit():
-    resolved = DeclResolver.resolve_decls_from_string("""
+    resolved, map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     cdef cppclass A[U]:
         # wrap-ignore
@@ -121,8 +223,8 @@ cdef extern from "D.h":
         #  C[F]
         #
         # wrap-instances:
-        #  D1[float,int]
-        #  D2[int,float]
+        #  D1 := D[float,int]
+        #  D2 := D[int,float]
         pass
     """)
 
@@ -144,22 +246,6 @@ cdef extern from "D.h":
                             ['float', u'BIdentity', 'float'],
                             ['void', u'Cint', 'int', 'int']]}
 
-def expect_exception(fun):
-    def wrapper(*a, **kw):
-        try:
-            fun(*a, **kw)
-        except Exception:
-            if 0:
-                print "info: expected excption. here some more info:"
-                import traceback
-                traceback.print_exc()
-                print
-            pass
-        else:
-            assert False, "%s did not raise exception" % fun
-    # set name, so that test frame work recognizes wrapped function
-    wrapper.__name__ = fun.__name__+"__exception_wrapped"
-    return wrapper
 
 @expect_exception
 def test_cycle_detection_in_class_hierarchy0():
@@ -174,17 +260,10 @@ def test_cycle_detection_in_class_hierarchy2():
     _resolve("Cycle2.pxd", "Cycle0.pxd", "Cycle1.pxd")
 
 
-#@expect_exception
-#def test_template_class_without_wrapas():
-    #DeclResolver.resolve_decls_from_string("""
-#cdef extern from "A.h":
-    #cdef cppclass A[U]:
-            #A()
-                   #""")
 
 def test_nested_templates():
 
-    i1, i2, = DeclResolver.resolve_decls_from_string("""
+    (i1, i2,), map_ = DeclResolver.resolve_decls_from_string("""
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector
 
@@ -197,7 +276,7 @@ cdef extern from "templated.hpp":
 
     cdef cppclass Templated[X]:
         # wrap-instances:
-        #   Templated[T]
+        #   Templated := Templated[T]
         Templated(X)
         libcpp_vector[Templated[X]] reverse(libcpp_vector[Templated[X]] v)
         int getTwice(Templated[X])
@@ -205,45 +284,46 @@ cdef extern from "templated.hpp":
 
     rev, = i2.methods.get("reverse")
     (n, t), = rev.arguments
-    assert str(t) == "libcpp_vector[Templated[T]]"
+    assert str(t) == "libcpp_vector[Templated]"
 
     rev, = i2.methods.get("getTwice")
     (n, t), = rev.arguments
-    assert str(t) == "Templated[T]", str(t)
+    assert str(t) == "Templated", str(t)
+
 
 def test_non_template_class_with_annotation():
-    instance, = DeclResolver.resolve_decls_from_string("""
+    (instance,), map_I= DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     cdef cppclass A:
         # wrap-instances:
-        #  B
+        #  B := A
         pass
     """)
     assert instance.name == "B"
 
 def test_template_class_with_ptrtype():
-    instance, = DeclResolver.resolve_decls_from_string("""
+    (instance,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     cdef cppclass A[X]:
         # wrap-instances:
-        #  Ax[int*]
+        #  Ax := A[int*]
         pass
     """)
     assert instance.name == "Ax"
-    assert map(str, instance.type_.template_args) == ["int *"], map(str,
-            instance.type_.template_args)
+    real_type, = map_.values()
+    assert str(real_type) == "A[int *]", str(real_type)
 
 def test_multi_decls_in_one_file():
-    inst1, inst2, enum = DeclResolver.resolve_decls_from_string("""
+    (inst1, inst2, enum), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     cdef cppclass A[B,C] :
         # wrap-instances:
-        #   A[int,int]
+        #   A := A[int,int]
         pass
 
     cdef cppclass C[E] :
         # wrap-instances:
-        #   C[float]
+        #   C := C[float]
         pass
 
     cdef enum F:
@@ -266,18 +346,23 @@ cdef extern from "A.h":
     assert H == ("H", 4)
     assert I == ("I", 5)
 
+    assert str(map_["A"]) == "A[int,int]"
+    assert str(map_["C"]) == "C[float]"
+    assert str(map_["F"]) == "F"
+
 
 def test_int_container():
-    resolved  = _resolve("int_container_class.pxd")
-    assert resolved[0].name == "Xint"
-    assert [ m.name for m in resolved[0].get_flattened_methods()] == ["Xint", "operator+",
-    "getValue"]
-    assert resolved[1].name == "XContainerInt"
-    assert [ m.name for m in resolved[1].get_flattened_methods()] == ["XContainerInt",
+    # tests nested types, and constructor name mapping
+    (r0, r1), map_  = _resolve("int_container_class.pxd")
+    assert r0.name == "Xint"
+    assert [ m.name for m in r0.get_flattened_methods()] == ["Xint",
+            "operator+", "getValue"]
+    assert r1.name == "XContainerInt"
+    assert [ m.name for m in r1.get_flattened_methods()] == ["XContainerInt",
             "push_back", "size",]
 
 def test_typedef_with_fun():
-    resolved, = DeclResolver.resolve_decls_from_string("""
+    (resolved,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     X fun(X x)
@@ -289,12 +374,12 @@ cdef extern from "X.h":
     assert str(t) == "int"
 
 def test_typedef_chaining():
-    function, = DeclResolver.resolve_decls_from_string("""
+    (function,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     ctypedef X* iptr
     ctypedef X Y
-    ctypedef Y *iptr2
+    ctypedef Y* iptr2
     iptr2 fun(iptr, Y *)
             """)
 
@@ -305,7 +390,7 @@ cdef extern from "X.h":
 
 @expect_exception
 def double_ptr_typedef():
-    function, = DeclResolver.resolve_decls_from_string("""
+    (function,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     ctypedef X * iptr
@@ -316,7 +401,7 @@ cdef extern from "X.h":
 
 @expect_exception
 def ctypedef_with_cycle():
-    function, = DeclResolver.resolve_decls_from_string("""
+    (function,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     ctypedef X Y
@@ -326,25 +411,24 @@ cdef extern from "X.h":
             """)
 
 def test_typedef_with_class():
-    resolved, fun = DeclResolver.resolve_decls_from_string("""
+    (resolved, fun), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     ctypedef int * Y
     cdef cppclass A[B]:
         # wrap-instances:
-        #   A[X]
+        #   A := A[X]
         X foo(B)
         B bar(X *)
     Y fun(X *)
             """)
     assert resolved.name == "A"
-    tinstance, = resolved.type_.template_args
-    assert str(tinstance) == "int"
+    assert str(map_.get("A")) == "A[int]"
 
     foo, = resolved.methods.get("foo")
     assert str(foo.result_type) == "int", foo.result_type
     (__, arg_t), = foo.arguments
-    assert str(arg_t) == "int"
+    assert str(arg_t) == "int", str(arg_t)
 
     bar, = resolved.methods.get("bar")
     assert str(bar.result_type) == "int"
@@ -358,19 +442,18 @@ cdef extern from "X.h":
 
 
 def test_typedef_with_class2():
-    resolved, = DeclResolver.resolve_decls_from_string("""
+    (resolved,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     cdef cppclass A[B]:
         # wrap-instances:
-        #   A[X *]
+        #   A := A[X *]
         X foo(B)
         B bar(X)
             """)
     assert resolved.name == "A"
-    tinstance, = resolved.type_.template_args
 
-    assert str(tinstance) == "int *", str(tinstance)
+    assert str(map_.get("A"))=="A[int *]"
 
     foo, = resolved.methods.get("foo")
     assert str(foo.result_type) == "int", foo.result_type
@@ -383,20 +466,18 @@ cdef extern from "X.h":
     assert str(arg_t) == "int", str(arg_t)
 
 def test_typedef_with_class3():
-    resolved, = DeclResolver.resolve_decls_from_string("""
+    (resolved,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     cdef cppclass A[B,C]:
         # wrap-instances:
-        #   A[X *,int]
+        #   A := A[X *,int]
         X foo(C*)
         C* bar(B)
             """)
     assert resolved.name == "A"
-    tinst1, tinst2 = resolved.type_.template_args
 
-    assert str(tinst1) == "int *", str(tinst1)
-    assert str(tinst2) == "int", str(tinst2)
+    assert str(map_.get("A"))=="A[int *,int]"
 
     foo, = resolved.methods.get("foo")
     assert str(foo.result_type) == "int", foo.result_type
@@ -409,6 +490,7 @@ cdef extern from "X.h":
     assert str(arg_t) == "int *", str(arg_t)
 
 def test_without_header():
+    # broken
     return
     resolved, = DeclResolver.resolve_decls_from_string("""
 cdef extern:
@@ -417,15 +499,16 @@ cdef extern:
             """)
 
 def test_method_return_values():
-    resolved, = DeclResolver.resolve_decls_from_string("""
+    (resolved,), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "minimal.hpp":
     cdef cppclass Minimal:
         Minimal create()
 """)
     meth, = resolved.methods.get("create")
+    assert str(meth.result_type) == "Minimal"
 
 def test_class_and_enum():
-    A, E = DeclResolver.resolve_decls_from_string("""
+    (A, E), map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "":
 
     cdef cppclass A:

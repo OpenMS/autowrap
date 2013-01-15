@@ -255,8 +255,8 @@ class CppMethodOrFunctionDecl(BaseDecl):
         self.wrap = not self.annotations.get("ignore", False)
 
     def transformed(self, typemap):
-        result_type = self.result_type.transform(typemap)
-        args = [(n, t.transform(typemap)) for n, t in self.arguments]
+        result_type = self.result_type.transformed(typemap)
+        args = [(n, t.transformed(typemap)) for n, t in self.arguments]
         return CppMethodOrFunctionDecl(result_type, self.name, args,
                                        self.annotations, self.pxd_path)
 
@@ -265,8 +265,8 @@ class CppMethodOrFunctionDecl(BaseDecl):
             does not consider argument names"""
         if self.name != other.name:
             return False
-        self_key = [ self.result_type ] + [ t for (a,t) in self.arguments ]
-        other_key = [ other.result_type ] + [ t for (a,t) in other.arguments ]
+        self_key = [self.result_type] + [t for (__, t) in self.arguments]
+        other_key = [other.result_type] + [t for (__, t) in other.arguments]
         return self_key == other_key
 
     @classmethod

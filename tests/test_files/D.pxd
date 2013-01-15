@@ -7,6 +7,6 @@ cdef extern from "D.h":
         #  C[F]
         #
         # wrap-instances:
-        #  D1[float,int]
-        #  D2[int,float]
+        #  D1 := D[float,int]
+        #  D2 := D[int,float]
         pass
