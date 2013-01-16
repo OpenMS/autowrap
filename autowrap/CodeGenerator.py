@@ -95,7 +95,13 @@ def fixed_include_dirs():
 
 class CodeGenerator(object):
 
-    def __init__(self, instances, instance_mapping, target_path=None):
+    def __init__(self, instances, instance_mapping, target_path=None,
+            extra_methods=None):
+
+        if extra_methods is None:
+            extra_methods = dict()
+        self.extra_methods = extra_methods
+
         self.instances = sorted(instances, key = lambda decl: decl.name)
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
@@ -210,11 +216,11 @@ class CodeGenerator(object):
             self.code.add("    $name = $value", name=name, value=value)
 
 
-    def create_wrapper_for_class(self, decl):
-        name = decl.name
-        cy_type = self.cr.cy_decl_str(name)
+    def create_wrapper_for_class(self, cdcl):
+        cname = cdcl.name
+        cy_type = self.cr.cy_decl_str(cname)
         self.code.add("""
-               |cdef class $name:
+               |cdef class $cname:
                |    cdef shared_ptr[$cy_type] inst
                |    def __dealloc__(self):
                |         self.inst.reset()
@@ -222,17 +228,22 @@ class CodeGenerator(object):
 
         cons_created = False
 
-        iterators, non_iter_methods = self.filterout_iterators(decl.methods)
+        iterators, non_iter_methods = self.filterout_iterators(cdcl.methods)
 
         for (name, methods) in non_iter_methods.items():
-            if name == decl.name:
-                self.create_wrapper_for_constructor(decl, methods)
+            if name == cdcl.name:
+                self.create_wrapper_for_constructor(cdcl, methods)
                 cons_created = True
             else:
-                self.create_wrapper_for_method(decl, name, methods)
-        assert cons_created, "no constructor for %s created" % name
+                self.create_wrapper_for_method(cdcl, name, methods)
+        assert cons_created, "no constructor for %s created" % cname
 
         self._create_iter_methods(iterators)
+
+        extra_methods_code = self.extra_methods.get(cname)
+        if extra_methods_code:
+            for code in extra_methods_code:
+                self.code.add(code)
 
     def _create_iter_methods(self, iterators):
         for name, (begin_decl, end_decl, res_type) in iterators.items():

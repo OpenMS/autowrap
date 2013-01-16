@@ -2,6 +2,7 @@ import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
 import autowrap.Utils
+import autowrap.Code
 import autowrap
 
 import os
@@ -172,13 +173,8 @@ def test_minimal():
     assert c == m3
 
     assert m2.test2Lists([m1], [1,2]) == 3
-
     assert m1==m1
-
-
     assert m1[7] == 8
-
-
 
 
 def test_templated():
@@ -186,11 +182,15 @@ def test_templated():
     target = os.path.join(test_files, "templated_wrapper.pyx")
 
     decls, instance_map = autowrap.parse(["templated.pxd"], root=test_files)
-    include_dirs = autowrap.generate_code(decls, instance_map, target=target,
-                                            debug=True)
 
-    #include_dirs = autowrap.parse_and_generate_code("templated.pxd",
-                                #root=test_files, target=target,  debug=True)
+    co = autowrap.Code.Code()
+    co.add("""def special(self):
+             |    return "hi" """)
+
+    methods = dict(T = [co])
+
+    include_dirs = autowrap.generate_code(decls, instance_map, target=target,
+                                          debug=True, extra_methods=methods)
 
     cpp_source = os.path.join(test_files, "templated.cpp")
     cpp_sources = []
@@ -201,7 +201,9 @@ def test_templated():
     os.remove(target)
     assert twrapped.__name__ == "twrapped"
 
+
     t = twrapped.T(42)
+    assert t.special() == "hi"
     templated = twrapped.Templated(t)
     assert templated.get().get() == 42
 
