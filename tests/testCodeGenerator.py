@@ -83,7 +83,7 @@ def test_minimal():
 
     target = os.path.join(test_files, "minimal_wrapper.pyx")
 
-    include_dirs = autowrap.parse_and_generate_code("minimal.pxd",
+    include_dirs = autowrap.parse_and_generate_code(["minimal.pxd"],
                                 root=test_files, target=target,  debug=True)
 
     cpp_source = os.path.join(test_files, "minimal.cpp")
@@ -179,12 +179,18 @@ def test_minimal():
     assert m1[7] == 8
 
 
+
+
 def test_templated():
 
     target = os.path.join(test_files, "templated_wrapper.pyx")
 
-    include_dirs = autowrap.parse_and_generate_code("templated.pxd",
-                                root=test_files, target=target,  debug=True)
+    decls, instance_map = autowrap.parse(["templated.pxd"], root=test_files)
+    include_dirs = autowrap.generate_code(decls, instance_map, target=target,
+                                            debug=True)
+
+    #include_dirs = autowrap.parse_and_generate_code("templated.pxd",
+                                #root=test_files, target=target,  debug=True)
 
     cpp_source = os.path.join(test_files, "templated.cpp")
     cpp_sources = []

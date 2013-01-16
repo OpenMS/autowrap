@@ -2,19 +2,16 @@ import DeclResolver
 import CodeGenerator
 import PXDParser
 
-def parse(*files, **kw):
-    return DeclResolver.resolve_decls_from_files(*files, **kw)
+def parse(files, root):
+    return DeclResolver.resolve_decls_from_files(files, root)
 
-def generate_code(decls, instance_map, target, **kw):
+def generate_code(decls, instance_map, target, debug):
     gen = CodeGenerator.CodeGenerator(decls, instance_map, target)
-    debug = kw.get("debug", False)
     gen.create_pyx_file(debug)
     includes = gen.get_include_dirs()
     return includes
 
-def parse_and_generate_code(*files, **kw):
-    assert "target" in kw
-    return generate_code(*parse(*files, **kw), **kw)
+def parse_and_generate_code(files, root, target, debug):
 
-
-
+    decls, instance_map = parse(files, root)
+    return generate_code(decls, instance_map, target, debug)

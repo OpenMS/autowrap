@@ -93,8 +93,7 @@ class ResolvedMethodOrFunction(object):
         return "%s %s(%s)" % (self.result_type, self.name, ", ".join(args))
 
 
-def resolve_decls_from_files(*pathes, **kw):
-    root = kw.get("root", ".")
+def resolve_decls_from_files(pathes, root):
     decls = []
     for path in pathes:
         full_path = os.path.join(root, path)
