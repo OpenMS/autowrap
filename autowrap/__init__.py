@@ -1,3 +1,4 @@
+import pdb
 import DeclResolver
 import CodeGenerator
 import PXDParser
@@ -19,7 +20,7 @@ def generate_code(decls, instance_map, target, debug, extra_methods=None):
 def parse_and_generate_code(files, root, target, debug, extra_methods=None):
 
     decls, instance_map = parse(files, root)
-    return generate_code(decls, instance_map, target, debug, extra_methods=None)
+    return generate_code(decls, instance_map, target, debug, extra_methods)
 
 
 

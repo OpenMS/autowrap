@@ -55,6 +55,11 @@ class Templated {
             return std::vector<Templated<X> >(v.rbegin(), v.rend());
         };
 
+        Templated<X> passs(Templated<X> &v)
+        {
+            return v;
+        }
+
 };
 
 

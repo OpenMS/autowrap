@@ -304,22 +304,21 @@ class TypeToWrapConverter(TypeConverterBase):
         return code, call_as, cleanup
 
     def call_method(self, res_type, cy_call_str):
-        t = res_type.base_type
+        #t = res_type.base_type
+        t = self.converters.cy_decl_str(res_type)
 
-        if res_type.is_ref:
-            pass
-
-        return "cdef _%s * _r = new _%s(%s)" % (t, t, cy_call_str)
+        return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
 
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
         assert not cpp_type.is_ptr
 
-        cy_clz = cpp_type.base_type
+        cy_clz = self.converters.cy_decl_str(cpp_type)
+        t = cpp_type.base_type
         return Code().add("""
-                      |cdef $cy_clz $output_py_var = $cy_clz.__new__($cy_clz)
-                      |$output_py_var.inst = shared_ptr[_$cy_clz]($input_cpp_var) # new _$cy_clz($input_cpp_var)
+                      |cdef $t $output_py_var = $t.__new__($t)
+                      |$output_py_var.inst = shared_ptr[$cy_clz]($input_cpp_var)
         """, locals())
 
 class StdVectorConverter(TypeConverterBase):

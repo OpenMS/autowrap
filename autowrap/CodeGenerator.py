@@ -100,6 +100,7 @@ class CodeGenerator(object):
 
         if extra_methods is None:
             extra_methods = dict()
+
         self.extra_methods = extra_methods
 
         self.instances = sorted(instances, key = lambda decl: decl.name)
@@ -578,6 +579,8 @@ class CodeGenerator(object):
            |from  libcpp.pair    cimport pair as libcpp_pair
            |from  libcpp cimport bool
            |from smart_ptr cimport shared_ptr
+           |cimport numpy as np
+           |import numpy as np
            |from cython.operator cimport dereference as deref,
            + preincrement as inc, address as address""")
 

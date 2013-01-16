@@ -207,6 +207,8 @@ def test_templated():
     templated = twrapped.Templated(t)
     assert templated.get().get() == 42
 
+    assert templated.passs(templated) == templated
+
     in_ = [templated, templated]
     assert templated.summup(in_) == 42+42
     __, __, tn = in_
