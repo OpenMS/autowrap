@@ -254,10 +254,10 @@ class CodeGenerator(object):
 
             self.code.add(meth_code)
 
-    def _create_overloaded_method_decl(self, code, cpp_name,
+    def _create_overloaded_method_decl(self, code, py_name,
                                       dispatched_m_names, methods, use_return):
 
-        code.add("""def $cpp_name(self, *args):""", locals())
+        code.add("""def $py_name(self, *args):""", locals())
 
         first_iteration = True
         for (dispatched_m_name, method) in zip(dispatched_m_names, methods):
@@ -281,9 +281,21 @@ class CodeGenerator(object):
         code.add("""    else:
                    |        raise Exception('can not handle %s' % (args,))""")
 
-    def create_wrapper_for_method(self, decl, cpp_name, methods):
+    def create_wrapper_for_method(self, cdcl, cpp_name, methods):
+
+        if cpp_name == "operator[]":
+            assert len(methods) == 1, "overloaded operator[] not suppored"
+            self.create_special_getitem_method(methods[0])
+            return
+
+        if cpp_name == "operator==":
+            assert len(methods) == 1, "overloaded operator== not suppored"
+            self.create_special_eq_method(cdcl)
+            return
+
+
         if len(methods) == 1:
-            self.create_wrapper_for_nonoverloaded_method(decl, cpp_name,
+            self.create_wrapper_for_nonoverloaded_method(cdcl, cpp_name,
                                                          cpp_name, methods[0],
                                                          )
         else:
@@ -295,7 +307,7 @@ class CodeGenerator(object):
             for (i, method) in enumerate(methods):
                 dispatched_m_name = "_%s_%d" % (cpp_name, i)
                 dispatched_m_names.append(dispatched_m_name)
-                self.create_wrapper_for_nonoverloaded_method(decl,
+                self.create_wrapper_for_nonoverloaded_method(cdcl,
                                                              dispatched_m_name,
                                                              cpp_name,
                                                              method,
@@ -343,12 +355,8 @@ class CodeGenerator(object):
 
         return call_args, cleanups, in_types
 
-    def create_wrapper_for_nonoverloaded_method(self, decl, py_name, cpp_name,
+    def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, cpp_name,
             method):
-
-        if cpp_name == "operator==":
-            self.create_special_eq_method(decl)
-            return
 
         meth_code = Code.Code()
 
@@ -464,6 +472,49 @@ class CodeGenerator(object):
 
         # add cons code to overall code:
         self.code.add(cons_code)
+
+    def create_special_getitem_method(self, mdcl):
+        meth_code = Code.Code()
+
+        call_args, cleanups, in_types =\
+                    self._create_meth_decl_and_input_conversion(meth_code,
+                                                                "__getitem__",
+                                                                mdcl)
+
+        # call wrapped method and convert result value back to python
+
+        call_args_str = ", ".join(call_args)
+        cy_call_str = "deref(self.inst.get())[%s]" % call_args_str
+
+        res_t = mdcl.result_type
+        out_converter = self.cr.get(res_t)
+        full_call_stmt = out_converter.call_method(res_t, cy_call_str)
+
+        if isinstance(full_call_stmt, basestring):
+            meth_code.add("""
+                |    $full_call_stmt
+                """, locals())
+        else:
+            meth_code.add(full_call_stmt)
+
+        for cleanup in reversed(cleanups):
+            if not cleanup:
+                continue
+            if isinstance(cleanup, basestring):
+                cleanup = Code.Code().add(cleanup)
+            meth_code.add(cleanup)
+
+        out_var = "py_result"
+        to_py_code = out_converter.output_conversion(res_t, "_r", out_var)
+        if to_py_code is not None:  # for non void return value
+
+            if isinstance(to_py_code, basestring):
+                to_py_code = "    %s" % to_py_code
+            meth_code.add(to_py_code)
+            meth_code.add("    return $out_var", locals())
+
+        self.code.add(meth_code)
+
 
 
     def create_special_eq_method(self, class_decl):

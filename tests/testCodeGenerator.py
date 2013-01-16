@@ -176,6 +176,9 @@ def test_minimal():
     assert m1==m1
 
 
+    assert m1[7] == 8
+
+
 def test_templated():
 
     target = os.path.join(test_files, "templated_wrapper.pyx")

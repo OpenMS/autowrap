@@ -35,6 +35,8 @@ cdef extern from "minimal.hpp":
         libcpp_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
         libcpp_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
 
+        int operator[](int)
+
         int sumup(libcpp_vector[int] what)
         int call(libcpp_vector[Minimal] what) # ref-arg-out:0
         int call2(libcpp_vector[libcpp_string] & what)

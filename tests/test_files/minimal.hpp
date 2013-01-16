@@ -41,6 +41,11 @@ class Minimal {
 
         bool operator==(const Minimal &other) const;
 
+        int operator[](const int i) const 
+        {
+            return i+1;
+        };
+
         std::vector<std::string> message() const;
         std::vector<Minimal> create_two() const;
 

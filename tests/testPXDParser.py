@@ -44,7 +44,6 @@ cdef extern from "Minimal.hpp":
     assert argname == "a"
     assert arg_type == CppType("int")
 
-    assert cld.methods["getA"][0].wrap
     assert len(cld.methods["getA"][0].arguments) == 0
 
     def subtest(name, inp_type):
