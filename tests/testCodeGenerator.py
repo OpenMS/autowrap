@@ -1,4 +1,3 @@
-import pdb
 import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
@@ -12,7 +11,7 @@ from utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
-def testSharedPtr():
+def test_shared_ptr():
 
 
     target = os.path.join(test_files, "shared_ptr_test.pyx")
@@ -50,7 +49,7 @@ def testSharedPtr():
     assert h1.count() == 1
     assert h1.size() == 4
 
-def testMinimal():
+def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,
                                              special_converters)
@@ -173,6 +172,8 @@ def testMinimal():
     assert c == m3
 
     assert m2.test2Lists([m1], [1,2]) == 3
+
+    assert m1==m1
 
 
 def test_templated():

@@ -373,13 +373,6 @@ class CodeGenerator(object):
         else:
             meth_code.add(full_call_stmt)
 
-        for cleanup in cleanups:
-            if not cleanup:
-                continue
-            if isinstance(cleanup, basestring):
-                cleanup = "    %s" % cleanup
-            meth_code.add(cleanup)
-
         out_vars = ["py_result"]
         if "ref-arg-out" in method.decl.annotations:
             out_ixs = map(int, method.decl.annotations["ref-arg-out"])
@@ -392,6 +385,13 @@ class CodeGenerator(object):
                     if isinstance(to_py_code, basestring):
                         to_py_code = "    %s" % to_py_code
                     meth_code.add(to_py_code)
+
+        for cleanup in reversed(cleanups):
+            if not cleanup:
+                continue
+            if isinstance(cleanup, basestring):
+                cleanup = "    %s" % cleanup
+            meth_code.add(cleanup)
 
         to_py_code = out_converter.output_conversion(res_t, "_r", "py_result")
 
@@ -455,15 +455,16 @@ class CodeGenerator(object):
         cy_type = self.cr.cy_decl_str(name)
         cons_code.add("""    self.inst = shared_ptr[$cy_type](new $cy_type($call_args_str))""", locals())
 
-        for cleanup in cleanups:
+        for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
             if isinstance(cleanup, basestring):
                 cleanup = "    %s" % cleanup
-            meth_code.add(cleanup)
+            cons_code.add(cleanup)
 
         # add cons code to overall code:
         self.code.add(cons_code)
+
 
     def create_special_eq_method(self, class_decl):
         meth_code = Code.Code()
@@ -513,6 +514,7 @@ class CodeGenerator(object):
            |from  libcpp.string  cimport string as libcpp_string
            |from  libcpp.vector  cimport vector as libcpp_vector
            |from  libcpp.pair    cimport pair as libcpp_pair
+           |from  libcpp cimport bool
            |from smart_ptr cimport shared_ptr
            |from cython.operator cimport dereference as deref,
            + preincrement as inc, address as address""")

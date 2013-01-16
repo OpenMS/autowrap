@@ -345,8 +345,8 @@ class StdVectorConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         tt, = cpp_type.template_args
+        temp_var = "v%d" % arg_num
         if tt.base_type in self.converters.names_to_wrap:
-            temp_var = "v%d" % arg_num
             base_type = tt.base_type
             inner = self.converters.cy_decl_str(tt)
             cy_tt = tt.base_type
@@ -368,13 +368,13 @@ class StdVectorConverter(TypeConverterBase):
                     |   replace.append($item)
                     |   inc(it)
                     |$argument_var[:] = replace
+                    |del $temp_var
                     """, locals())
             else:
-                cleanup_code = ""
+                cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
 
         else:
-            temp_var = "v%d" % arg_num
             item = "item%d" % arg_num
             code = Code().add("""
                 |cdef libcpp_vector[$tt] * $temp_var = new libcpp_vector[$tt]()
@@ -390,9 +390,10 @@ class StdVectorConverter(TypeConverterBase):
                     |   replace.append(deref(it))
                     |   inc(it)
                     |$argument_var[:] = replace
+                    |del $temp_var
                     """, locals())
             else:
-                cleanup_code = ""
+                cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
 
     def call_method(self, res_type, cy_call_str):
