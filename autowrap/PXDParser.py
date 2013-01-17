@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -90,8 +89,9 @@ def _extract_type(base_type, decl):
                 decl = arg.declarator
                 is_ptr = isinstance(decl, CPtrDeclaratorNode)
                 is_ref = isinstance(decl, CReferenceDeclaratorNode)
+                is_unsigned = hasattr(arg.base_type, "signed") and not arg.base_type.signed
                 name = arg.base_type.name
-                ttype = CppType(name, None, is_ptr, is_ref)
+                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned)
                 template_parameters.append(ttype)
             elif isinstance(arg, NameNode):
                 name = arg.name
@@ -221,9 +221,9 @@ class CppClassDecl(BaseDecl):
         return "\n".join(rv)
 
     def get_transformed_methods(self, mapping):
-        result = dict()
+        result = defaultdict(list)
         for mdcl in self.get_method_decls():
-            result.setdefault(mdcl.name, []).append(mdcl.transformed(mapping))
+            result[mdcl.name].append(mdcl.transformed(mapping))
         return result
 
     def get_method_decls(self):

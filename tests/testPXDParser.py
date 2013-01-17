@@ -258,3 +258,23 @@ cdef extern from "A.h":
     assert name == "x"
     assert str(t) == "float"
 
+
+def test_inner_unsigned():
+    decl1, decl2 = autowrap.PXDParser.parse_str("""
+
+cdef extern from "A.h":
+
+    cdef cppclass A[X]:
+        # wrap-ignore
+        pass
+
+    cdef cppclass T:
+        fun(A[unsigned int])
+
+    """)
+
+    fun,  = decl2.methods.get("fun")
+    (__, arg_t), = fun.arguments
+    assert str(arg_t) == "A[unsigned int]"
+
+
