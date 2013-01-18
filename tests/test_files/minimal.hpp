@@ -63,6 +63,8 @@ class Minimal {
 
         enum ABCorD enumTest(enum ABCorD) const;
 
+        static int run_static(int);
+
 };
 
 int top_function(int i);

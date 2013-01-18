@@ -62,7 +62,7 @@ class CodeGenerator(object):
                                            self.enums,
                                            instance_mapping)
 
-        self.top_level_code = []
+        self.top_level_code = defaultdict(list)
 
     def get_include_dirs(self):
         return fixed_include_dirs() + [self.pxd_dir]
@@ -95,12 +95,17 @@ class CodeGenerator(object):
             elif isinstance(inst, ResolvedClass):
                 self.create_wrapper_for_class(inst)
             elif isinstance(inst, ResolvedFunction):
-                self.create_wrapper_for_free_function(inst)
+                code = self.create_wrapper_for_free_function(inst)
+                self.top_level_code["000"].append(code)
             else:
                 raise Exception("can not create wrapper for %s "\
                                 "(%s)" % (inst.__class__, inst))
 
-        code = "\n\n".join(tl.render() for tl in self.top_level_code)
+        all_code = []
+        tl = sorted(self.top_level_code.items())
+        for (__, c) in tl:
+            all_code.extend(c)
+        code = "\n\n".join(c.render() for c in all_code)
 
         if debug:
             print code
@@ -160,7 +165,7 @@ class CodeGenerator(object):
             code.add("    $name = $value", name=name, value=value)
 
 
-        self.top_level_code.append(code)
+        self.top_level_code[name].append(code)
 
     def create_wrapper_for_class(self, cdcl):
         cname = cdcl.name
@@ -192,7 +197,7 @@ class CodeGenerator(object):
             for extra_code in extra_methods_code:
                 class_code.add(extra_code)
 
-        self.top_level_code.append(class_code)
+        self.top_level_code[cname].append(class_code)
 
     def _create_iter_methods(self, class_code, iterators):
         for name, (begin_decl, end_decl, res_type) in iterators.items():
@@ -256,12 +261,6 @@ class CodeGenerator(object):
                 print "overloaded operator== not suppored"
             self.create_special_eq_method(cdcl, class_code)
             return
-
-        has_static = any(m.annotations.get("wrap-static") for m in methods)
-        if has_static:
-            if len(methods)>1:
-                print "overloaded static methods not supported"
-            self._create_static_method(cdcl, methods[0], class_code)
 
         if len(methods) == 1:
             self.create_wrapper_for_nonoverloaded_method(cdcl, cpp_name,
@@ -388,15 +387,28 @@ class CodeGenerator(object):
         class_code.add(meth_code)
 
     def _create_static_method(self, cdcl, mdcl, class_code):
-        pdb.set_trace() ############################## Breakpoint ##############################
-        pass
 
-    def create_wrapper_for_free_function(self, decl):
+        name = "__static_%s_%s" % (cdcl.name, mdcl.name)
+        fun_code = self.create_wrapper_for_free_function(mdcl, name)
+
+        self.top_level_code["000__free"].append(fun_code)
+
+        code = Code.Code()
+        static_name = mdcl.name
+        code.add("$static_name = $name",locals())
+        class_code.add(code)
+
+
+
+    def create_wrapper_for_free_function(self, decl, name=None):
+        if name is None:
+            name = decl.name
+
         fun_code = Code.Code()
 
         call_args, cleanups, in_types =\
                 self._create_fun_decl_and_input_conversion(fun_code,
-                                                           decl.name,
+                                                           name,
                                                            decl,
                                                            is_free_fun=True)
 
@@ -432,7 +444,7 @@ class CodeGenerator(object):
             fun_code.add(to_py_code)
             fun_code.add("    return %s" % (", ".join(out_vars)))
 
-        self.top_level_code.append(fun_code)
+        return fun_code
 
 
     def create_wrapper_for_constructor(self, class_decl, constructors, class_code):
@@ -583,7 +595,7 @@ class CodeGenerator(object):
             import_from = decl.pxd_import_path
             code.add("from $from_ cimport $name as _$name",
                                       from_=import_from, name=name)
-        self.top_level_code.append(code)
+        self.top_level_code["0"].append(code)
 
     def create_std_cimports(self):
         code = Code.Code()
@@ -599,7 +611,7 @@ class CodeGenerator(object):
                    |import numpy as np
                    |from cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address""")
-        self.top_level_code.insert(0, code)
+        self.top_level_code["0"].append(code)
 
     def create_includes(self):
         code = Code.Code()
@@ -608,6 +620,6 @@ class CodeGenerator(object):
                 |    char * _cast_const_away(char *)
                 """)
 
-        self.top_level_code.insert(0, code)
+        self.top_level_code["0"].append(code)
 
 

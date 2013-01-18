@@ -95,7 +95,7 @@ int Minimal::call(std::vector<Minimal> & arg) const
     int sum = 0;
     for (std::vector<Minimal>::const_iterator it = arg.begin(); it != arg.end(); ++it)
         sum += it->compute(0);
-    
+
     arg.push_back(arg.at(0));
     return sum;
 }
@@ -150,7 +150,7 @@ int Minimal::test2Lists(const std::vector<Minimal> & v1, const std::vector<int> 
     return v1.size() + v2.size();
 };
 
-std::vector<Minimal>::iterator Minimal::begin() 
+std::vector<Minimal>::iterator Minimal::begin()
 {
     return this->_mi.begin();
 }
@@ -158,6 +158,12 @@ std::vector<Minimal>::iterator Minimal::end()
 {
     return this->_mi.end();
 }
+
+int Minimal::run_static(int i)
+{
+    return i*4;
+}
+
 
 int top_function(int i)
 {
