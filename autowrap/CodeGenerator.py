@@ -257,6 +257,11 @@ class CodeGenerator(object):
             self.create_special_eq_method(cdcl, class_code)
             return
 
+        has_static = any(m.annotations.get("wrap-static") for m in methods)
+        if has_static:
+            if len(methods)>1:
+                print "overloaded static methods not supported"
+            self._create_static_method(cdcl, methods[0], class_code)
 
         if len(methods) == 1:
             self.create_wrapper_for_nonoverloaded_method(cdcl, cpp_name,
@@ -381,6 +386,10 @@ class CodeGenerator(object):
             meth_code.add("    return %s" % (", ".join(out_vars)))
 
         class_code.add(meth_code)
+
+    def _create_static_method(self, cdcl, mdcl, class_code):
+        pdb.set_trace() ############################## Breakpoint ##############################
+        pass
 
     def create_wrapper_for_free_function(self, decl):
         fun_code = Code.Code()
