@@ -1,3 +1,4 @@
+import pdb
 import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
@@ -175,6 +176,9 @@ def test_minimal():
     assert m2.test2Lists([m1], [1,2]) == 3
     assert m1==m1
     assert m1[7] == 8
+
+    assert wrapped.top_function(42) == 84
+    assert wrapped.sumup([1,2,3]) == 6
 
 
 def test_templated():

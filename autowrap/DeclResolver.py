@@ -74,7 +74,7 @@ class ResolvedClass(object):
     def __str__(self):
         return "\n   ".join([self.name] + map(str, self.methods))
 
-class ResolvedMethodOrFunction(object):
+class ResolvedMethod(object):
 
     """ contains all info for generating wrapping code of
         resolved class.
@@ -85,13 +85,16 @@ class ResolvedMethodOrFunction(object):
         self.name = name
         self.result_type = result_type
         self.arguments = arguments
-        self.decl = decl
+        self.cpp_decl = decl
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
 
     def __str__(self):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
         return "%s %s(%s)" % (self.result_type, self.name, ", ".join(args))
 
+
+class ResolvedFunction(ResolvedMethod):
+    pass
 
 def resolve_decls_from_files(pathes, root):
     decls = []
@@ -329,9 +332,6 @@ def parse_inst_decl(str_):
         raise Exception("could not parse instance delcaration '%s'" % str_)
 
 
-def _resolve_function(decl, typedef_mapping, instance_mapping):
-    # functions are methods without template mapping:
-    return _resolve_method(decl, dict(), typedef_mapping)
 
 
 def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
@@ -380,8 +380,15 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
     Utils.flatten(local_map)
     return local_map
 
-
 def _resolve_method(method_decl, instance_mapping, type_map):
+    return _resolve_method_or_function(method_decl, instance_mapping, type_map,
+            ResolvedMethod)
+
+def _resolve_function(method_decl, instance_mapping, type_map):
+    return _resolve_method_or_function(method_decl, instance_mapping, type_map,
+            ResolvedFunction)
+
+def _resolve_method_or_function(method_decl, instance_mapping, type_map, clz):
     """
     resolves aliases in return and argument types
     """
@@ -393,8 +400,7 @@ def _resolve_method(method_decl, instance_mapping, type_map):
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
     name = _resolve_constructor(name, instance_mapping)
-    return ResolvedMethodOrFunction(name, result_type, args, method_decl)
-
+    return clz(name, result_type, args, method_decl)
 
 def _resolve_constructor(name, instance_mapping):
     map_ = dict( (t.base_type, n) for (n, t) in instance_mapping.items())

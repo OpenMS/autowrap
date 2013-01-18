@@ -1,3 +1,4 @@
+import pdb
 import autowrap.PXDParser
 import os
 
@@ -276,5 +277,34 @@ cdef extern from "A.h":
     fun,  = decl2.methods.get("fun")
     (__, arg_t), = fun.arguments
     assert str(arg_t) == "A[unsigned int]"
+
+def test_static():
+    decl, = autowrap.PXDParser.parse_str("""
+
+cdef extern from "A.h":
+
+    cdef cppclass A:
+        int fun(int x) # wrap-static
+
+    """)
+
+    fun,  = decl.methods.get("fun")
+    (__, arg_t), = fun.arguments
+    assert str(arg_t) == "int"
+
+
+def test_free_function():
+    decl, = autowrap.PXDParser.parse_str("""
+
+cdef extern from "A.h":
+
+    int fun(int x)
+
+    """)
+
+    assert decl.name == "fun"
+    assert str(decl.result_type) == "int"
+    (__, arg_t), = decl.arguments
+    assert str(arg_t) == "int"
 
 

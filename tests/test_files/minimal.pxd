@@ -44,3 +44,8 @@ cdef extern from "minimal.hpp":
         libcpp_vector[Minimal] create_two()
         int operator==(Minimal &)
         ABCorD enumTest(ABCorD)
+
+    int top_function(int)
+    int sumup(libcpp_vector[int] what)
+
+

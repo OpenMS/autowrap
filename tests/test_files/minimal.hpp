@@ -62,4 +62,8 @@ class Minimal {
         Minimal & getRef();
 
         enum ABCorD enumTest(enum ABCorD) const;
+
 };
+
+int top_function(int i);
+int sumup(std::vector<int> &);

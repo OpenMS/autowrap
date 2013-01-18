@@ -158,3 +158,15 @@ std::vector<Minimal>::iterator Minimal::end()
 {
     return this->_mi.end();
 }
+
+int top_function(int i)
+{
+    return i*2;
+};
+
+int sumup(std::vector<int> & what) {
+    int sum = 0;
+    for (std::vector<int>::const_iterator it = what.begin(); it != what.end(); ++it)
+        sum += *it;
+    return sum;
+}

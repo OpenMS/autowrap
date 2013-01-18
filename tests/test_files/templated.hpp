@@ -14,6 +14,11 @@ class T
         int get() const {
             return _i;
         }
+
+        bool operator==(const T& other)
+        {
+            return this->_i == other._i;
+        }
 };
 
 template <class X>
@@ -58,6 +63,10 @@ class Templated {
         Templated<X> passs(Templated<X> v)
         {
             return v;
+        }
+        bool operator==(const Templated<X>  & other)
+        {
+            return this->get() == other.get();
         }
 
 };

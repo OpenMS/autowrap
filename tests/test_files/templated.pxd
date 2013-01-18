@@ -1,3 +1,4 @@
+from libcpp cimport bool
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector
 
@@ -18,6 +19,7 @@ cdef extern from "templated.hpp":
         libcpp_vector[Templated[X]] reverse(libcpp_vector[Templated[X]] v)
         int getTwice(Templated[X])
         Templated[X] passs(Templated[X] v)
+        bool operator==(Templated[X] other)
 
     cdef cppclass Y:
         Y()
