@@ -45,9 +45,11 @@ cdef extern from "minimal.hpp":
         int operator==(Minimal &)
         ABCorD enumTest(ABCorD)
 
-    # int run_static(int) # wrap-static:Minimal
 
     int top_function(int)
     int sumup(libcpp_vector[int] what)
 
+cdef extern from "minimal.hpp" namespace "Minimal":
+
+    int run_static(int) # wrap-static:Minimal
 

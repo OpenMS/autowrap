@@ -179,7 +179,7 @@ def test_minimal():
 
     assert wrapped.top_function(42) == 84
     assert wrapped.sumup([1,2,3]) == 6
-    #assert wrapped.run_static(1) == 3
+    assert wrapped.Minimal.run_static(1) == 4
 
 
 def test_templated():
