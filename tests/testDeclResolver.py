@@ -15,12 +15,15 @@ def test_inst_decl_parser():
     name, type_ = DeclResolver.parse_inst_decl("A := B[X]")
     assert name =="A" and str(type_) == "B[X]", (str(name), str(type_))
     name, type_ = DeclResolver.parse_inst_decl("A := B[X*]")
-    assert name =="A" and str(type_) == "B[X]", (str(name), str(type_))
+    assert name =="A" and str(type_) == "B[X *]", (str(name), str(type_))
     name, type_ = DeclResolver.parse_inst_decl("A := B[X,Y]")
     assert name =="A" and str(type_) == "B[X,Y]", (str(name), str(type_))
     name, type_ = DeclResolver.parse_inst_decl("A := B[X,Y*]")
-    assert name =="A" and str(type_) == "B[X,Y*]", (str(name), str(type_))
+    assert name =="A" and str(type_) == "B[X,Y *]", (str(name), str(type_))
 
+    name, type_ = DeclResolver.parse_inst_decl("A := B[1,Y*]")
+    print name, str(type_)
+    assert name =="A" and str(type_) == "B[1,Y *]", (str(name), str(type_))
 
 
 def test_function_resolution():
@@ -101,14 +104,9 @@ cdef extern from "A.h":
     assert str(t) == "T"
     assert n == "j"
 
-def test_inst_decl_parser():
-    name, type_ = DeclResolver.parse_inst_decl("T:=int")
-    assert name == "T"
-    assert str(type_) == "int"
-
 def _resolve(*names):
     root = os.path.join(os.path.dirname(__file__), "test_files")
-    return autowrap.DeclResolver.resolve_decls_from_files(*names, root=root)
+    return autowrap.DeclResolver.resolve_decls_from_files(names, root=root)
 
 
 def test_simple():

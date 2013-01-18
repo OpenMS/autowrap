@@ -84,6 +84,9 @@ class ConverterRegistry(object):
 
         if type_.is_ptr:
             base += " * "
+
+        if type_.is_unsigned:
+            base = "unsigned "+base
         return "%s%s" % (base, targs)
 
 
@@ -167,7 +170,8 @@ class IntegerConverter(TypeConverterBase):
     cython parser !
     """
     def get_base_types(self):
-        return "int", "bool"
+        return ("int", "bool", "long", "int32_t", "ptrdiff_t", "int64_t",
+               "uint32_t", "uint64_t")
 
     def matches(self, cpp_type):
         return not cpp_type.is_ptr
@@ -375,16 +379,17 @@ class StdVectorConverter(TypeConverterBase):
 
         else:
             item = "item%d" % arg_num
+            inner = self.converters.cy_decl_str(tt)
             code = Code().add("""
-                |cdef libcpp_vector[$tt] * $temp_var = new libcpp_vector[$tt]()
-                |cdef $tt $item
+                |cdef libcpp_vector[$inner] * $temp_var = new libcpp_vector[$inner]()
+                |cdef $inner $item
                 |for $item in $argument_var:
                 |   $temp_var.push_back($item)
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
                     |cdef replace = []
-                    |cdef libcpp_vector[$tt].iterator it = $temp_var.begin()
+                    |cdef libcpp_vector[$inner].iterator it = $temp_var.begin()
                     |while it != $temp_var.end():
                     |   replace.append(deref(it))
                     |   inc(it)

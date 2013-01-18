@@ -301,7 +301,8 @@ class CodeGenerator(object):
             return
 
         if cpp_name == "operator==":
-            assert len(methods) == 1, "overloaded operator== not suppored"
+            if len(methods) != 1:
+                print "overloaded operator== not suppored"
             self.create_special_eq_method(cdcl)
             return
 
@@ -578,6 +579,8 @@ class CodeGenerator(object):
            |from  libcpp.vector  cimport vector as libcpp_vector
            |from  libcpp.pair    cimport pair as libcpp_pair
            |from  libcpp cimport bool
+           |from  libc.stdint  cimport *
+           |from  libc.stddef  cimport *
            |from smart_ptr cimport shared_ptr
            |cimport numpy as np
            |import numpy as np

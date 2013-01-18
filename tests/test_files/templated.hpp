@@ -55,7 +55,7 @@ class Templated {
             return std::vector<Templated<X> >(v.rbegin(), v.rend());
         };
 
-        Templated<X> passs(Templated<X> &v)
+        Templated<X> passs(Templated<X> v)
         {
             return v;
         }
@@ -66,7 +66,7 @@ class Templated {
 class Y  {
 
     public:
-        std::vector<Templated<T> > passs(std::vector<Templated<T> > &x)
+        std::vector<Templated<T> > passs(std::vector<Templated<T> > x)
         {
             return x;
         };

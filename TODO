@@ -1,8 +1,12 @@
-- operator[]
-
-- code, wie z.b. set_peaks hinzufuegen
+- mehr klassen wrappen
 
 - iteratoren !
+
+- DPosition(mit numerischen template argument)
+
+- statische methoden !
+
+- config extra cimport statments
 
 - implict conv String, StringList. DataValue, ..
 
@@ -15,7 +19,6 @@
      endRT(rtmax)    # wrap-iter-end   rtrange
 
   -> methode  rtrange(rtmin, rtmax)
-     
 
 - neu: ClassGenerator (zum code erzeugen), 
        RefProxyClassGenerator, IterProxyClassGenerator

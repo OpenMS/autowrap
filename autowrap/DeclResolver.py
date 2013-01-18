@@ -247,6 +247,8 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     mapping = dict(zip(super_targs, used_parameters))
     # get copy of methods from super class ans transform template params:
     transformed_methods = super_cld.get_transformed_methods(mapping)
+    transformed_methods = dict((k,v) for (k,v) in transformed_methods.items()
+                                if k != super_cld.name) # remove constructors
     cdcl.attach_base_methods(transformed_methods)
 
 

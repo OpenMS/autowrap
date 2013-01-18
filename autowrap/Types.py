@@ -136,7 +136,7 @@ class CppType(object):
 
     @staticmethod
     def _from_string(str_):
-        matched = re.match("([a-zA-Z ][a-zA-Z0-9 \*&]*)(\[.*\])?", str_)
+        matched = re.match("([a-zA-Z0-9 ][a-zA-Z0-9 \*&]*)(\[.*\])?", str_)
         if matched is None:
             raise Exception("can not parse '%s'" % str_)
         base_type, t_str = matched.groups()
@@ -165,7 +165,10 @@ class CppType(object):
                            is_ref=ref)
 
         t_args = t_str[1:-1].split(",")
-        t_types = [ CppType.from_string(t.strip()) for t in t_args ]
+        if t_args == [""]:
+            t_types= []
+        else:
+            t_types = [ CppType.from_string(t.strip()) for t in t_args ]
         return CppType(base_type, t_types)
 
 
