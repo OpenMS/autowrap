@@ -27,67 +27,6 @@ def augment_arg_names(method):
                                   for i, (n, t) in enumerate(method.arguments)]
 
 
-# TODO:
-#   - common path prefix of all pxds
-#   - check subdirs for markers
-#   - create relative import pathes of all pxds related to common
-#     path prefix
-#   - set self.pxd_dir to this common prefix
-
-
-if 0:
-
-    def _normalize(path):
-        path = os.path.abspath(path)
-        if path.endswith("/"):
-            path = path[:-1]
-        return path
-
-
-    def _diff(a_path, b_path):
-        """ a_path minus b_path prefix """
-        a_path = _normalize(a_path)
-        b_path = _normalize(b_path)
-        assert os.path.commonprefix([a_path, b_path]) == b_path,\
-            "%s is not a prefix of %s" % (b_path, a_path)
-
-        return a_path[len(b_path)+1:]
-
-
-    def _has_module_marker(dir_):
-        return os.path.isfile(os.path.join(dir_, "__init__.py")) or \
-            os.path.isfile(os.path.join(dir_, "__init__.pyx"))
-
-
-    def test_for_module_markers(start_at_dir, up_to_dir):
-        start_at_dir = _normalize(start_at_dir)
-        up_to_dir = _normalize(up_to_dir)
-
-        assert os.path.commonprefix([start_at_dir, up_to_dir]) == up_to_dir,\
-            "%s is not a prefix of %s" % (up_to_dir, start_at_dir)
-
-        current_dir = start_at_dir
-        while current_dir != up_to_dir:
-            # test for __init__.pyx or __init__.py in current_dir
-            if not _has_module_marker(current_dir):
-                raise Exception("__init__.py[x] missing in %s" % current_dir)
-            current_dir, _ = os.path.split(current_dir)
-
-
-    def cimport_path(pxd_path, target_dir):
-        pxd_path = _normalize(pxd_path)
-        pxd_dir  = _normalize(os.path.dirname(pxd_path))
-        target_dir = _normalize(target_dir)
-
-        base_pxd, _  = os.path.splitext(os.path.basename(pxd_path))
-        parts = [base_pxd]
-        current_dir = pxd_dir
-        while _has_module_marker(current_dir):
-            parts.append(os.path.split(current_dir)[1])
-            current_dir, _ = os.path.split(current_dir)
-
-        return ".".join(parts[::-1])
-
 
 def fixed_include_dirs():
     import pkg_resources
