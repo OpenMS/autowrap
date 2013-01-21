@@ -153,7 +153,7 @@ def _resolve_decls(decls):
     assert not intersecting_names, "enum names and class decls overlap"
     instance_mapping.update(enum_mapping)
 
-    functions = [_resolve_function(f, typedef_mapping, instance_mapping)
+    functions = [_resolve_function(f, instance_mapping, typedef_mapping)
                                                        for f in function_decls]
 
     enums = [ResolvedEnum(e) for e in enum_decls]
