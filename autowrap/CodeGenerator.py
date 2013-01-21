@@ -214,6 +214,7 @@ class CodeGenerator(object):
             begin_name = begin_decl.name
             end_name = end_decl.name
 
+            cy_type = self.cr.cy_decl_str(res_type)
             base_type = res_type.base_type
             meth_code.add("""def $name(self):
                             |    it = self.inst.get().$begin_name()
@@ -221,7 +222,7 @@ class CodeGenerator(object):
                             |    while it != self.inst.get().$end_name():
                             |        out = $base_type.__new__($base_type)
                             |        out.inst =
-                            + shared_ptr[_$base_type](new _$base_type(deref(it)))
+                            + shared_ptr[$cy_type](new $cy_type(deref(it)))
                             |        yield out
                             |        inc(it)
                             """, locals())
