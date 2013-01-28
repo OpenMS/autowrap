@@ -1,0 +1,154 @@
+DECLARATION RESOLVER CONCEPT
+============================
+
+aliases:  map string -> Types.CppType
+
+register aliases
+----------------
+
+ 1) typedef alias map typed_def_map erstellen.
+
+ 2) iterate over class decls to build class_inst_map:
+
+    1) class C without template params: register "C" -> CppType("C")
+
+    1b) enum : name -> CppType(name, is_enum)
+
+    2) class C with template params:
+       iterate over instace decls:
+              Cinst := C[int, X, D[float]]
+            register "Cinst" -> CppType("C",[ CppType("int"), CppType("X"),
+                                              CppType("D", [CppType("float")])
+                                            ]
+                                            
+    2b) resolve typedefs in class_inst_map_values
+
+ 3) check if typedefmap keys and class inst map keys are disjoint.
+
+resolve classes
+---------------
+
+  iterate over all class decls:
+
+    1) class C without templatge args, and without "ignore" flag:
+
+        localmap = {}
+        C = Resolved(name, methods, typedefmap, cinstmap, localmap)
+
+    2) class with template args. iterate over all instance decls
+         Ci :=...
+
+        localmap = { targ -> type ,.. }
+        Ci = Resolved(name, methods, typedefmap, cinst map, localmap)
+
+
+   Resolved(...):
+
+    1) overwrite typedefs with local_map and resolve all type decls
+       top down
+      ( no need to use tinstance map, as c++ lib does nothing now about
+        these !)
+
+    2) resolve known aliases:
+       X[Y[Z],,.. ]:  alias known -> resolve, done
+       else:
+            resolve inner
+            what remains: must somehow be convertible, possible errors:
+            later
+
+# TODO 2):
+#  class T[X]:
+#     Tint := T[int]
+#     X fun (T[X])
+
+# testen: tparam override typedef
+#    nested tinst args
+#    nested tinst args with intermixed typedefs
+
+keep map of tinst-aliases for code gen
+--------------------------------------
+
+    -> in cons of wrapped class with templates:
+
+        cdef class Ci:
+            cdef _C[_...] inst
+
+    -> result conv to aliased type
+
+            Ci = Ci.__new__(ci)
+            Ci.inst = new _C[_....](result)
+
+
+NOTES AND IDEAS AND EXAMPLES:
+=============================
+
+
+Kinds of decls:
+
+   1) after typdef resolution and resolution of tinst params:
+
+        int: known base types
+        X  : wrapped type
+        C  : known class with templates (eg std container)
+        D  : known class without templates, like "int" above
+        Z  : wrapped type with targs
+        Y  : declared but not wrapped type without targs
+        A  : declared but not wrapped type with targss
+
+        int          # std type
+
+        X            # wrapped type
+
+        C[int]       # stdcontainer of std type
+
+        C[X]         # stdcontainer of wrapped type
+
+        C[Y]         # iiner type not wrapped -> ERROR
+
+        Z[int]       # wrapped type with stddef type arg
+                   - > requiers alias Zint := Z[int]
+
+        Z[X]         # wrapped type with wrapped type arg
+                   - > requiers alias ZX := Z[X]
+
+        Z[Y]         # wrapped type with non wrapped type arg !
+                   - > requiers alias ZY := Z[Y]
+
+        Z[A[...]]   -> requires alias for Z[A[...]]
+
+        C[Z[Y]]     # container with ..
+                   -> requires alias ZY := Z[Y]
+
+we see:
+       outer type must be std, X, C or aliase template type
+
+more clear:
+      outer type has not targs
+      or: outer type C has targs std or X or aliased type
+      or: outer type has alias
+
+remark: C must be convertible to python  (list, vector, tuple, ..., own map)
+
+resolution:
+      outer type without targs, known -> done
+      outer type with targs:
+            outer is C:
+                inner I: std or wrapped without targs -> ok
+                inner: C':
+                     recurse
+                else: inner I: decld but not wrapped known with targs Ti:
+                     must be aliased.
+                     resolve alias -> done
+
+            outer is not wrapped:
+                  error
+            outer is wrapped:
+                  must be aliased
+                  resolve alias -> done
+
+
+
+
+
+
+
