@@ -296,9 +296,6 @@ class TypeToWrapConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
 
-# TODO: 
-#       4) cy_decl_str sollte jetzt das ganze im griff haben
-
         cy_type = self.converters.cy_decl_str(cpp_type)
         if cpp_type.is_ptr:
             call_as = "<%s>(%s.inst.get())" % (cy_type, argument_var)
@@ -331,7 +328,15 @@ class StdVectorConverter(TypeConverterBase):
         return "libcpp_vector",
 
     def matches(self, cpp_type):
-        return True
+        if len(cpp_type.template_args) == 1:
+            inner_t = cpp_type.template_args[0]
+            if inner_t.base_type in ["int", "long", "libcpp_string", "float",
+                "double"]:
+                return True
+            if inner_t.base_type in  self.converters.names_to_wrap:
+                return True
+        return False
+
 
     def matching_python_type(self, cpp_type):
         return "list"
