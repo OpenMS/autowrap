@@ -1,3 +1,4 @@
+import pdb
 import autowrap.DeclResolver as DeclResolver
 import autowrap.PXDParser
 import os
@@ -22,7 +23,6 @@ def test_inst_decl_parser():
     assert name =="A" and str(type_) == "B[X,Y *]", (str(name), str(type_))
 
     name, type_ = DeclResolver.parse_inst_decl("A := B[1,Y*]")
-    print name, str(type_)
     assert name =="A" and str(type_) == "B[1,Y *]", (str(name), str(type_))
 
 
@@ -110,11 +110,15 @@ def _resolve(*names):
 
 
 def test_simple():
-    (cdcl, enumdcl), map_ = _resolve("minimal.pxd")
+    (cdcl, enumdcl, f1, f2, f3), map_ = _resolve("minimal.pxd")
+
     assert cdcl.name == "Minimal"
     assert enumdcl.name == "ABCorD"
     assert sorted(map_.keys()) == ["ABCorD", "Minimal"]
     assert sorted(map(str, map_.values())) == ["ABCorD", "Minimal"]
+    assert f1.name == "top_function"
+    assert f2.name == "sumup"
+    assert f3.name == "run_static"
 
 def test_singular():
     # TODO: this test is broken !

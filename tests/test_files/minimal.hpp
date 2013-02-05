@@ -65,6 +65,11 @@ class Minimal {
 
         static int run_static(int);
 
+        operator int() const {
+            return 4711;
+        }
+
+
 };
 
 int top_function(int i);

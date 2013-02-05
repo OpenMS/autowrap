@@ -1,3 +1,4 @@
+import pdb
 from contextlib import contextmanager
 import os.path
 import sys
@@ -10,6 +11,8 @@ from DeclResolver import (ResolvedClass, ResolvedEnum,
 from Types import CppType
 
 import Code
+
+import logging as L
 
 
 @contextmanager
@@ -87,20 +90,19 @@ class CodeGenerator(object):
         self.setup_cimport_paths()
         self.create_cimports()
         self.create_includes()
-        for inst in self.instances:
-            if inst.wrap_ignore:
-                continue
-            if isinstance(inst, ResolvedEnum):
-                self.create_wrapper_for_enum(inst)
-            elif isinstance(inst, ResolvedClass):
-                self.create_wrapper_for_class(inst)
-            elif isinstance(inst, ResolvedFunction):
-                code = self.create_wrapper_for_free_function(inst)
-                self.top_level_code.append(code)
-            else:
-                raise Exception("can not create wrapper for %s "\
-                                "(%s)" % (inst.__class__, inst))
 
+        def create_for(clz, method):
+            for inst in self.instances:
+                if inst.wrap_ignore:
+                    continue
+                if isinstance(inst, clz):
+                    method(inst)
+
+        # first wrap classes, so that self.class_codes[..] is initialized
+        # for attaching enums or static functions
+        create_for(ResolvedClass, self.create_wrapper_for_class)
+        create_for(ResolvedEnum, self.create_wrapper_for_enum)
+        create_for(ResolvedFunction, self.create_wrapper_for_free_function)
 
         code = "\n".join(ci.render() for ci in self.top_level_code)
         code +=" \n"
@@ -160,16 +162,25 @@ class CodeGenerator(object):
         return iterators, non_iter_methods
 
     def create_wrapper_for_enum(self, decl):
+        if decl.cpp_decl.annotations.get("wrap-attach"):
+            name = "__"+decl.name
+        else:
+            name = decl.name
+        L.info("create wrapper for enum %s" % name)
         code = Code.Code()
-        code.add("cdef class $name:", name=decl.name)
+        code.add("cdef class $name:", name=name)
         for (name, value) in decl.items:
             code.add("    $name = $value", name=name, value=value)
-
-
         self.class_codes[decl.name]=code
+
+        for class_name in  decl.cpp_decl.annotations.get("wrap-attach", []):
+            code = Code.Code()
+            code.add("%s = %s"% (decl.name, "__"+decl.name))
+            self.class_codes[class_name].add(code)
 
     def create_wrapper_for_class(self, cdcl):
         cname = cdcl.name
+        L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cy_decl_str(cname)
         class_code = Code.Code()
         class_code.add("""
@@ -195,6 +206,15 @@ class CodeGenerator(object):
             for ci in codes:
                 class_code.add(ci)
 
+        has_eq_method = "operator==" in non_iter_methods
+        has_neq_method = "operator!=" in non_iter_methods
+        if has_eq_method or has_neq_method:
+            ops = { "==": has_eq_method,
+                    "!=": has_neq_method
+                    }
+            code = self.create_special_cmp_method(cdcl, ops)
+            class_code.add(code)
+
         assert cons_created, "no constructor for %s created" % cname
 
         codes = self._create_iter_methods(iterators)
@@ -210,6 +230,7 @@ class CodeGenerator(object):
     def _create_iter_methods(self, iterators):
         codes = []
         for name, (begin_decl, end_decl, res_type) in iterators.items():
+            L.info("   create wrapper for iter %s" % name)
             meth_code = Code.Code()
             begin_name = begin_decl.name
             end_name = end_decl.name
@@ -232,6 +253,8 @@ class CodeGenerator(object):
 
     def _create_overloaded_method_decl(self, py_name,
                                       dispatched_m_names, methods, use_return):
+
+        L.info("   create wrapper decl for overloaded method %s" % py_name)
 
         method_code = Code.Code()
         method_code.add("""def $py_name(self, *args):""", locals())
@@ -267,11 +290,12 @@ class CodeGenerator(object):
             code = self.create_special_getitem_method(methods[0])
             return [code]
 
-        if cpp_name == "operator==":
-            if len(methods) != 1:
-                print "overloaded operator== not suppored"
-            code = self.create_special_eq_method(cdcl)
-            return [code]
+        if cpp_name in ["operator==", "operator!="]:
+            return []
+
+        if cpp_name == "operator()":
+            codes = self.create_cast_methods(methods)
+            return codes
 
         if len(methods) == 1:
             code = self.create_wrapper_for_nonoverloaded_method(cdcl, cpp_name,
@@ -346,6 +370,7 @@ class CodeGenerator(object):
     def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, cpp_name,
             method):
 
+        L.info("   create wrapper for %s ('%s')" % (py_name, method))
         meth_code = Code.Code()
 
         call_args, cleanups, in_types =\
@@ -402,7 +427,8 @@ class CodeGenerator(object):
 
 
     def create_wrapper_for_free_function(self, decl):
-        static_clz = decl.cpp_decl.annotations.get("wrap-static")
+        L.info("create wrapper for free function %s" % decl.name)
+        static_clz = decl.cpp_decl.annotations.get("wrap-attach")
         if static_clz is None:
             code = self._create_wrapper_for_free_function(decl)
         else:
@@ -412,7 +438,7 @@ class CodeGenerator(object):
             self.class_codes[static_clz].add(code)
             code = self._create_wrapper_for_free_function(decl, static_name)
 
-        return code
+        self.top_level_code.append(code)
 
     def _create_wrapper_for_free_function(self, decl, name=None):
         if name is None:
@@ -502,6 +528,7 @@ class CodeGenerator(object):
             c++ constructor is variable and given by `py_name`.
 
         """
+        L.info("   create wrapper for non overloaded constructor %s" % py_name)
         cons_code = Code.Code()
 
         call_args, cleanups, in_types =\
@@ -525,6 +552,7 @@ class CodeGenerator(object):
         return cons_code
 
     def create_special_getitem_method(self, mdcl):
+        L.info("   create wrapper for operator[]")
         meth_code = Code.Code()
 
         call_args, cleanups, in_types =\
@@ -566,22 +594,80 @@ class CodeGenerator(object):
 
         return meth_code
 
-    def create_special_eq_method(self, class_decl):
+    def create_cast_methods(self, mdecls):
+        py_names = []
+        for mdcl in mdecls:
+            name = mdcl.cpp_decl.annotations.get("wrap-cast")
+            if name is None:
+                raise Exception("need wrap-cast annotation for %s" % mdcl)
+            if name in py_names:
+                raise Exception("wrap-cast annotation not unique for %s" % mdcl)
+            py_names.append(name)
+        codes = []
+        for (py_name, mdecl) in zip(py_names, mdecls):
+            code = Code.Code()
+            res_t = mdecl.result_type
+            cy_t = self.cr.cy_decl_str(res_t)
+            out_converter = self.cr.get(res_t)
+
+            code.add("def %s(self):" % py_name)
+
+            call_stmt = "<%s>(deref(self.inst.get()))" % cy_t
+            full_call_stmt = out_converter.call_method(res_t, call_stmt)
+
+            if isinstance(full_call_stmt, basestring):
+                code.add("""
+                    |    $full_call_stmt
+                    """, locals())
+            else:
+                code.add(full_call_stmt)
+
+            to_py_code = out_converter.output_conversion(res_t, "_r", "py_res")
+            if isinstance(to_py_code, basestring):
+                to_py_code = "    %s" % to_py_code
+            code.add(to_py_code)
+            code.add("""    return py_res""")
+            codes.append(code)
+        return codes
+
+
+
+    def create_special_cmp_method(self, cdcl, ops):
+        L.info("   create wrapper __richcmp__")
         meth_code = Code.Code()
-        name = class_decl.name
+        name = cdcl.name
+        op_code_map = { '<' : 0,
+                        '==': 2,
+                        '>':  4,
+                        '<=': 1,
+                        '!=': 3,
+                        '>=': 5,  }
+        inv_op_code_map = dict((v,k) for (k,v) in op_code_map.items())
+
+        implemented_op_codes = tuple(op_code_map[k] for (k, v)
+                                                    in ops.items()
+                                                    if v)
         meth_code.add("""
            |def __richcmp__(self, other, op):
-           |   if op != 2:
-           |      raise Exception("richcmp for op %d not implmenented" % op)
-           |   if not isinstance(other, $name):
-           |       return False
-           |   cdef $name other_casted = other
-           |   cdef $name self_casted = self
-           |   return deref(self_casted.inst.get()) == deref(other_casted.inst.get())
+           |    if op not in $implemented_op_codes:
+           |       op_str = $inv_op_code_map[op]
+           |       raise Exception("comparions operator %s not implemented" % op_str)
+           |    if not isinstance(other, $name):
+           |        return False
+           |    cdef $name other_casted = other
+           |    cdef $name self_casted = self
            """, locals())
+
+        for op in implemented_op_codes:
+            op_sign = inv_op_code_map[op]
+            meth_code.add("""    if op==$op:
+                            |        return deref(self_casted.inst.get())
+                            + $op_sign deref(other_casted.inst.get())""",
+                                 locals())
         return meth_code
 
     def create_special_copy_method(self, class_decl):
+        L.info("   create wrapper __copy__")
         meth_code = Code.Code()
         name = class_decl.name
         meth_code.add("""def __copy__(self):

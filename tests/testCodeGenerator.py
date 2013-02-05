@@ -127,10 +127,10 @@ def test_minimal():
     m2 = wrapped.Minimal(-1)
     assert m2.compute(3) == 3
 
-    assert wrapped.ABCorD.A == 0
-    assert wrapped.ABCorD.B == 2
-    assert wrapped.ABCorD.C == 3
-    assert wrapped.ABCorD.D == 4
+    assert wrapped.Minimal.ABCorD.A == 0
+    assert wrapped.Minimal.ABCorD.B == 2
+    assert wrapped.Minimal.ABCorD.C == 3
+    assert wrapped.Minimal.ABCorD.D == 4
 
 
     in_ = [m2, minimal]
@@ -158,7 +158,7 @@ def test_minimal():
     assert m1.compute(42) == 42
     assert m2.compute(42) == 43
 
-    assert m2.enumTest(wrapped.ABCorD.A) == wrapped.ABCorD.A
+    assert m2.enumTest(wrapped.Minimal.ABCorD.A) == wrapped.Minimal.ABCorD.A
 
     expect_exception(lambda: m2.enumTest(1))()
 
@@ -180,6 +180,11 @@ def test_minimal():
     assert wrapped.top_function(42) == 84
     assert wrapped.sumup([1,2,3]) == 6
     assert wrapped.Minimal.run_static(1) == 4
+
+    # != not declared, so:
+    expect_exception(lambda m1, m2: m1!=m2)(m1, m2)
+
+    assert m1.toInt() == 4711
 
 
 def test_templated():

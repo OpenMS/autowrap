@@ -4,6 +4,8 @@ from libcpp.vector cimport vector as libcpp_vector
 cdef extern from "minimal.hpp":
 
     cdef enum ABCorD:
+        # wrap-attach:
+        #   Minimal
         A, B=2, C, D
 
     cdef cppclass Minimal:
@@ -35,6 +37,8 @@ cdef extern from "minimal.hpp":
         libcpp_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
         libcpp_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
 
+        int operator()(Minimal) # wrap-cast:toInt
+
         int operator[](int)
 
         int sumup(libcpp_vector[int] what)
@@ -51,5 +55,5 @@ cdef extern from "minimal.hpp":
 
 cdef extern from "minimal.hpp" namespace "Minimal":
 
-    int run_static(int) # wrap-static:Minimal
+    int run_static(int) # wrap-attach:Minimal
 
