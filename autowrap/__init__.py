@@ -4,6 +4,10 @@ import CodeGenerator
 import PXDParser
 import Code
 
+import logging as L
+import sys
+L.basicConfig(level=L.INFO)
+
 def parse(files, root):
     return DeclResolver.resolve_decls_from_files(files, root)
 

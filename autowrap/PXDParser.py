@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -11,6 +10,8 @@ from Types import CppType
 
 import re
 import os
+
+import logging as L
 
 from collections import defaultdict, OrderedDict
 
@@ -171,7 +172,7 @@ class EnumDecl(BaseDecl):
     def fromTree(cls, node, lines, pxd_path):
         name = node.name
         items = []
-        annotations = parse_line_annotations(node, lines)
+        annotations = parse_class_annotations(node, lines)
         current_value = 0
         for item in node.items:
             if item.value is not None:
@@ -380,11 +381,14 @@ def parse_pxd_file(path):
     for body in iter_bodies(root):
         handler = handlers.get(type(body))
         if handler is not None:
+            L.info("parsed %s, handler=%s" % (body.__class__, handler.im_self))
             result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):
                 handler = handlers.get(type(node))
                 if handler is not None:
+                    L.info("parsed %s, handler=%s" % (node.__class__,
+                                                      handler.im_self))
                     result.append(handler(node, lines, path))
     return result
 

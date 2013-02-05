@@ -1,4 +1,3 @@
-import pdb
 # encoding: utf-8
 import PXDParser
 import Types
@@ -43,6 +42,8 @@ __doc__ = """
 
 """
 
+import logging as L
+
 class ResolvedEnum(object):
 
     def __init__(self, decl):
@@ -51,6 +52,9 @@ class ResolvedEnum(object):
         self.cpp_decl = decl
         self.items = decl.items
         self.type_ = Types.CppType(self.name, enum_items=self.items)
+        L.info("created resolved enum: %s" % (decl.name, ))
+        L.info("           with items: %s" % (decl.items))
+        L.info("")
 
 class ResolvedClass(object):
     """ contains all info for generating wrapping code of
@@ -65,7 +69,7 @@ class ResolvedClass(object):
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
         self.cpp_decl = decl
-        self.items = getattr(decl, "items", [])
+        #self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
 
     def get_flattened_methods(self):
@@ -94,12 +98,16 @@ class ResolvedMethod(object):
 
 
 class ResolvedFunction(ResolvedMethod):
+
     pass
+
+
 
 def resolve_decls_from_files(pathes, root):
     decls = []
     for path in pathes:
         full_path = os.path.join(root, path)
+        L.info("parse %s" % full_path)
         decls.extend(PXDParser.parse_pxd_file(full_path))
     return _resolve_decls(decls)
 
@@ -119,6 +127,8 @@ def _resolve_decls(decls):
     output:
         list of instances of ResolvedClass
     """
+
+    L.info("start resolving decls")
     assert all(isinstance(d, PXDParser.BaseDecl) for d in decls)
 
     def filter_out(type_):
@@ -150,7 +160,9 @@ def _resolve_decls(decls):
 
     # add enum mapping to class instances mapping
     intersecting_names = set(instance_mapping) & set(enum_mapping)
-    assert not intersecting_names, "enum names and class decls overlap"
+    assert not intersecting_names, "enum names and class decls overlap: %s"\
+                                   % intersecting_names
+
     instance_mapping.update(enum_mapping)
 
     functions = [_resolve_function(f, instance_mapping, typedef_mapping)
@@ -179,6 +191,7 @@ def _resolve_all_inheritances(class_decls):
             #    C[U]
             #    D
     """
+
     name_to_decl = dict((cdcl.name, cdcl) for cdcl in class_decls)
 
     inheritance_graph = _generate_inheritance_graph(class_decls, name_to_decl)
@@ -205,6 +218,7 @@ def _generate_inheritance_graph(class_decls, name_to_decl):
         for base_decl_str in cdcl.annotations.get("wrap-inherits", []):
             base = Types.CppType.from_string(base_decl_str)
             base_class = name_to_decl[base.base_type]
+            L.info("%s inherits %s" % (cdcl.name, base))
             graph[cdcl].append((base_class, base.template_args))
     return graph
 
@@ -223,6 +237,8 @@ def _resolve_inheritance(cdcl, class_decls, inheritance_graph):
     that is: methods from super_classes and their super_classes.
     """
 
+    L.info("resolve_inheritance for %s" % cdcl.name)
+
     # first we recurses to all super classes:
     for super_cld, _ in inheritance_graph[cdcl]:
         _resolve_inheritance(super_cld, class_decls, inheritance_graph)
@@ -234,6 +250,8 @@ def _resolve_inheritance(cdcl, class_decls, inheritance_graph):
 
 
 def _add_inherited_methods(cdcl, super_cld, used_parameters):
+
+    L.info("add_inherited_methods for %s" % cdcl.name)
 
     super_targs = super_cld.template_parameters
     # template paremeer None behaves like []
@@ -252,7 +270,10 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     transformed_methods = super_cld.get_transformed_methods(mapping)
     transformed_methods = dict((k,v) for (k,v) in transformed_methods.items()
                                 if k != super_cld.name) # remove constructors
+    for method in transformed_methods:
+        L.info("attach to %s: %s" % (cdcl.name, method))
     cdcl.attach_base_methods(transformed_methods)
+    L.info("")
 
 
 def _build_typedef_mapping(decls):
@@ -288,6 +309,7 @@ def _parse_all_wrap_instances_comments(class_decls):
     return r
 
 
+
 def _parse_wrap_instances_comments(cdcl):
 
     inst_annotations = cdcl.annotations.get("wrap-instances")
@@ -300,6 +322,9 @@ def _parse_wrap_instances_comments(cdcl):
         for instance_decl_str in inst_annotations:
             name, type_, tinst_map = parse_alias(cdcl, instance_decl_str)
             r[name] = type_, tinst_map
+    for name, (t, m) in r.items():
+        m_str = Types.printable(m)
+        L.info("parse_wrap_instances_comments %s -> (%s, %s)" %(name, t, m_str))
     return r
 
 
@@ -349,6 +374,8 @@ def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
 def _resolve_class_decl(class_decl, typedef_mapping, instance_mapping):
     # one decl can produce multiple classes !
 
+    L.info("resolve class decl %s" % class_decl.name)
+
     r = _parse_wrap_instances_comments(class_decl)
     resolved_classes = []
     for name, (type_, t_arg_mapping) in r.items():
@@ -380,13 +407,28 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
     Utils.flatten(local_map)
     return local_map
 
+
 def _resolve_method(method_decl, instance_mapping, type_map):
-    return _resolve_method_or_function(method_decl, instance_mapping, type_map,
-            ResolvedMethod)
+    L.info("resolve method decl: '%s'" % method_decl)
+    L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
+    L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
+    result = _resolve_method_or_function(method_decl, instance_mapping,
+                                         type_map, ResolvedMethod)
+    L.info("result             : '%s'" % result)
+    L.info("")
+    return result
+
 
 def _resolve_function(method_decl, instance_mapping, type_map):
-    return _resolve_method_or_function(method_decl, instance_mapping, type_map,
-            ResolvedFunction)
+    L.info("resolve function decl: '%s'" % method_decl)
+    L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
+    L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
+    result = _resolve_method_or_function(method_decl, instance_mapping,
+                                         type_map, ResolvedFunction)
+    L.info("result               : '%s'" % result)
+    L.info("")
+    return result
+
 
 def _resolve_method_or_function(method_decl, instance_mapping, type_map, clz):
     """
@@ -402,6 +444,7 @@ def _resolve_method_or_function(method_decl, instance_mapping, type_map, clz):
     name = _resolve_constructor(name, instance_mapping)
     return clz(name, result_type, args, method_decl)
 
+
 def _resolve_constructor(name, instance_mapping):
     map_ = dict( (t.base_type, n) for (n, t) in instance_mapping.items())
     return map_.get(name, name)
@@ -411,5 +454,3 @@ def _resolve_alias(cpp_type, wrap_inst_decls, type_map):
     cpp_type = cpp_type.transformed(type_map)
     alias = cpp_type.inv_transformed(wrap_inst_decls)
     return alias
-
-
