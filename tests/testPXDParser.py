@@ -1,4 +1,3 @@
-import pdb
 import autowrap.PXDParser
 import os
 
@@ -78,6 +77,24 @@ def test_int_container_pxd_parsing():
     cld1, cld2 = _parse("int_container_class.pxd")
     assert cld1.name == "X"
     assert cld2.name == "XContainer"
+
+def test_ref():
+    gun, = autowrap.PXDParser.parse_str("""
+cdef extern from "":
+    unsigned int & gun (vector[double &] &)
+            """)
+    assert gun.result_type == CppType.from_string("unsigned int &")
+    (n, t), = gun.arguments
+    assert t == CppType.from_string("vector[double &] &")
+
+def test_ptr():
+    gun, = autowrap.PXDParser.parse_str("""
+cdef extern from "":
+    unsigned int * gun (vector[double *] *)
+            """)
+    assert gun.result_type == CppType.from_string("unsigned int *")
+    (n, t), = gun.arguments
+    assert t == CppType.from_string("vector[double *] *")
 
 
 def test_enum():

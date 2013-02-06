@@ -131,45 +131,43 @@ class CppType(object):
     def from_string(str_):
         try:
             return CppType._from_string(str_)
-        except:
-            raise Exception("could not parse '%s'" % str_)
+        except Exception, e:
+            raise
+            #raise Exception("could not parse '%s'" % str_)
 
     @staticmethod
     def _from_string(str_):
-        matched = re.match("([a-zA-Z0-9 ][a-zA-Z0-9 \*&]*)(\[.*\])?", str_)
+        matched = re.match("([a-zA-Z0-9][ a-zA-Z0-9]*)(\[.*\])? *[&\*]?", str_.strip())
         if matched is None:
             raise Exception("can not parse '%s'" % str_)
         base_type, t_str = matched.groups()
         if t_str is None:
             orig_for_error_message = base_type
             base_type = base_type.strip()
-            unsigned, ptr, ref = False, False, False
+            is_unsigned, ptr, ref = False, False, False
             if base_type.startswith("unsigned"):
-                unsigned = True
-                base_type = base_type[8:].lstrip()
-            if base_type.endswith("*"):
-                ptr = True
-                base_type= base_type[:-1].rstrip()
-            elif base_type.endswith("&"):
-                ref = True
-                base_type= base_type[:-1].rstrip()
-            if base_type.endswith("*") or base_type.endswith("&"):
-                raise Exception("can not parse %s" % orig_for_error_message)
+                is_unsigned = True
+                base_type = base_type[8:].strip()
             if base_type.startswith("unsigned"):
                 raise Exception("can not parse %s" % orig_for_error_message)
             if " " in base_type:
                 raise Exception("can not parse %s" % orig_for_error_message)
+            is_ref =  str_.endswith("&")
+            is_ptr =  str_.endswith("*")
             return CppType(base_type,
-                           is_unsigned=unsigned,
-                           is_ptr=ptr,
-                           is_ref=ref)
+                           is_unsigned=is_unsigned,
+                           is_ptr=is_ptr,
+                           is_ref=is_ref)
 
         t_args = t_str[1:-1].split(",")
         if t_args == [""]:
             t_types= []
         else:
             t_types = [ CppType.from_string(t.strip()) for t in t_args ]
-        return CppType(base_type, t_types)
+        is_ref =  str_.endswith("&")
+        is_ptr =  str_.endswith("*")
+
+        return CppType(base_type, t_types, is_ref=is_ref, is_ptr=is_ptr)
 
 def printable(type_map, join_str=", "):
     if not type_map:

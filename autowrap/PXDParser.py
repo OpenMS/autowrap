@@ -88,9 +88,9 @@ def _extract_type(base_type, decl):
         template_parameters = []
         for arg in base_type.positional_args:
             if isinstance(arg, CComplexBaseTypeNode):
-                decl = arg.declarator
-                is_ptr = isinstance(decl, CPtrDeclaratorNode)
-                is_ref = isinstance(decl, CReferenceDeclaratorNode)
+                arg_decl = arg.declarator
+                is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
+                is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
                 is_unsigned = hasattr(arg.base_type, "signed") and not arg.base_type.signed
                 name = arg.base_type.name
                 ttype = CppType(name, None, is_ptr, is_ref, is_unsigned)
