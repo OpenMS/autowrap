@@ -64,6 +64,13 @@ cdef class LibCppTest:
         out2.inst = shared_ptr[_LibCppTest](new _LibCppTest(_r.second))
         cdef list py_result = [_r.first, out2]
         return py_result
+    def process6(self, list in_0 ):
+        assert isinstance(in_0, list) and all(isinstance(li, list) and len(li) == 2 and isinstance(li[0], int) and isinstance(li[1], float) for li in in_0), 'arg in_0 invalid'
+        cdef libcpp_vector[libcpp_pair[int,double]] v0 = in_0
+        _r = self.inst.get().process6(v0)
+        in_0[:] = v0
+        cdef list py_result = _r
+        return py_result
     def process3(self, list in_0 ):
         assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], LibCppTest) and isinstance(in_0[1], int), 'arg in_0 invalid'
         cdef libcpp_pair[_LibCppTest, int] v0

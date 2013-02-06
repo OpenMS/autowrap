@@ -19,3 +19,5 @@ cdef extern from "libcpp_test.hpp":
         libcpp_pair[int, LibCppTest] process4(libcpp_pair[int, LibCppTest] &)
         libcpp_pair[LibCppTest, LibCppTest] process5(libcpp_pair[LibCppTest, LibCppTest] &)
 
+        libcpp_vector[libcpp_pair[int,double]] process6(libcpp_vector[libcpp_pair[int,double]] &)
+

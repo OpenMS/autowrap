@@ -47,4 +47,9 @@ class LibCppTest {
             in.first = 43;
             return std::pair<LibCppTest, LibCppTest>(in.second, in.first);
         };
+
+        std::vector<std::pair<int, double> > process6(std::vector<std::pair<int, double> >& in) {
+            in.push_back(std::pair<int,double>(7, 11.0));
+            return std::vector<std::pair<int, double> > (in.rbegin(), in.rend());
+        }
 };

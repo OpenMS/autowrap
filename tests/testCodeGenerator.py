@@ -98,6 +98,11 @@ def test_libcpp():
     assert out[0].get() == 12
     assert out[1].get() == 43
 
+    in1 = [ [1,2.0], [2,3.0]]
+    out = t.process6(in1)
+    assert in1 == [ (1,2.0), (2,3.0), (7, 11.0)]
+    assert out[::-1] == [ (1,2.0), (2,3.0), (7, 11.0)]
+
 
 def test_minimal():
 
