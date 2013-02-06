@@ -51,6 +51,54 @@ def test_shared_ptr():
     assert h1.count() == 1
     assert h1.size() == 4
 
+def test_libcpp():
+
+    target = os.path.join(test_files, "libcpp_test.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code(["libcpp_test.pxd"],
+                                root=test_files, target=target,  debug=True)
+
+    libcpp = autowrap.Utils.compile_and_import("libcpp", [target, ],
+                                                include_dirs)
+    assert libcpp.__name__ == "libcpp"
+    print dir(libcpp)
+
+    t = libcpp.LibCppTest()
+    assert t.twist(["hi", 2]) == [2, "hi"]
+    li = [ 1]
+    li2 = t.process(li)
+    assert li == li2 == [ 1, 42]
+
+    in1 = [1, 2]
+    out = t.process2(in1)
+    assert out == in1 == [ 42, 11]
+
+    in1 = [t, 1]
+    out = t.process3(in1)
+
+    assert in1[0].get() == 0
+    assert in1[1] == 42
+    assert out[0].get() == 0
+    assert out[1] == 42
+
+    in1 = [1, t]
+    out = t.process4(in1)
+
+    assert in1[0] == 42
+    assert in1[1].get() == 0
+    assert out[0] == 42
+    assert out[1].get() == 0
+
+
+    t2 = libcpp.LibCppTest(12)
+    in1 = [t, t2]
+    out = t.process5(in1)
+    assert in1[0].get() == 43
+    assert in1[1].get() == 12
+    assert out[0].get() == 12
+    assert out[1].get() == 43
+
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,
@@ -84,12 +132,9 @@ def test_minimal():
     special_converters.append(SpecialIntConverter())
 
     target = os.path.join(test_files, "minimal_wrapper.pyx")
-
     include_dirs = autowrap.parse_and_generate_code(["minimal.pxd"],
                                 root=test_files, target=target,  debug=True)
-
     cpp_source = os.path.join(test_files, "minimal.cpp")
-
     wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source],
                                                 include_dirs)
     os.remove(target)
