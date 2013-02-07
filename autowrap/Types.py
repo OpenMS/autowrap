@@ -89,7 +89,11 @@ class CppType(object):
         return copy.deepcopy(self)
 
     def __str__(self):
-        unsigned = "unsigned" if self.is_unsigned else ""
+        if self.is_unsigned and self.base_type != "size_t":
+            unsigned = "unsigned"
+        else:
+            unsigned = ""
+
         ptr  = "*" if self.is_ptr else ""
         ref  = "&" if self.is_ref else ""
         if ptr and ref:

@@ -144,7 +144,6 @@ class CTypeDefDecl(BaseDecl):
 
     def __init__(self, new_name, type_,  annotations, pxd_path):
         super(CTypeDefDecl, self).__init__(new_name, annotations, pxd_path)
-        #self.new_name = new_name
         self.type_ = type_
 
     @classmethod

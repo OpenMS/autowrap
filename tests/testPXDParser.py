@@ -223,6 +223,15 @@ cdef extern from "A.h":
     assert str(decl1.type_) == "unsigned int"
     assert str(decl2.type_) == "int *", str(decl2.type_)
 
+def test_typedef2():
+
+    decl1, = autowrap.PXDParser.parse_str("""
+cdef extern from "A.h":
+    ctypedef size_t x
+    """)
+    assert decl1.name == 'x', decl1.name
+    assert str(decl1.type_) == "size_t", str(decl1.type_)
+
 @expect_exception
 def test_doubleptr():
 

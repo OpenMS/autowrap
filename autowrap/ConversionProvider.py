@@ -71,24 +71,6 @@ class ConverterRegistry(object):
 
     def _cy_decl_str(self, type_):
         return type_.transformed(self.instance_mapping)
-        if type_.template_args is not None:
-            targs = [self.cy_decl_str(t) for t in type_.template_args]
-            targs = "[%s]" % (", ".join(targs))
-        else:
-            targs = ""
-
-        if type_.base_type in self.known_names:
-            base = "_%s" % type_.base_type
-        else:
-            base = type_.base_type
-
-        if type_.is_ptr:
-            base += " * "
-
-        if type_.is_unsigned:
-            base = "unsigned "+base
-        return "%s%s" % (base, targs)
-
 
 
 class TypeConverterBase(object):
