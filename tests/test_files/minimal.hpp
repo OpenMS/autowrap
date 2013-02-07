@@ -1,6 +1,8 @@
 #include <string>
 #include <vector>
 
+typedef int Int;
+
 enum ABCorD {
         A, B=2, C, D
 };
@@ -15,13 +17,13 @@ class Minimal {
     public:
 
         Minimal();
-        Minimal(int);
+        Minimal(Int);
         Minimal(std::vector<int> const &);
         Minimal(const Minimal &);
 
-        int compute(int i) const;
+        int compute(Int i) const;
         float compute(float i) const;
-        int compute(int, int) const;
+        Int compute(int, int) const;
         std::string compute(std::string s) const;
 
         const char *pass_charptr(const char *) const;

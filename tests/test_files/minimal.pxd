@@ -1,6 +1,8 @@
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector
 
+from minimal_td cimport *
+
 cdef extern from "minimal.hpp":
 
     cdef enum ABCorD:
@@ -8,14 +10,15 @@ cdef extern from "minimal.hpp":
         #   Minimal
         A, B=2, C, D
 
+
     cdef cppclass Minimal:
         Minimal()
         Minimal(int)
         Minimal(libcpp_vector[int])
         Minimal(Minimal &)
         libcpp_string compute(libcpp_string)
-        int compute(int number1, int number2)
-        int compute(int number)
+        Int compute(int number1, int number2)
+        int compute(Int number)
         float compute(float number)
         int compute_int(int)
         int compute_int()

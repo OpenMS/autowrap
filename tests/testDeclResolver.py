@@ -27,7 +27,7 @@ def test_inst_decl_parser():
 
 
 def test_function_resolution():
-    funs, instance_mapping = DeclResolver.resolve_decls_from_string("""
+    decls, instance_mapping = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     ctypedef int X
     ctypedef float Y
@@ -35,8 +35,7 @@ cdef extern from "A.h":
     C[Y] gun(C[X] i)
     """)
 
-    funs = sorted(funs, key = lambda fun: fun.name)
-    fun, gun = funs
+    X, Y, fun, gun = sorted(decls, key = lambda d: d.name)
 
     assert str(fun.result_type) == "float"
     (n, t), = fun.arguments
@@ -49,7 +48,7 @@ cdef extern from "A.h":
     assert n == "i"
 
 def test_method_resolution():
-    (class_,), instance_mapping = DeclResolver.resolve_decls_from_string("""
+    decls, instance_mapping = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     ctypedef int X
     ctypedef float Y
@@ -57,15 +56,16 @@ cdef extern from "A.h":
         Y fun(X i)
         C[Y] gun(C[X] i)
     """)
+    T, X, Y = sorted(decls, key = lambda d: d.name)
 
-    assert class_.name == "T"
-    fun, = class_.methods.get("fun")
+    assert T.name == "T"
+    fun, = T.methods.get("fun")
     assert str(fun.result_type) == "float"
     (n, t), = fun.arguments
     assert str(t) == "int"
     assert n == "i"
 
-    gun, = class_.methods.get("gun")
+    gun, = T.methods.get("gun")
     assert str(gun.result_type) == "C[float]"
     (n, t), = gun.arguments
     assert str(t) == "C[int]"
@@ -73,7 +73,7 @@ cdef extern from "A.h":
 
 
 def test_method_resolution_in_template_class():
-    (class_,), instance_mapping = DeclResolver.resolve_decls_from_string("""
+    decls, instance_mapping = DeclResolver.resolve_decls_from_string("""
 cdef extern from "A.h":
     ctypedef int X
     cdef cppclass T[Y]:
@@ -84,21 +84,22 @@ cdef extern from "A.h":
         T[Y] hun(T[Y] j)
 
     """)
+    T, X = sorted(decls, key = lambda d: d.name)
 
-    assert class_.name == "T"
-    fun, = class_.methods.get("fun")
+    assert T.name == "T"
+    fun, = T.methods.get("fun")
     assert str(fun.result_type) == "float"
     (n, t), = fun.arguments
     assert str(t) == "int"
     assert n == "i"
 
-    gun, = class_.methods.get("gun")
+    gun, = T.methods.get("gun")
     assert str(gun.result_type) == "C[float]"
     (n, t), = gun.arguments
     assert str(t) == "C[int]"
     assert n == "i"
 
-    gun, = class_.methods.get("hun")
+    gun, = T.methods.get("hun")
     assert str(gun.result_type) == "T"
     (n, t), = gun.arguments
     assert str(t) == "T"
@@ -364,19 +365,22 @@ def test_int_container():
             "push_back", "size",]
 
 def test_typedef_with_fun():
-    (resolved,), map_ = DeclResolver.resolve_decls_from_string("""
+    decls,  map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     X fun(X x)
             """)
-    assert resolved.name == "fun"
-    assert str(resolved.result_type) == "int"
-    (n, t), = resolved.arguments
+
+    X, fun  = sorted(decls, key = lambda d: d.name)
+
+    assert fun.name == "fun"
+    assert str(fun.result_type) == "int"
+    (n, t), = fun.arguments
     assert n == "x"
     assert str(t) == "int"
 
 def test_typedef_chaining():
-    (function,), map_ = DeclResolver.resolve_decls_from_string("""
+    decls, map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     ctypedef X* iptr
@@ -385,8 +389,10 @@ cdef extern from "X.h":
     iptr2 fun(iptr, Y *)
             """)
 
-    assert str(function.result_type) == "int *"
-    t1, t2 = map(str, (t for (n, t) in function.arguments))
+    X, Y, fun, iptr, iptr2 = sorted(decls, key = lambda d: d.name)
+
+    assert str(fun.result_type) == "int *"
+    t1, t2 = map(str, (t for (n, t) in fun.arguments))
     assert t1 == "int *", t1
     assert t2 == "int *", t2
 
@@ -413,7 +419,7 @@ cdef extern from "X.h":
             """)
 
 def test_typedef_with_class():
-    (resolved, fun), map_ = DeclResolver.resolve_decls_from_string("""
+    decls, map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     ctypedef int * Y
@@ -424,15 +430,17 @@ cdef extern from "X.h":
         B bar(X *)
     Y fun(X *)
             """)
-    assert resolved.name == "A"
+
+    A, X_, Y, fun = sorted(decls, key = lambda d: d.name)
+    assert A.name == "A"
     assert str(map_.get("A")) == "A[int]"
 
-    foo, = resolved.methods.get("foo")
+    foo, = A.methods.get("foo")
     assert str(foo.result_type) == "int", foo.result_type
     (__, arg_t), = foo.arguments
     assert str(arg_t) == "int", str(arg_t)
 
-    bar, = resolved.methods.get("bar")
+    bar, = A.methods.get("bar")
     assert str(bar.result_type) == "int"
     (__, arg_t), = bar.arguments
     assert str(arg_t) == "int *"
@@ -444,7 +452,7 @@ cdef extern from "X.h":
 
 
 def test_typedef_with_class2():
-    (resolved,), map_ = DeclResolver.resolve_decls_from_string("""
+    decls, map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     cdef cppclass A[B]:
@@ -453,22 +461,24 @@ cdef extern from "X.h":
         X foo(B)
         B bar(X)
             """)
-    assert resolved.name == "A"
+
+    A, X = sorted(decls, key = lambda d: d.name)
+    assert A.name == "A"
 
     assert str(map_.get("A"))=="A[int *]"
 
-    foo, = resolved.methods.get("foo")
+    foo, = A.methods.get("foo")
     assert str(foo.result_type) == "int", foo.result_type
     (__, arg_t), = foo.arguments
     assert str(arg_t) == "int *", str(arg_t)
 
-    bar, = resolved.methods.get("bar")
+    bar, = A.methods.get("bar")
     assert str(bar.result_type) == "int *"
     (__, arg_t), = bar.arguments
     assert str(arg_t) == "int", str(arg_t)
 
 def test_typedef_with_class3():
-    (resolved,), map_ = DeclResolver.resolve_decls_from_string("""
+    decls,  map_ = DeclResolver.resolve_decls_from_string("""
 cdef extern from "X.h":
     ctypedef int X
     cdef cppclass A[B,C]:
@@ -477,16 +487,18 @@ cdef extern from "X.h":
         X foo(C*)
         C* bar(B)
             """)
-    assert resolved.name == "A"
+    A, X = sorted(decls, key = lambda d: d.name)
+
+    assert A.name == "A"
 
     assert str(map_.get("A"))=="A[int *,int]"
 
-    foo, = resolved.methods.get("foo")
+    foo, = A.methods.get("foo")
     assert str(foo.result_type) == "int", foo.result_type
     (__, arg_t), = foo.arguments
     assert str(arg_t) == "int *", str(arg_t)
 
-    bar, = resolved.methods.get("bar")
+    bar, = A.methods.get("bar")
     assert str(bar.result_type) == "int *"
     (__, arg_t), = bar.arguments
     assert str(arg_t) == "int *", str(arg_t)

@@ -1,4 +1,3 @@
-import pdb
 from contextlib import contextmanager
 import os.path
 import sys
@@ -6,7 +5,7 @@ import re
 from collections import defaultdict
 
 from ConversionProvider import setup_converter_registry
-from DeclResolver import (ResolvedClass, ResolvedEnum,
+from DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
                           ResolvedMethod, ResolvedFunction)
 from Types import CppType
 
@@ -38,7 +37,7 @@ def fixed_include_dirs():
 
 class CodeGenerator(object):
 
-    def __init__(self, instances, instance_mapping, target_path=None,
+    def __init__(self, resolved, instance_mapping, target_path=None,
             extra_methods=None):
 
         if extra_methods is None:
@@ -46,14 +45,21 @@ class CodeGenerator(object):
 
         self.extra_methods = extra_methods
 
-        self.instances = sorted(instances, key = lambda decl: decl.name)
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
 
-        self.classes = [d for d in instances if isinstance(d, ResolvedClass)]
-        self.enums = [d for d in instances if isinstance(d, ResolvedEnum)]
-        self.functions = [d for d in instances if isinstance(d,
+        self.classes = [d for d in resolved if isinstance(d, ResolvedClass)]
+        self.enums = [d for d in resolved if isinstance(d, ResolvedEnum)]
+        self.functions = [d for d in resolved if isinstance(d,
                                                     ResolvedFunction)]
+
+        self.typedefs = [d for d in resolved if isinstance(d, ResolvedTypeDef)]
+
+        self.resolved = []
+        self.resolved.extend(sorted(self.typedefs, key=lambda d: d.name))
+        self.resolved.extend(sorted(self.enums, key=lambda d: d.name))
+        self.resolved.extend(sorted(self.functions, key=lambda d: d.name))
+        self.resolved.extend(sorted(self.classes, key=lambda d: d.name))
 
         self.instance_mapping = instance_mapping
 
@@ -73,7 +79,7 @@ class CodeGenerator(object):
     def setup_cimport_paths(self):
 
         pxd_dirs = set()
-        for inst in self.classes + self.enums + self.functions:
+        for inst in self.classes + self.enums + self.functions + self.typedefs:
             pxd_path = os.path.abspath(inst.cpp_decl.pxd_path)
             pxd_dir = os.path.dirname(pxd_path)
             pxd_dirs.add(pxd_dir)
@@ -92,11 +98,11 @@ class CodeGenerator(object):
         self.create_includes()
 
         def create_for(clz, method):
-            for inst in self.instances:
-                if inst.wrap_ignore:
+            for resolved in self.resolved:
+                if resolved.wrap_ignore:
                     continue
-                if isinstance(inst, clz):
-                    method(inst)
+                if isinstance(resolved, clz):
+                    method(resolved)
 
         # first wrap classes, so that self.class_codes[..] is initialized
         # for attaching enums or static functions
@@ -680,22 +686,17 @@ class CodeGenerator(object):
     def create_cimports(self):
         self.create_std_cimports()
         code = Code.Code()
-        for decl in self.instances:
-            if decl.__class__ in (ResolvedMethod, ResolvedFunction,
-                                  ResolvedEnum, ResolvedClass):
-                cpp_decl = decl.cpp_decl
-                pxd_path = cpp_decl.pxd_path
-                name = cpp_decl.name
-            else:
-                continue
+        for resolved in self.resolved:
+            import_from = resolved.pxd_import_path
+            name = resolved.name
+            if isinstance(resolved, (ResolvedMethod,
+                                     ResolvedFunction,
+                                     ResolvedEnum,
+                                     ResolvedClass)):
+                code.add("from $import_from cimport $name as _$name", locals())
+            elif isinstance(resolved, ResolvedTypeDef):
+                code.add("from $import_from cimport $name", locals())
 
-            rel_pxd_path = os.path.relpath(pxd_path, self.target_path)
-            cython_dir_name = rel_pxd_path.replace(os.sep, ".")
-            if os.altsep:
-                cython_dir_name = cython_dir_name.replace(os.altsep, ".")
-            import_from = decl.pxd_import_path
-            code.add("from $from_ cimport $name as _$name",
-                                      from_=import_from, name=name)
         self.top_level_code.append(code)
 
     def create_std_cimports(self):

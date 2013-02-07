@@ -137,7 +137,8 @@ def test_minimal():
     special_converters.append(SpecialIntConverter())
 
     target = os.path.join(test_files, "minimal_wrapper.pyx")
-    include_dirs = autowrap.parse_and_generate_code(["minimal.pxd"],
+    include_dirs = autowrap.parse_and_generate_code(["minimal.pxd",
+                                                     "minimal_td.pxd"],
                                 root=test_files, target=target,  debug=True)
     cpp_source = os.path.join(test_files, "minimal.cpp")
     wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source],

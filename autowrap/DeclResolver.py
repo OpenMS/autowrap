@@ -44,6 +44,14 @@ __doc__ = """
 
 import logging as L
 
+class ResolvedTypeDef(object):
+
+    def __init__(self, decl):
+        self.cpp_decl = decl
+        self.name = decl.name
+        self.type_ = decl.type_
+        self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+
 class ResolvedEnum(object):
 
     def __init__(self, decl):
@@ -169,12 +177,13 @@ def _resolve_decls(decls):
                                                        for f in function_decls]
 
     enums = [ResolvedEnum(e) for e in enum_decls]
+    typedefs = [ResolvedTypeDef(t) for t in typedef_decls]
 
     classes = _resolve_class_decls(class_decls,
                                    typedef_mapping,
                                    instance_mapping)
 
-    return classes + enums + functions, instance_mapping
+    return classes + enums + functions + typedefs, instance_mapping
 
 
 def _resolve_all_inheritances(class_decls):
