@@ -334,3 +334,19 @@ cdef extern from "A.h":
     assert str(arg_t) == "int"
 
 
+def test_attributes():
+    decl, = autowrap.PXDParser.parse_str("""
+
+cdef extern from "A.h":
+
+    cdef cppclass A:
+        int i
+        float f
+        int fun(int x) # wrap-static
+
+    """)
+
+    fun,  = decl.methods.get("fun")
+    (__, arg_t), = fun.arguments
+    assert str(arg_t) == "int"
+

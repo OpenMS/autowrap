@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -122,10 +123,10 @@ class SubtreeParserInterfaceChecker(type):
 
     def __new__(mcs, name, bases, dict_):
         msg = "TreeHandlerInterface not implemented"
-        fromTree = dict_.get("fromTree")
-        assert fromTree is not None, msg
-        assert isinstance(fromTree, classmethod), msg
-        nargs = fromTree.__func__.func_code.co_argcount
+        parseTree = dict_.get("parseTree")
+        assert parseTree is not None, msg
+        assert isinstance(parseTree, classmethod), msg
+        nargs = parseTree.__func__.func_code.co_argcount
         assert nargs == 4, msg
         return type(name, bases, dict_)
 
@@ -147,7 +148,7 @@ class CTypeDefDecl(BaseDecl):
         self.type_ = type_
 
     @classmethod
-    def fromTree(cls, node, lines, pxd_path):
+    def parseTree(cls, node, lines, pxd_path):
         decl = node.declarator
         if isinstance(decl, CPtrDeclaratorNode):
             new_name = decl.base.name
@@ -168,7 +169,7 @@ class EnumDecl(BaseDecl):
         self.template_parameters = None
 
     @classmethod
-    def fromTree(cls, node, lines, pxd_path):
+    def parseTree(cls, node, lines, pxd_path):
         name = node.name
         items = []
         annotations = parse_class_annotations(node, lines)
@@ -194,25 +195,30 @@ class CppClassDecl(BaseDecl):
 
     __metaclass__ = SubtreeParserInterfaceChecker
 
-    def __init__(self, name, template_parameters, methods, annotations,
+    def __init__(self, name, template_parameters, methods, attributes, annotations,
                  pxd_path):
         super(CppClassDecl, self).__init__(name, annotations, pxd_path)
         self.methods = methods
+        self.attributes = attributes
         self.template_parameters = template_parameters
 
     @classmethod
-    def fromTree(cls, node, lines, pxd_path):
+    def parseTree(cls, node, lines, pxd_path):
         name = node.name
         template_parameters = node.templates
         class_annotations = parse_class_annotations(node, lines)
         methods = OrderedDict()
+        attributes = []
         for att in node.attributes:
-            meth = CppMethodOrFunctionDecl.fromTree(att, lines, pxd_path)
-            if meth is not None:
-                # an OrderedDefaultDict(list) would be nice here:
-                methods.setdefault(meth.name,[]).append(meth)
+            decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
+            if decl is not None:
+                if isinstance(decl, CppMethodOrFunctionDecl):
+                    # an OrderedDefaultDict(list) would be nice here:
+                    methods.setdefault(decl.name,[]).append(decl)
+                elif isinstance(decl, CppAttributeDecl):
+                    attributes.append(decl)
 
-        return cls(name, template_parameters, methods, class_annotations,
+        return cls(name, template_parameters, methods, attributes, class_annotations,
                    pxd_path)
 
     def __str__(self):
@@ -244,9 +250,16 @@ class CppClassDecl(BaseDecl):
                 if not self.has_method(decl):
                     self.methods.setdefault(decl.name,[]).append(decl)
 
-class CppMethodOrFunctionDecl(BaseDecl):
+class CppAttributeDecl(BaseDecl):
 
-    __metaclass__ = SubtreeParserInterfaceChecker
+    def __init__(self, name, type_, annotations, pxd_path):
+        super(CppAttributeDecl, self).__init__(name, annotations,
+                                                      pxd_path)
+        self.type_ = type_
+
+
+
+class CppMethodOrFunctionDecl(BaseDecl):
 
     def __init__(self, result_type,  name, arguments, annotations, pxd_path):
         super(CppMethodOrFunctionDecl, self).__init__(name, annotations,
@@ -269,8 +282,11 @@ class CppMethodOrFunctionDecl(BaseDecl):
         other_key = [other.result_type] + [t for (__, t) in other.arguments]
         return self_key == other_key
 
+
+class MethodOrAttributeDecl(object):
+
     @classmethod
-    def fromTree(cls, node, lines, pxd_path):
+    def parseTree(cls, node, lines, pxd_path):
         annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
             return None # nested classes only can be delcared in pxd
@@ -279,11 +295,8 @@ class CppMethodOrFunctionDecl(BaseDecl):
         result_type = _extract_type(node.base_type, decl)
 
         if isinstance(decl, CNameDeclaratorNode):
-            if re.match("^operator\W*\(\)$", decl.name):
-                name = decl.name[:-2]
-                args = []
-                return cls(result_type, name, args, annotations)
-            raise Exception("can not handle %s" % decl.name)
+            return CppAttributeDecl(decl.name, result_type, annotations,
+                                                                      pxd_path)
 
         if isinstance(decl.base, CFuncDeclaratorNode):
             decl = decl.base
@@ -304,7 +317,7 @@ class CppMethodOrFunctionDecl(BaseDecl):
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname,tt))
 
-        return cls(result_type, name, args, annotations, pxd_path)
+        return CppMethodOrFunctionDecl(result_type, name, args, annotations, pxd_path)
 
     def __str__(self):
         rv = str(self.result_type)
@@ -369,10 +382,10 @@ def parse_pxd_file(path):
     def cimport(b, _, __):
         print "cimport", b.module_name, "as", b.as_name
 
-    handlers = { CEnumDefNode : EnumDecl.fromTree,
-                 CppClassNode : CppClassDecl.fromTree,
-                 CTypeDefNode : CTypeDefDecl.fromTree,
-                 CVarDefNode  : CppMethodOrFunctionDecl.fromTree,
+    handlers = { CEnumDefNode : EnumDecl.parseTree,
+                 CppClassNode : CppClassDecl.parseTree,
+                 CTypeDefNode : CTypeDefDecl.parseTree,
+                 CVarDefNode  : MethodOrAttributeDecl.parseTree,
                  CImportStatNode  : cimport,
                  }
 

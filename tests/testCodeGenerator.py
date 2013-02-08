@@ -290,6 +290,28 @@ def test_templated():
     _, __, tn = y.passs(in_)
     assert tn.get().get() == 11
 
+    templated.f = 2
+    assert templated.f == 2.0
+    templated.f = 4
+    assert templated.f == 4.0
+
+    t13 = twrapped.T(13)
+    templated._x = t13
+    assert templated._x.get() == 13
+    t17 = twrapped.T(17)
+    templated._x = t17
+    assert templated._x.get() == 17
+
+    templated.xi = [t13, t17]
+    assert templated.xi[0].get() == 13
+    assert templated.xi[1].get() == 17
+
+    templated.xi = [t17, t13]
+    assert templated.xi[0].get() == 17
+    assert templated.xi[1].get() == 13
+
+
+
 
 
 # todo: wrapped tempaltes as input of free functions and mehtods of other

@@ -64,18 +64,29 @@ class ResolvedEnum(object):
         L.info("           with items: %s" % (decl.items))
         L.info("")
 
+class ResolvedAttribute(object):
+
+    def __init__(self, name, type_, decl):
+        self.name = name
+        self.type_ = type_
+        self.cpp_decl = decl
+        self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+
+
 class ResolvedClass(object):
     """ contains all info for generating wrapping code of
         resolved class.
         "Resolved" means that template parameters and typedefs are resolved.
     """
 
-    def __init__(self, name, methods, decl):
+    def __init__(self, name, methods, attributes, decl):
         self.name = name
         # resolve overloadings
         self.methods = OrderedDict()
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
+        self.attributes = attributes
+
         self.cpp_decl = decl
         #self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
@@ -380,7 +391,7 @@ def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
     return all_resolved_classes
 
 
-def _resolve_class_decl(class_decl, typedef_mapping, instance_mapping):
+def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
     # one decl can produce multiple classes !
 
     L.info("resolve class decl %s" % class_decl.name)
@@ -390,15 +401,20 @@ def _resolve_class_decl(class_decl, typedef_mapping, instance_mapping):
     for name, (type_, t_arg_mapping) in r.items():
         local_mapping = _build_local_typemap(t_arg_mapping, typedef_mapping)
 
+        r_attributes = []
+        for adcl in class_decl.attributes:
+            r_attributes.append(_resolve_attribute(adcl, i_mapping,
+                                                                local_mapping))
+
         r_methods = []
         for (mname, mdcls) in class_decl.methods.items():
             for mdcl in mdcls:
                 ignore = mdcl.annotations.get("wrap-ignore", False)
                 if ignore:
                     continue
-                r_method = _resolve_method(mdcl, instance_mapping, local_mapping)
+                r_method = _resolve_method(mdcl, i_mapping, local_mapping)
                 r_methods.append(r_method)
-        r_class = ResolvedClass(name, r_methods, class_decl)
+        r_class = ResolvedClass(name, r_methods, r_attributes, class_decl)
         resolved_classes.append(r_class)
     return resolved_classes
 
@@ -453,6 +469,9 @@ def _resolve_method_or_function(method_decl, instance_mapping, type_map, clz):
     name = _resolve_constructor(name, instance_mapping)
     return clz(name, result_type, args, method_decl)
 
+def _resolve_attribute(adecl, instance_mapping, type_map):
+    type_ = _resolve_alias(adecl.type_, instance_mapping, type_map)
+    return ResolvedAttribute(adecl.name, type_, adecl)
 
 def _resolve_constructor(name, instance_mapping):
     map_ = dict( (t.base_type, n) for (n, t) in instance_mapping.items())

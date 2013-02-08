@@ -5,6 +5,7 @@ class T
     private:
         int _i;
     public:
+        T(): _i(0) {}
 
         T(const T& t){
         _i = t._i;
@@ -24,14 +25,21 @@ class T
 template <class X>
 class Templated {
 
-    private:
+    public:
         X _x;
+        float f;
+        std::vector<X> xi;
 
     public:
 
-        Templated(X x): _x(x) { };
+        Templated(X x): _x(x), f(11.0) { };
 
-        Templated(const Templated<X> & t): _x(t._x) { };
+        Templated(const Templated<X> & t): _x(t._x), f(11.0) { };
+
+        float getF() const
+        {
+            return f;
+        }
 
         X get() const
         {

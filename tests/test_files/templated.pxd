@@ -5,16 +5,24 @@ from libcpp.vector cimport vector as libcpp_vector
 cdef extern from "templated.hpp":
 
     cdef cppclass T:
+        T() 
         T(int)
         T(T) # wrap-ignore
         int get()
 
     cdef cppclass Templated[X]:
+
         # wrap-instances:
         #   Templated := Templated[T]
+
+        X _x
+        float f
+        libcpp_vector[T] xi 
+
         Templated(X)
         Templated(Templated[X]) # wrap-ignore
         X get()
+        float getF()
         int summup(libcpp_vector[Templated[X]] & v)
         libcpp_vector[Templated[X]] reverse(libcpp_vector[Templated[X]] v)
         int getTwice(Templated[X])

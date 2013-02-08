@@ -1,5 +1,9 @@
 - mehr klassen wrappen
 
+- attribut zugriff ! ( ->ProteinIdentification::ProteinGroup z.b.)
+
+- wrap-attach auch für klassen !
+
 - codegen refak: 
   extra klasse fürs eigentliche codegen.
   ziel: via vererbung auch iteratoren udn ref-zugriffen wrappen

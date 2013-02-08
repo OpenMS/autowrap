@@ -184,8 +184,8 @@ class CodeGenerator(object):
             code.add("%s = %s"% (decl.name, "__"+decl.name))
             self.class_codes[class_name].add(code)
 
-    def create_wrapper_for_class(self, cdcl):
-        cname = cdcl.name
+    def create_wrapper_for_class(self, r_class):
+        cname = r_class.name
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cy_decl_str(cname)
         class_code = Code.Code()
@@ -200,14 +200,18 @@ class CodeGenerator(object):
 
         cons_created = False
 
-        iterators, non_iter_methods = self.filterout_iterators(cdcl.methods)
+        for attribute in r_class.attributes:
+            if not attribute.wrap_ignore:
+                class_code.add(self._create_wrapper_for_attribute(attribute))
+
+        iterators, non_iter_methods = self.filterout_iterators(r_class.methods)
 
         for (name, methods) in non_iter_methods.items():
-            if name == cdcl.name:
-                codes = self.create_wrapper_for_constructor(cdcl, methods)
+            if name == r_class.name:
+                codes = self.create_wrapper_for_constructor(r_class, methods)
                 cons_created = True
             else:
-                codes = self.create_wrapper_for_method(cdcl, name, methods)
+                codes = self.create_wrapper_for_method(r_class, name, methods)
 
             for ci in codes:
                 class_code.add(ci)
@@ -219,7 +223,7 @@ class CodeGenerator(object):
             has_ops[ops] = has_op
 
         if any(v for v in has_ops.values()):
-            code = self.create_special_cmp_method(cdcl, has_ops)
+            code = self.create_special_cmp_method(r_class, has_ops)
             class_code.add(code)
 
         assert cons_created, "no constructor for %s created" % cname
@@ -384,6 +388,54 @@ class CodeGenerator(object):
             code.add(conv_code)
 
         return call_args, cleanups, in_types
+
+    def _create_wrapper_for_attribute(self, attribute):
+        code = Code.Code()
+        name = attribute.name
+
+        t = attribute.type_
+
+        converter = self.cr.get(t)
+        py_type = converter.matching_python_type(t)
+        conv_code, call_as, cleanup = converter.input_conversion(t, name, 0)
+
+        code.add("""
+            |property $name:
+            |    def __set__(self, $py_type $name):
+            """, locals())
+
+        # TODO: add mit indent level
+        indented = Code.Code()
+        indented.add(conv_code)
+        code.add(indented)
+
+        code.add("""
+            |        self.inst.get().$name = $call_as
+            """, locals())
+        indented = Code.Code()
+        if isinstance(cleanup, basestring):
+            cleanup = "    %s" % cleanup
+        indented.add(cleanup)
+        code.add(indented)
+
+        to_py_code = converter.output_conversion(t, "_r", "py_result")
+        access_stmt = converter.call_method(t, "self.inst.get().%s" % name)
+
+        cy_type = self.cr.cy_decl_str(t)
+
+        if isinstance(to_py_code, basestring):
+            to_py_code = "    %s" % to_py_code
+
+        code.add("""
+            |    def __get__(self):
+            |        $access_stmt
+            """, locals())
+        # increase indent:
+        indented = Code.Code()
+        indented.add(to_py_code)
+        code.add(indented)
+        code.add("        return py_result")
+        return code
 
     def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, cpp_name,
             method):
@@ -576,14 +628,15 @@ class CodeGenerator(object):
         name = cdcl.name
         assert t.base_type == name, "can only add to myself"
         assert mdcl.result_type.base_type == name, "can only return same type"
+        cy_t = self.cr.cy_decl_str(t)
         code = Code.Code()
         code.add("""
-        |def __add__(Minimal self, $name other not None):
-        |    cdef _$name * this = self.inst.get()
-        |    cdef _$name * that = other.inst.get()
-        |    cdef _$name added = deref(this) + deref(that)
+        |def __add__($name self, $name other not None):
+        |    cdef $cy_t  * this = self.inst.get()
+        |    cdef $cy_t * that = other.inst.get()
+        |    cdef $cy_t added = deref(this) + deref(that)
         |    cdef $name result = $name.__new__($name)
-        |    result.inst = shared_ptr[_$name](new _$name(added))
+        |    result.inst = shared_ptr[$cy_t](new $cy_t(added))
         |    return result
         """, locals())
         return code
@@ -595,11 +648,12 @@ class CodeGenerator(object):
         name = cdcl.name
         assert t.base_type == name, "can only add to myself"
         assert mdcl.result_type.base_type == name, "can only return same type"
+        cy_t = self.cr.cy_decl_str(t)
         code = Code.Code()
         code.add("""
         |def __iadd__($name self, $name other not None):
-        |    cdef _$name * this = self.inst.get()
-        |    cdef _$name * that = other.inst.get()
+        |    cdef $cy_t * this = self.inst.get()
+        |    cdef $cy_t * that = other.inst.get()
         |    _iadd(this, that)
         |    return self
         """, locals())
@@ -607,7 +661,7 @@ class CodeGenerator(object):
         tl = Code.Code()
         tl.add("""
                 |cdef extern from "autowrap_tools.hpp":
-                |    void _iadd(_$t *, _$t *)
+                |    void _iadd($cy_t *, $cy_t *)
                 """, locals())
 
         self.top_level_code.append(tl)
