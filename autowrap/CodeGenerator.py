@@ -292,18 +292,28 @@ class CodeGenerator(object):
 
     def create_wrapper_for_method(self, cdcl, cpp_name, methods):
 
-        if cpp_name == "operator[]":
-            assert len(methods) == 1, "overloaded operator[] not suppored"
-            code = self.create_special_getitem_method(methods[0])
-            return [code]
-
         if cpp_name.startswith("operator"):
             __, __, op = cpp_name.partition("operator")
             if op in ["!=", "==", "<", "<=", ">", ">="]:
+                # handled in create_wrapper_for_class, as one has to collect
+                # these
                 return []
             elif op == "()":
                 codes = self.create_cast_methods(methods)
                 return codes
+            elif op  == "[]":
+                assert len(methods) == 1, "overloaded operator[] not suppored"
+                code = self.create_special_getitem_method(methods[0])
+                return [code]
+            elif op == "+":
+                assert len(methods) == 1, "overloaded operator+ not suppored"
+                code = self.create_special_add_method(cdcl, methods[0])
+                return [code]
+            elif op == "+=":
+                assert len(methods) == 1, "overloaded operator+= not suppored"
+                code = self.create_special_iadd_method(cdcl, methods[0])
+                return [code]
+
 
         if len(methods) == 1:
             code = self.create_wrapper_for_nonoverloaded_method(cdcl, cpp_name,
@@ -559,6 +569,53 @@ class CodeGenerator(object):
 
         return cons_code
 
+    def create_special_add_method(self, cdcl, mdcl):
+        L.info("   create wrapper for operator+")
+        assert len(mdcl.arguments) == 1, "operator+ has wrong signature"
+        (__, t), = mdcl.arguments
+        name = cdcl.name
+        assert t.base_type == name, "can only add to myself"
+        assert mdcl.result_type.base_type == name, "can only return same type"
+        code = Code.Code()
+        code.add("""
+        |def __add__(Minimal self, $name other not None):
+        |    cdef _$name * this = self.inst.get()
+        |    cdef _$name * that = other.inst.get()
+        |    cdef _$name added = deref(this) + deref(that)
+        |    cdef $name result = $name.__new__($name)
+        |    result.inst = shared_ptr[_$name](new _$name(added))
+        |    return result
+        """, locals())
+        return code
+
+    def create_special_iadd_method(self, cdcl, mdcl):
+        L.info("   create wrapper for operator+")
+        assert len(mdcl.arguments) == 1, "operator+ has wrong signature"
+        (__, t), = mdcl.arguments
+        name = cdcl.name
+        assert t.base_type == name, "can only add to myself"
+        assert mdcl.result_type.base_type == name, "can only return same type"
+        code = Code.Code()
+        code.add("""
+        |def __iadd__($name self, $name other not None):
+        |    cdef _$name * this = self.inst.get()
+        |    cdef _$name * that = other.inst.get()
+        |    _iadd(this, that)
+        |    return self
+        """, locals())
+
+        tl = Code.Code()
+        tl.add("""
+                |cdef extern from "autowrap_tools.hpp":
+                |    void _iadd(_$t *, _$t *)
+                """, locals())
+
+        self.top_level_code.append(tl)
+
+        return code
+
+
+
     def create_special_getitem_method(self, mdcl):
         L.info("   create wrapper for operator[]")
         meth_code = Code.Code()
@@ -637,7 +694,6 @@ class CodeGenerator(object):
             code.add("""    return py_res""")
             codes.append(code)
         return codes
-
 
 
     def create_special_cmp_method(self, cdcl, ops):

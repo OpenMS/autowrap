@@ -16,6 +16,7 @@ cdef extern from "minimal.hpp":
         Minimal(int)
         Minimal(libcpp_vector[int])
         Minimal(Minimal &)
+        int get()
         libcpp_string compute(libcpp_string)
         Int compute(int number1, int number2)
         int compute(Int number)
@@ -51,6 +52,12 @@ cdef extern from "minimal.hpp":
         libcpp_vector[Minimal] create_two()
         int operator==(Minimal &)
         ABCorD enumTest(ABCorD)
+
+        Minimal operator+(Minimal)
+        # cython does not support declaration of operator+= yet
+        Minimal iadd(Minimal) # wrap-as:operator+=
+
+
 
 
     int top_function(int)

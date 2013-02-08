@@ -21,6 +21,8 @@ class Minimal {
         Minimal(std::vector<int> const &);
         Minimal(const Minimal &);
 
+        int get() { return _i; }
+
         int compute(Int i) const;
         float compute(float i) const;
         Int compute(int, int) const;
@@ -70,6 +72,17 @@ class Minimal {
         operator int() const {
             return 4711;
         }
+
+        Minimal operator+(Minimal that)
+        {
+            return Minimal(this->_i + that._i);
+        }
+        Minimal operator+=(Minimal that)
+        {
+            this->_i = this->_i + that._i;
+            return *this;
+        }
+
 
 
 };

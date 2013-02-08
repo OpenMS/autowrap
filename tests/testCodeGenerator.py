@@ -237,6 +237,14 @@ def test_minimal():
 
     assert m1.toInt() == 4711
 
+    assert wrapped.Minimal(1) + wrapped.Minimal(2) == wrapped.Minimal(3)
+
+    m1 = wrapped.Minimal(1)
+    m1 += m1
+    assert m1 == wrapped.Minimal(2)
+
+
+
 
 def test_templated():
 
