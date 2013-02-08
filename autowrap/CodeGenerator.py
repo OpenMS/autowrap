@@ -212,13 +212,14 @@ class CodeGenerator(object):
             for ci in codes:
                 class_code.add(ci)
 
-        has_eq_method = "operator==" in non_iter_methods
-        has_neq_method = "operator!=" in non_iter_methods
-        if has_eq_method or has_neq_method:
-            ops = { "==": has_eq_method,
-                    "!=": has_neq_method
-                    }
-            code = self.create_special_cmp_method(cdcl, ops)
+
+        has_ops = dict()
+        for ops in [ "==", "!=", "<", "<=", ">", ">="]:
+            has_op = ("operator%s" % ops) in non_iter_methods
+            has_ops[ops] = has_op
+
+        if any(v for v in has_ops.values()):
+            code = self.create_special_cmp_method(cdcl, has_ops)
             class_code.add(code)
 
         assert cons_created, "no constructor for %s created" % cname
@@ -296,12 +297,13 @@ class CodeGenerator(object):
             code = self.create_special_getitem_method(methods[0])
             return [code]
 
-        if cpp_name in ["operator==", "operator!="]:
-            return []
-
-        if cpp_name == "operator()":
-            codes = self.create_cast_methods(methods)
-            return codes
+        if cpp_name.startswith("operator"):
+            __, __, op = cpp_name.partition("operator")
+            if op in ["!=", "==", "<", "<=", ">", ">="]:
+                return []
+            elif op == "()":
+                codes = self.create_cast_methods(methods)
+                return codes
 
         if len(methods) == 1:
             code = self.create_wrapper_for_nonoverloaded_method(cdcl, cpp_name,

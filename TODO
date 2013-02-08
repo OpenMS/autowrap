@@ -1,18 +1,17 @@
 - mehr klassen wrappen
 
-- iteratoren !
+- codegen refak: 
+  extra klasse fürs eigentliche codegen.
+  ziel: via vererbung auch iteratoren udn ref-zugriffen wrappen
+
+- iteratoren und referenzen (siehe ungen)
 
 - DPosition(mit numerischen template argument)
 
-- statische methoden !
+- statische methoden direkt an die klassen hängen, bevor "wrap-inherits"
+  aufgelöst wird !
 
 - config extra cimport statments
-
-- implict conv String, StringList. DataValue, ..
-
-- Param
-
-- umbenenneno von methoden, z.b ist "set" in python kein methoden name
 
 - begin(), end() mit param, eg
      beginRT(rtmin)  # wrap-iter-begin rtrange

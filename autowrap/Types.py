@@ -29,7 +29,9 @@ class CppType(object):
         if aliased_t is not None:
             if self.template_args is not None:
                 if aliased_t.template_args is not None:
-                    raise Exception("invalid transform")
+                    map_ = printable(typemap, "\n    ")
+                    m = "invalid transform of %s with:\n    %s" % (self, map_)
+                    raise Exception(m)
                 self._overwrite_base_type(aliased_t)
             else:
                 self._overwrite_base_type(aliased_t)
@@ -176,6 +178,7 @@ class CppType(object):
 def printable(type_map, join_str=", "):
     if not type_map:
         return "None"
-    m_str = join_str.join("%s -> %s" %(k, v) for (k,v) in type_map.items())
+    rules = sorted("%s -> %s" %(k, v) for (k,v) in type_map.items())
+    m_str = join_str.join(rules)
     return m_str
 
