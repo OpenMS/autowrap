@@ -12,7 +12,12 @@ class Code(object):
             del kw["self"] # self causes problems in substitude call below
         if isinstance(what, basestring):
             #print repr(what)
-            res = string.Template(what).substitute(**kw)
+            try:
+                res = string.Template(what).substitute(**kw)
+            except:
+                print what
+                print kw
+                raise
             res = re.sub("^[ ]*\n[ ]*\|", "", res)     # ltrim first line
             res = re.sub("\n+ *\+", "", res)
             for line in re.split("\n *\|", res):

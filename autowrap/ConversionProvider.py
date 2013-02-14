@@ -231,6 +231,33 @@ class EnumConverter(TypeConverterBase):
         return "%s = <int>%s" % (output_py_var, input_cpp_var)
 
 
+class CharConverter(TypeConverterBase):
+
+    def get_base_types(self):
+        return "char",
+
+    def matches(self, cpp_type):
+        return not cpp_type.is_ptr
+
+    def matching_python_type(self, cpp_type):
+        return "bytes"
+
+    def type_check_expression(self, cpp_type, argument_var):
+        return "isinstance(%s, bytes) and len(%s) == 1" % (argument_var, argument_var,)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        code = ""
+        call_as = "(<char>((%s)[0]))" % argument_var
+        cleanup = ""
+        return code, call_as, cleanup
+
+    def call_method(self, res_type, cy_call_str):
+        return "cdef char  _r = %s" % cy_call_str
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return "%s = <char>(%s)" % (output_py_var, input_cpp_var)
+
+
 class CharPtrConverter(TypeConverterBase):
 
     def get_base_types(self):
@@ -545,6 +572,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(IntegerConverter())
     converters.register(FloatConverter())
     converters.register(CharPtrConverter())
+    converters.register(CharConverter())
     converters.register(StdStringConverter())
     converters.register(StdVectorConverter())
     converters.register(StdPairConverter())
