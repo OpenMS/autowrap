@@ -61,7 +61,7 @@ def main():
 
 
 
-def run(pxds, addons, converters, out):
+def run(pxds, addons, converters, out, extra_opts=None):
 
     extra_methods = dict()
     for name in addons:
@@ -98,9 +98,15 @@ def run(pxds, addons, converters, out):
     from Cython.Compiler.Options import directive_defaults
     directive_defaults["boundscheck"] = False
     directive_defaults["wraparound"] = False
-    options = CompilationOptions(include_path=inc_dirs,
-                                 compiler_directives=directive_defaults,
-                                 cplus=True)
+    options = dict(include_path=inc_dirs,
+                   compiler_directives=directive_defaults,
+                   #output_dir=".",
+                   #gdb_debug=True,
+                   cplus=True)
+    if extra_opts is not None:
+        options.update(extra_opts)
+    options = CompilationOptions(**options)
+
     compile(out, options=options)
 
     return inc_dirs
