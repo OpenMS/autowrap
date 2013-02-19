@@ -313,7 +313,10 @@ class MethodOrAttributeDecl(object):
                     raise Exception("multi ptr not supported")
                 argname = base.name
             else:
-                argname = argdecl.name
+                if not hasattr(argdecl, "name"):
+                    argname = argdecl.base.base.name
+                else:
+                    argname = argdecl.name
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname,tt))
 

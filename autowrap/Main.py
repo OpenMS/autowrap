@@ -18,7 +18,6 @@ def main():
                                                                  + version_str)
 
     input_ = parser.parse_args()
-
     out, = input_.out
     __, out_ext = os.path.splitext(out)
 
@@ -60,8 +59,7 @@ def main():
     run(pxds, addons, converters, out)
 
 
-
-def run(pxds, addons, converters, out, extra_opts=None):
+def run(pxds, addons, converters, out, extra_cimports=None, extra_opts=None):
 
     extra_methods = dict()
     for name in addons:
@@ -93,7 +91,8 @@ def run(pxds, addons, converters, out, extra_opts=None):
 
 
     inc_dirs = autowrap.parse_and_generate_code(pxds, ".", out, False,
-                                                                extra_methods)
+                                                                extra_methods,
+                                                                extra_cimports)
     from Cython.Compiler.Main import compile, CompilationOptions
     from Cython.Compiler.Options import directive_defaults
     directive_defaults["boundscheck"] = False

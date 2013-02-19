@@ -150,8 +150,8 @@ def _resolve_decls(decls):
     L.info("start resolving decls")
     assert all(isinstance(d, PXDParser.BaseDecl) for d in decls)
 
-    def filter_out(type_):
-        return [d for d in decls if isinstance(d, type_)]
+    def filter_out(tt):
+        return [d for d in decls if isinstance(d, tt) and d.name is not None]
 
     typedef_decls  = filter_out(PXDParser.CTypeDefDecl)
     function_decls = filter_out(PXDParser.CppMethodOrFunctionDecl)
@@ -480,5 +480,6 @@ def _resolve_constructor(name, instance_mapping):
 
 def _resolve_alias(cpp_type, wrap_inst_decls, type_map):
     cpp_type = cpp_type.transformed(type_map)
+    #cpp_type = cpp_type.transformed(wrap_inst_decls)
     alias = cpp_type.inv_transformed(wrap_inst_decls)
     return alias

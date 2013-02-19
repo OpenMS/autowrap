@@ -1,16 +1,20 @@
 from  libcpp.string  cimport string as libcpp_string
 from  libcpp.vector  cimport vector as libcpp_vector
 from  libcpp.pair    cimport pair as libcpp_pair
-from  libcpp cimport bool
-from  libc.stdint  cimport *
-from  libc.stddef  cimport *
 from smart_ptr cimport shared_ptr
-cimport numpy as np
-import numpy as np
+from  libcpp cimport bool
+#from  libc.stdint  cimport *
+#from  libc.stddef  cimport *
+#cimport numpy as np
+#import numpy as np
 from cython.operator cimport dereference as deref, preincrement as inc, address as address
+from libcpp_test cimport EEE as _EEE
 from libcpp_test cimport LibCppTest as _LibCppTest
 cdef extern from "autowrap_tools.hpp":
     char * _cast_const_away(char *) 
+cdef class EEE:
+    A = 0
+    B = 1 
 cdef class LibCppTest:
     cdef shared_ptr[_LibCppTest] inst
     def __dealloc__(self):
@@ -64,6 +68,16 @@ cdef class LibCppTest:
         out2.inst = shared_ptr[_LibCppTest](new _LibCppTest(_r.second))
         cdef list py_result = [_r.first, out2]
         return py_result
+    def process7(self, list in_0 ):
+        assert isinstance(in_0, list) and len(in_0) == 2 and in_0[0] in [0, 1] and isinstance(in_0[1], int), 'arg in_0 invalid'
+        cdef libcpp_pair[_EEE, int] v0
+        v0.first = (<EEE>in_0[0])
+        v0.second = in_0[1]
+        _r = self.inst.get().process7(v0)
+        in_0[:] = [v0.first, v0.second]
+        cdef _EEE out2 = (<_EEE> _r.second)
+        cdef list py_result = [_r.first, out2]
+        return py_result
     def process6(self, list in_0 ):
         assert isinstance(in_0, list) and all(isinstance(li, list) and len(li) == 2 and isinstance(li[0], int) and isinstance(li[1], float) for li in in_0), 'arg in_0 invalid'
         cdef libcpp_vector[libcpp_pair[int,double]] v0 = in_0
@@ -105,5 +119,25 @@ cdef class LibCppTest:
         elif (len(args)==1) and (isinstance(args[0], int)):
              self._init_1(*args)
         else:
-               raise Exception('can not handle %s' % (args,)) 
+               raise Exception('can not handle %s' % (args,))
+    def process8(self, list in_0 ):
+        assert isinstance(in_0, list) and all(li in [0, 1] for li in in_0), 'arg in_0 invalid'
+        cdef libcpp_vector[_EEE] * v0 = new libcpp_vector[_EEE]()
+        cdef int item0
+        for item0 in in_0:
+           v0.push_back(<_EEE> item0)
+        _r = self.inst.get().process8(deref(v0))
+        cdef replace = []
+        cdef libcpp_vector[_EEE].iterator it = v0.begin()
+        while it != v0.end():
+           replace.append(<int> deref(it))
+           inc(it)
+        in_0[:] = replace
+        del v0
+        py_result = []
+        cdef libcpp_vector[_EEE].iterator it__r = _r.begin()
+        while it__r != _r.end():
+           py_result.append(<int>deref(it__r))
+           inc(it__r)
+        return py_result 
 

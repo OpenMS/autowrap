@@ -56,6 +56,8 @@ class CppType(object):
                 res.is_ptr = True
             elif self.is_ref:
                 res.is_ref = True
+            elif self.is_enum:
+                res.is_enum = True
             return res
         if self.template_args is not None:
             trans_targs = [t._inv_transform(inv_typemap) for t in
@@ -74,6 +76,7 @@ class CppType(object):
         self.is_ptr = self.is_ptr or other.is_ptr
         self.is_ref = self.is_ref or other.is_ref
         self.is_unsigned = self.is_unsigned or other.is_unsigned
+        self.is_enum = self.is_enum or other.is_enum
 
     def __hash__(self):
         """ for using Types as dict keys """

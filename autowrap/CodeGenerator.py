@@ -38,12 +38,13 @@ def fixed_include_dirs():
 class CodeGenerator(object):
 
     def __init__(self, resolved, instance_mapping, target_path=None,
-            extra_methods=None):
+            extra_methods=None, extra_cimports=None):
 
         if extra_methods is None:
             extra_methods = dict()
 
         self.extra_methods = extra_methods
+        self.extra_cimports = extra_cimports
 
         self.target_path = os.path.abspath(target_path)
         self.target_dir  = os.path.dirname(self.target_path)
@@ -187,7 +188,7 @@ class CodeGenerator(object):
     def create_wrapper_for_class(self, r_class):
         cname = r_class.name
         L.info("create wrapper for class %s" % cname)
-        cy_type = self.cr.cy_decl_str(cname)
+        cy_type = self.cr.cython_type(cname)
         class_code = Code.Code()
         class_code.add("""
                          |cdef class $cname:
@@ -246,7 +247,7 @@ class CodeGenerator(object):
             begin_name = begin_decl.name
             end_name = end_decl.name
 
-            cy_type = self.cr.cy_decl_str(res_type)
+            cy_type = self.cr.cython_type(res_type)
             base_type = res_type.base_type
             meth_code.add("""def $name(self):
                             |    it = self.inst.get().$begin_name()
@@ -421,7 +422,7 @@ class CodeGenerator(object):
         to_py_code = converter.output_conversion(t, "_r", "py_result")
         access_stmt = converter.call_method(t, "self.inst.get().%s" % name)
 
-        cy_type = self.cr.cy_decl_str(t)
+        cy_type = self.cr.cython_type(t)
 
         if isinstance(to_py_code, basestring):
             to_py_code = "    %s" % to_py_code
@@ -609,7 +610,7 @@ class CodeGenerator(object):
         # create instance of wrapped class
         call_args_str = ", ".join(call_args)
         name = class_decl.name
-        cy_type = self.cr.cy_decl_str(name)
+        cy_type = self.cr.cython_type(name)
         cons_code.add("""    self.inst = shared_ptr[$cy_type](new $cy_type($call_args_str))""", locals())
 
         for cleanup in reversed(cleanups):
@@ -628,7 +629,7 @@ class CodeGenerator(object):
         name = cdcl.name
         assert t.base_type == name, "can only add to myself"
         assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cy_decl_str(t)
+        cy_t = self.cr.cython_type(t)
         code = Code.Code()
         code.add("""
         |def __add__($name self, $name other not None):
@@ -648,7 +649,7 @@ class CodeGenerator(object):
         name = cdcl.name
         assert t.base_type == name, "can only add to myself"
         assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cy_decl_str(t)
+        cy_t = self.cr.cython_type(t)
         code = Code.Code()
         code.add("""
         |def __iadd__($name self, $name other not None):
@@ -726,7 +727,7 @@ class CodeGenerator(object):
         for (py_name, mdecl) in zip(py_names, mdecls):
             code = Code.Code()
             res_t = mdecl.result_type
-            cy_t = self.cr.cy_decl_str(res_t)
+            cy_t = self.cr.cython_type(res_t)
             out_converter = self.cr.get(res_t)
 
             code.add("def %s(self):" % py_name)
@@ -817,16 +818,20 @@ class CodeGenerator(object):
                    |from  libcpp.string  cimport string as libcpp_string
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
-                   |from  libcpp cimport bool
-                   |from  libc.stdint  cimport *
-                   |from  libc.stddef  cimport *
                    |from smart_ptr cimport shared_ptr
-                   |cimport numpy as np
-                   |import numpy as np
+                   |from  libcpp cimport bool
+                   |#from  libc.stdint  cimport *
+                   |#from  libc.stddef  cimport *
+                   |#cimport numpy as np
+                   |#import numpy as np
                    |from cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
 
                    """)
+        if self.extra_cimports is not None:
+            for stmt in self.extra_cimports:
+                code.add(stmt)
+
         self.top_level_code.append(code)
 
     def create_includes(self):

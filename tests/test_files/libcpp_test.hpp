@@ -2,6 +2,10 @@
 #include <string>
 #include <utility>
 
+enum EEE {
+    A, B
+};
+
 
 class LibCppTest {
     private:
@@ -51,5 +55,12 @@ class LibCppTest {
         std::vector<std::pair<int, double> > process6(std::vector<std::pair<int, double> >& in) {
             in.push_back(std::pair<int,double>(7, 11.0));
             return std::vector<std::pair<int, double> > (in.rbegin(), in.rend());
+        }
+
+        std::pair<int, EEE> process7(const std::pair<EEE, int> & in ) {
+            return std::pair<int, EEE>(in.second, in.first);
+        }
+        std::vector<EEE> process8(const std::vector<EEE> & in ) {
+            return std::vector<EEE>(in.rbegin(), in.rend());
         }
 };

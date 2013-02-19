@@ -1,8 +1,12 @@
 from libcpp.string cimport string as libcpp_string
+from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
 from libcpp.pair  cimport pair  as libcpp_pair 
 
 cdef extern from "libcpp_test.hpp":
+
+    cdef enum EEE:
+        A, B
 
     cdef cppclass LibCppTest:
         LibCppTest()
@@ -21,3 +25,5 @@ cdef extern from "libcpp_test.hpp":
 
         libcpp_vector[libcpp_pair[int,double]] process6(libcpp_vector[libcpp_pair[int,double]] &)
 
+        libcpp_pair[int, EEE] process7(libcpp_pair[EEE, int] &)
+        libcpp_vector[EEE] process8(libcpp_vector[EEE] &)

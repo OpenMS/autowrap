@@ -103,6 +103,13 @@ def test_libcpp():
     assert in1 == [ (1,2.0), (2,3.0), (7, 11.0)]
     assert out[::-1] == [ (1,2.0), (2,3.0), (7, 11.0)]
 
+    out = t.process7([0,1])
+    assert out == [1, 0]
+
+    in_ = [0, 1, 0]
+    out = t.process8(in_)
+    assert in_ == out[::-1]
+
 
 def test_minimal():
 

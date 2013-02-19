@@ -1,3 +1,4 @@
+import pdb
 from collections import namedtuple
 import re
 from collections import defaultdict
@@ -62,14 +63,9 @@ class ConverterRegistry(object):
         return rv[-1]
 
 
-    def cy_decl_str(self, type_):
-
+    def cython_type(self, type_):
         if isinstance(type_, basestring):
             type_ = CppType(type_)
-
-        return self._cy_decl_str(type_)
-
-    def _cy_decl_str(self, type_):
         return type_.transformed(self.instance_mapping)
 
 
@@ -100,7 +96,7 @@ class TypeConverterBase(object):
         raise NotImplementedError()
 
     def call_method(self, res_type, cy_call_str):
-        cy_res_type = self.converters.cy_decl_str(res_type)
+        cy_res_type = self.converters.cython_type(res_type)
         return "cdef %s _r = %s" % (cy_res_type, cy_call_str)
 
     def matching_python_type(self, cpp_type):
@@ -305,7 +301,7 @@ class TypeToWrapConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
 
-        cy_type = self.converters.cy_decl_str(cpp_type)
+        cy_type = self.converters.cython_type(cpp_type)
         if cpp_type.is_ptr:
             call_as = "<%s>(%s.inst.get())" % (cy_type, argument_var)
         else:
@@ -315,7 +311,7 @@ class TypeToWrapConverter(TypeConverterBase):
 
     def call_method(self, res_type, cy_call_str):
         #t = res_type.base_type
-        t = self.converters.cy_decl_str(res_type)
+        t = self.converters.cython_type(res_type)
 
         return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
 
@@ -324,7 +320,7 @@ class TypeToWrapConverter(TypeConverterBase):
 
         assert not cpp_type.is_ptr
 
-        cy_clz = self.converters.cy_decl_str(cpp_type)
+        cy_clz = self.converters.cython_type(cpp_type)
         t = cpp_type.base_type
         return Code().add("""
                       |cdef $t $output_py_var = $t.__new__($t)
@@ -363,18 +359,25 @@ class StdPairConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         t1, t2, = cpp_type.template_args
         temp_var = "v%d" % arg_num
-        i1 = self.converters.cy_decl_str(t1)
-        i2 = self.converters.cy_decl_str(t2)
-        if t1.base_type in self.converters.names_to_wrap:
+        i1 = self.converters.cython_type(t1)
+        i2 = self.converters.cython_type(t2)
+        if i1.is_enum:
+            assert not t1.is_ptr
+            arg0 = "(<%s>%s[0])" % (t1, argument_var)
+        elif t1.base_type in self.converters.names_to_wrap:
             assert not t1.is_ptr
             arg0 = "deref((<%s>%s[0]).inst.get())" % (t1, argument_var)
         else:
             arg0 = "%s[0]" % argument_var
-        if t2.base_type in self.converters.names_to_wrap:
+        if i2.is_enum:
+            assert not t2.is_ptr
+            arg1 = "(<%s>%s[0])" % (t2, argument_var)
+        elif t2.base_type in self.converters.names_to_wrap:
             assert not t2.is_ptr
             arg1 = "deref((<%s>%s[1]).inst.get())" % (t2, argument_var)
         else:
             arg1 = "%s[1]" % argument_var
+
         code = Code().add("""
             |cdef libcpp_pair[$i1, $i2] $temp_var
             |$temp_var.first = $arg0
@@ -383,7 +386,7 @@ class StdPairConverter(TypeConverterBase):
 
         cleanup_code = Code()
         if cpp_type.is_ref:
-            if t1.base_type in self.converters.names_to_wrap:
+            if not i1.is_enum and t1.base_type in self.converters.names_to_wrap:
                 temp1 = "temp1"
                 cleanup_code.add("""
                     |cdef $t1 $temp1 = $t1.__new__($t1)
@@ -391,7 +394,7 @@ class StdPairConverter(TypeConverterBase):
                                    """, locals())
             else:
                 temp1 = "%s.first" % temp_var
-            if t2.base_type in self.converters.names_to_wrap:
+            if not i2.is_enum and t2.base_type in self.converters.names_to_wrap:
                 temp2 = "temp2"
                 cleanup_code.add("""
                     |cdef $t2 $temp2 = $t2.__new__($t2)
@@ -408,25 +411,34 @@ class StdPairConverter(TypeConverterBase):
     def call_method(self, res_type, cy_call_str):
         return "_r = %s" % (cy_call_str)
 
-
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
         assert not cpp_type.is_ptr
         t1, t2, = cpp_type.template_args
 
-        i1 = self.converters.cy_decl_str(t1)
-        i2 = self.converters.cy_decl_str(t2)
+        i1 = self.converters.cython_type(t1)
+        i2 = self.converters.cython_type(t2)
 
         code = Code()
 
-        if t1.base_type in self.converters.names_to_wrap:
+        if i1.is_enum:
+            out1 = "out1"
+            code.add("""cdef $i1 out1 = (<$i1> $input_cpp_var.first)
+                       """, locals())
+
+        elif t1.base_type in self.converters.names_to_wrap:
             out1 = "out1"
             code.add("""cdef $t1 out1 = $t1.__new__($t1)
                        |out1.inst = shared_ptr[$i1](new $i1($input_cpp_var.first))
                        """, locals())
         else:
             out1 = "%s.first" % input_cpp_var
-        if t2.base_type in self.converters.names_to_wrap:
+
+        if i2.is_enum:
+            out2 = "out2"
+            code.add("""cdef $i2 out2 = (<$i2> $input_cpp_var.second)
+                       """, locals())
+        elif t2.base_type in self.converters.names_to_wrap:
             out2 = "out2"
             code.add("""cdef $t2 out2 = $t2.__new__($t2)
                        |out2.inst = shared_ptr[$i2](new $i2($input_cpp_var.second))
@@ -464,9 +476,33 @@ class StdVectorConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num):
         tt, = cpp_type.template_args
         temp_var = "v%d" % arg_num
-        if tt.base_type in self.converters.names_to_wrap:
+        inner = self.converters.cython_type(tt)
+        if inner.is_enum:
+            item = "item%d" % arg_num
+            code = Code().add("""
+                |cdef libcpp_vector[$inner] * $temp_var
+                + = new libcpp_vector[$inner]()
+                |cdef int $item
+                |for $item in $argument_var:
+                |   $temp_var.push_back(<$inner> $item)
+                """, locals())
+            if cpp_type.is_ref:
+                cleanup_code = Code().add("""
+                    |cdef replace = []
+                    |cdef libcpp_vector[$inner].iterator it = $temp_var.begin()
+                    |while it != $temp_var.end():
+                    |   replace.append(<int> deref(it))
+                    |   inc(it)
+                    |$argument_var[:] = replace
+                    |del $temp_var
+                    """, locals())
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif tt.base_type in self.converters.names_to_wrap:
             base_type = tt.base_type
-            inner = self.converters.cy_decl_str(tt)
+            inner = self.converters.cython_type(tt)
             cy_tt = tt.base_type
             item = "item%d" % arg_num
             code = Code().add("""
@@ -492,7 +528,7 @@ class StdVectorConverter(TypeConverterBase):
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
         else:
-            inner = self.converters.cy_decl_str(tt)
+            inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
             code = Code().add("""
                 |cdef libcpp_vector[$inner] $temp_var = $argument_var
@@ -514,9 +550,21 @@ class StdVectorConverter(TypeConverterBase):
         assert not cpp_type.is_ptr
 
         tt, = cpp_type.template_args
-        if tt.base_type in self.converters.names_to_wrap:
+        inner = self.converters.cython_type(tt)
+        if inner.is_enum:
+            it = mangle("it_" + input_cpp_var)
+            code = Code().add("""
+                |$output_py_var = []
+                |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var.append(<int>deref($it))
+                |   inc($it)
+                """, locals())
+            return code
+
+        elif tt.base_type in self.converters.names_to_wrap:
             cy_tt = tt.base_type
-            inner = self.converters.cy_decl_str(tt)
+            inner = self.converters.cython_type(tt)
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
             code = Code().add("""
