@@ -1,12 +1,9 @@
 from  libcpp.string  cimport string as libcpp_string
+from  libcpp.set     cimport set as libcpp_set
 from  libcpp.vector  cimport vector as libcpp_vector
 from  libcpp.pair    cimport pair as libcpp_pair
-from smart_ptr cimport shared_ptr
+from  smart_ptr cimport shared_ptr
 from  libcpp cimport bool
-#from  libc.stdint  cimport *
-#from  libc.stddef  cimport *
-#cimport numpy as np
-#import numpy as np
 from cython.operator cimport dereference as deref, preincrement as inc, address as address
 from libcpp_test cimport EEE as _EEE
 from libcpp_test cimport LibCppTest as _LibCppTest
@@ -46,6 +43,53 @@ cdef class LibCppTest:
         _r = self.inst.get().process(v0)
         in_0[:] = v0
         cdef list py_result = _r
+        return py_result
+    def process11(self, set in_0 ):
+        assert isinstance(in_0, set) and all(isinstance(li, LibCppTest) for li in in_0), 'arg in_0 invalid'
+        cdef libcpp_set[_LibCppTest] * v0 = new libcpp_set[_LibCppTest]()
+        cdef LibCppTest item0
+        for item0 in in_0:
+           v0.insert(deref(item0.inst.get()))
+        _r = self.inst.get().process11(deref(v0))
+        cdef replace = set()
+        cdef libcpp_set[_LibCppTest].iterator it = v0.begin()
+        while it != v0.end():
+           item0 = LibCppTest.__new__(LibCppTest)
+           item0.inst = shared_ptr[_LibCppTest](new _LibCppTest(deref(it)))
+           replace.add(item0)
+           inc(it)
+        in_0.clear()
+        in_0.update(replace)
+        del v0
+        py_result = set()
+        cdef libcpp_set[_LibCppTest].iterator it__r = _r.begin()
+        cdef LibCppTest item_py_result
+        while it__r != _r.end():
+           item_py_result = LibCppTest.__new__(LibCppTest)
+           item_py_result.inst = shared_ptr[_LibCppTest](new _LibCppTest(deref(it__r)))
+           py_result.add(item_py_result)
+           inc(it__r)
+        return py_result
+    def process10(self, set in_0 ):
+        assert isinstance(in_0, set) and all(li in [0, 1] for li in in_0), 'arg in_0 invalid'
+        cdef libcpp_set[_EEE] * v0 = new libcpp_set[_EEE]()
+        cdef int item0
+        for item0 in in_0:
+           v0.insert(<_EEE> item0)
+        _r = self.inst.get().process10(deref(v0))
+        cdef replace = set()
+        cdef libcpp_set[_EEE].iterator it = v0.begin()
+        while it != v0.end():
+           replace.add(<int> deref(it))
+           inc(it)
+        in_0.clear()
+        in_0.update(replace)
+        del v0
+        py_result = set()
+        cdef libcpp_set[_EEE].iterator it__r = _r.begin()
+        while it__r != _r.end():
+           py_result.add(<int>deref(it__r))
+           inc(it__r)
         return py_result
     def twist(self, list in_0 ):
         assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], str) and isinstance(in_0[1], int), 'arg in_0 invalid'
@@ -120,6 +164,14 @@ cdef class LibCppTest:
              self._init_1(*args)
         else:
                raise Exception('can not handle %s' % (args,))
+    def process9(self, set in_0 ):
+        assert isinstance(in_0, set) and all(isinstance(li, int) for li in in_0), 'arg in_0 invalid'
+        cdef libcpp_set[int] v0 = in_0
+        _r = self.inst.get().process9(v0)
+        in_0.clear()
+        in_0.update(v0)
+        cdef set py_result = _r
+        return py_result
     def process8(self, list in_0 ):
         assert isinstance(in_0, list) and all(li in [0, 1] for li in in_0), 'arg in_0 invalid'
         cdef libcpp_vector[_EEE] * v0 = new libcpp_vector[_EEE]()

@@ -27,3 +27,7 @@ cdef extern from "libcpp_test.hpp":
 
         libcpp_pair[int, EEE] process7(libcpp_pair[EEE, int] &)
         libcpp_vector[EEE] process8(libcpp_vector[EEE] &)
+
+        libcpp_set[int] process9(libcpp_set[int] &)
+        libcpp_set[EEE] process10(libcpp_set[EEE] &)
+        libcpp_set[LibCppTest] process11(libcpp_set[LibCppTest] &)

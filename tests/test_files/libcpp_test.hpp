@@ -17,6 +17,15 @@ class LibCppTest {
         LibCppTest(const LibCppTest &o): i(o.i)  {
         };
 
+        bool operator<(const LibCppTest & other) const
+        {
+            return this->i < other.i;
+        }
+        bool operator==(const LibCppTest & other) const
+        {
+            return this->i == other.i;
+        }
+
         int get() { return i; }
 
         std::pair<int, std::string> twist(std::pair<std::string, int> in)
@@ -57,10 +66,28 @@ class LibCppTest {
             return std::vector<std::pair<int, double> > (in.rbegin(), in.rend());
         }
 
-        std::pair<int, EEE> process7(const std::pair<EEE, int> & in ) {
+        std::pair<int, EEE> process7(std::pair<EEE, int> & in ) {
             return std::pair<int, EEE>(in.second, in.first);
         }
-        std::vector<EEE> process8(const std::vector<EEE> & in ) {
+
+        std::vector<EEE> process8(std::vector<EEE> & in ) {
             return std::vector<EEE>(in.rbegin(), in.rend());
+        }
+
+
+        std::set<int> process9(std::set<int> & in ) {
+            in.insert(42);
+            return in;
+        }
+
+        std::set<EEE> process10(std::set<EEE> & in ) {
+            in.insert(A);
+            return in;
+        }
+
+        std::set<LibCppTest> process11(std::set<LibCppTest> & in ) {
+            LibCppTest n(42);
+            in.insert(n);
+            return in;
         }
 };

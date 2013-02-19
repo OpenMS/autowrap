@@ -452,6 +452,143 @@ class StdPairConverter(TypeConverterBase):
 
 
 
+
+class StdSetConverter(TypeConverterBase):
+
+    def get_base_types(self):
+        return "libcpp_set",
+
+    def matches(self, cpp_type):
+        return True
+
+    def matching_python_type(self, cpp_type):
+        return "set"
+
+    def type_check_expression(self, cpp_type, arg_var):
+        tt, = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        assert inner_conv is not None, "arg type %s not supported" % tt
+        inner_check = inner_conv.type_check_expression(tt, "li")
+
+        return Code().add("""
+          |isinstance($arg_var, set) and all($inner_check for li in $arg_var)
+          """, locals()).render()
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        tt, = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+        inner = self.converters.cython_type(tt)
+        if inner.is_enum:
+            item = "item%d" % arg_num
+            code = Code().add("""
+                |cdef libcpp_set[$inner] * $temp_var = new libcpp_set[$inner]()
+                |cdef int $item
+                |for $item in $argument_var:
+                |   $temp_var.insert(<$inner> $item)
+                """, locals())
+            if cpp_type.is_ref:
+                cleanup_code = Code().add("""
+                    |cdef replace = set()
+                    |cdef libcpp_set[$inner].iterator it = $temp_var.begin()
+                    |while it != $temp_var.end():
+                    |   replace.add(<int> deref(it))
+                    |   inc(it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """, locals())
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif tt.base_type in self.converters.names_to_wrap:
+            base_type = tt.base_type
+            inner = self.converters.cython_type(tt)
+            cy_tt = tt.base_type
+            item = "item%d" % arg_num
+            code = Code().add("""
+                |cdef libcpp_set[$inner] * $temp_var = new libcpp_set[$inner]()
+                |cdef $base_type $item
+                |for $item in $argument_var:
+                |   $temp_var.insert(deref($item.inst.get()))
+                """, locals())
+            if cpp_type.is_ref:
+                cleanup_code = Code().add("""
+                    |cdef replace = set()
+                    |cdef libcpp_set[$inner].iterator it = $temp_var.begin()
+                    |while it != $temp_var.end():
+                    |   $item = $cy_tt.__new__($cy_tt)
+                    |   $item.inst = shared_ptr[$inner](new $inner(deref(it)))
+                    |   replace.add($item)
+                    |   inc(it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """, locals())
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+        else:
+            inner = self.converters.cython_type(tt)
+            # cython cares for conversion of stl containers with std types:
+            code = Code().add("""
+                |cdef libcpp_set[$inner] $temp_var = $argument_var
+                """, locals())
+
+            cleanup_code = ""
+            if cpp_type.is_ref:
+                cleanup_code = Code().add("""
+                    |$argument_var.clear()
+                    |$argument_var.update($temp_var)
+                    """, locals())
+            return code, "%s" % temp_var, cleanup_code
+
+    def call_method(self, res_type, cy_call_str):
+        return "_r = %s" % (cy_call_str)
+
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+
+        assert not cpp_type.is_ptr
+
+        tt, = cpp_type.template_args
+        inner = self.converters.cython_type(tt)
+        if inner.is_enum:
+            it = mangle("it_" + input_cpp_var)
+            code = Code().add("""
+                |$output_py_var = set()
+                |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var.add(<int>deref($it))
+                |   inc($it)
+                """, locals())
+            return code
+
+        elif tt.base_type in self.converters.names_to_wrap:
+            cy_tt = tt.base_type
+            inner = self.converters.cython_type(tt)
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
+            code = Code().add("""
+                |$output_py_var = set()
+                |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $cy_tt.__new__($cy_tt)
+                |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                |   $output_py_var.add($item)
+                |   inc($it)
+                """, locals())
+            return code
+        else:
+            # cython cares for conversion of stl containers with std types:
+            code = Code().add("""
+                |cdef set $output_py_var = $input_cpp_var
+                """, locals())
+            return code
+
+
+
 class StdVectorConverter(TypeConverterBase):
 
     def get_base_types(self):
@@ -623,6 +760,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(CharConverter())
     converters.register(StdStringConverter())
     converters.register(StdVectorConverter())
+    converters.register(StdSetConverter())
     converters.register(StdPairConverter())
     converters.register(VoidConverter())
 

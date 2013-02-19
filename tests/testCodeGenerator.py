@@ -110,6 +110,21 @@ def test_libcpp():
     out = t.process8(in_)
     assert in_ == out[::-1]
 
+    in_ = set((1,2))
+    out = t.process9(in_)
+    assert sorted(out) == [1,2, 42]
+    assert sorted(in_) == [1,2, 42]
+
+    in_ = set((libcpp.EEE.A, libcpp.EEE.B))
+    out = t.process10(in_)
+    assert sorted(out) == sorted(in_)
+    assert sorted(in_) == sorted(in_)
+
+    in_ = set((t2,))
+    out = t.process11(in_)
+    assert sorted(x.get() for x in in_) == [ 12, 42]
+    assert sorted(x.get() for x in out) == [ 12, 42]
+
 
 def test_minimal():
 

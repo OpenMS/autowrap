@@ -816,14 +816,11 @@ class CodeGenerator(object):
         code = Code.Code()
         code.add("""
                    |from  libcpp.string  cimport string as libcpp_string
+                   |from  libcpp.set     cimport set as libcpp_set
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
-                   |from smart_ptr cimport shared_ptr
+                   |from  smart_ptr cimport shared_ptr
                    |from  libcpp cimport bool
-                   |#from  libc.stdint  cimport *
-                   |#from  libc.stddef  cimport *
-                   |#cimport numpy as np
-                   |#import numpy as np
                    |from cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
 
