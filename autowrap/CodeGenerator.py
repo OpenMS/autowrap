@@ -227,7 +227,7 @@ class CodeGenerator(object):
             code = self.create_special_cmp_method(r_class, has_ops)
             class_code.add(code)
 
-        assert cons_created, "no constructor for %s created" % cname
+        #assert cons_created, "no constructor for %s created" % cname
 
         codes = self._create_iter_methods(iterators)
         for ci in codes:
@@ -524,7 +524,8 @@ class CodeGenerator(object):
                                                            is_free_fun=True)
 
         call_args_str = ", ".join(call_args)
-        cy_call_str = "_%s(%s)" % (decl.name, call_args_str)
+        mangled_name = "_" + decl.name + "_" + decl.pxd_import_path
+        cy_call_str = "%s(%s)" % (mangled_name, call_args_str)
 
         res_t = decl.result_type
         out_converter = self.cr.get(res_t)
@@ -802,12 +803,14 @@ class CodeGenerator(object):
         for resolved in self.resolved:
             import_from = resolved.pxd_import_path
             name = resolved.name
-            if isinstance(resolved, (ResolvedMethod,
-                                     ResolvedFunction,
-                                     ResolvedEnum,
-                                     ResolvedClass)):
+            if resolved.__class__ in (ResolvedMethod,
+                                      ResolvedEnum,
+                                      ResolvedClass):
                 code.add("from $import_from cimport $name as _$name", locals())
-            elif isinstance(resolved, ResolvedTypeDef):
+            elif resolved.__class__ in (ResolvedFunction, ):
+                mangled_name = "_" + name + "_" + import_from
+                code.add("from $import_from cimport $name as $mangled_name", locals())
+            elif resolved.__class__ in (ResolvedTypeDef, ):
                 code.add("from $import_from cimport $name", locals())
 
         self.top_level_code.append(code)
