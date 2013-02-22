@@ -190,12 +190,17 @@ class CodeGenerator(object):
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
         class_code = Code.Code()
-        class_code.add("""
-                         |cdef class $cname:
-                         |    cdef shared_ptr[$cy_type] inst
-                         |    def __dealloc__(self):
-                         |         self.inst.reset()
-                         """, locals())
+        if r_class.methods:
+            class_code.add("""
+                            |cdef class $cname:
+                            |    cdef shared_ptr[$cy_type] inst
+                            |    def __dealloc__(self):
+                            |         self.inst.reset()
+                            """, locals())
+        else:
+            class_code.add("""
+                            |cdef class $cname:
+                            """, locals())
 
         self.class_codes[cname]=class_code
 
@@ -292,7 +297,7 @@ class CodeGenerator(object):
 
         method_code.add("""    else:
                         |           raise
-                        + Exception('can not handle %s' % (args,))""")
+                        + Exception('can not handle type of %s' % (args,))""")
         return method_code
 
     def create_wrapper_for_method(self, cdcl, cpp_name, methods):
@@ -384,7 +389,7 @@ class CodeGenerator(object):
         # create code which convert python input args to c++ args of wrapped
         # method:
         for n, check in checks:
-            code.add("    assert %s, 'arg %s invalid'" % (check, n))
+            code.add("    assert %s, 'arg %s wrong type'" % (check, n))
         for conv_code in input_conversion_codes:
             code.add(conv_code)
 

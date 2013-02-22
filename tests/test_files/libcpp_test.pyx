@@ -17,7 +17,7 @@ cdef class LibCppTest:
     def __dealloc__(self):
          self.inst.reset()
     def process5(self, list in_0 ):
-        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], LibCppTest) and isinstance(in_0[1], LibCppTest), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], LibCppTest) and isinstance(in_0[1], LibCppTest), 'arg in_0 wrong type'
         cdef libcpp_pair[_LibCppTest, _LibCppTest] v0
         v0.first = deref((<LibCppTest>in_0[0]).inst.get())
         v0.second = deref((<LibCppTest>in_0[1]).inst.get())
@@ -38,14 +38,14 @@ cdef class LibCppTest:
         py_result = <int>_r
         return py_result
     def process(self, list in_0 ):
-        assert isinstance(in_0, list) and all(isinstance(li, int) for li in in_0), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and all(isinstance(li, (int, long)) for li in in_0), 'arg in_0 wrong type'
         cdef libcpp_vector[int] v0 = in_0
         _r = self.inst.get().process(v0)
         in_0[:] = v0
         cdef list py_result = _r
         return py_result
     def process11(self, set in_0 ):
-        assert isinstance(in_0, set) and all(isinstance(li, LibCppTest) for li in in_0), 'arg in_0 invalid'
+        assert isinstance(in_0, set) and all(isinstance(li, LibCppTest) for li in in_0), 'arg in_0 wrong type'
         cdef libcpp_set[_LibCppTest] * v0 = new libcpp_set[_LibCppTest]()
         cdef LibCppTest item0
         for item0 in in_0:
@@ -71,7 +71,7 @@ cdef class LibCppTest:
            inc(it__r)
         return py_result
     def process10(self, set in_0 ):
-        assert isinstance(in_0, set) and all(li in [0, 1] for li in in_0), 'arg in_0 invalid'
+        assert isinstance(in_0, set) and all(li in [0, 1] for li in in_0), 'arg in_0 wrong type'
         cdef libcpp_set[_EEE] * v0 = new libcpp_set[_EEE]()
         cdef int item0
         for item0 in in_0:
@@ -92,7 +92,7 @@ cdef class LibCppTest:
            inc(it__r)
         return py_result
     def twist(self, list in_0 ):
-        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], str) and isinstance(in_0[1], int), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], str) and isinstance(in_0[1], (int, long)), 'arg in_0 wrong type'
         cdef libcpp_pair[libcpp_string, int] v0
         v0.first = in_0[0]
         v0.second = in_0[1]
@@ -100,7 +100,7 @@ cdef class LibCppTest:
         cdef list py_result = [_r.first, _r.second]
         return py_result
     def process4(self, list in_0 ):
-        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], int) and isinstance(in_0[1], LibCppTest), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], (int, long)) and isinstance(in_0[1], LibCppTest), 'arg in_0 wrong type'
         cdef libcpp_pair[int, _LibCppTest] v0
         v0.first = in_0[0]
         v0.second = deref((<LibCppTest>in_0[1]).inst.get())
@@ -113,7 +113,7 @@ cdef class LibCppTest:
         cdef list py_result = [_r.first, out2]
         return py_result
     def process7(self, list in_0 ):
-        assert isinstance(in_0, list) and len(in_0) == 2 and in_0[0] in [0, 1] and isinstance(in_0[1], int), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and len(in_0) == 2 and in_0[0] in [0, 1] and isinstance(in_0[1], (int, long)), 'arg in_0 wrong type'
         cdef libcpp_pair[_EEE, int] v0
         v0.first = (<EEE>in_0[0])
         v0.second = in_0[1]
@@ -123,14 +123,14 @@ cdef class LibCppTest:
         cdef list py_result = [_r.first, out2]
         return py_result
     def process6(self, list in_0 ):
-        assert isinstance(in_0, list) and all(isinstance(li, list) and len(li) == 2 and isinstance(li[0], int) and isinstance(li[1], float) for li in in_0), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and all(isinstance(li, list) and len(li) == 2 and isinstance(li[0], (int, long)) and isinstance(li[1], float) for li in in_0), 'arg in_0 wrong type'
         cdef libcpp_vector[libcpp_pair[int,double]] v0 = in_0
         _r = self.inst.get().process6(v0)
         in_0[:] = v0
         cdef list py_result = _r
         return py_result
     def process3(self, list in_0 ):
-        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], LibCppTest) and isinstance(in_0[1], int), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], LibCppTest) and isinstance(in_0[1], (int, long)), 'arg in_0 wrong type'
         cdef libcpp_pair[_LibCppTest, int] v0
         v0.first = deref((<LibCppTest>in_0[0]).inst.get())
         v0.second = in_0[1]
@@ -143,7 +143,7 @@ cdef class LibCppTest:
         cdef list py_result = [out1, _r.second]
         return py_result
     def process2(self, list in_0 ):
-        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], int) and isinstance(in_0[1], int), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and len(in_0) == 2 and isinstance(in_0[0], (int, long)) and isinstance(in_0[1], (int, long)), 'arg in_0 wrong type'
         cdef libcpp_pair[int, int] v0
         v0.first = in_0[0]
         v0.second = in_0[1]
@@ -153,19 +153,19 @@ cdef class LibCppTest:
         return py_result
     def _init_0(self):
         self.inst = shared_ptr[_LibCppTest](new _LibCppTest())
-    def _init_1(self, int ii ):
-        assert isinstance(ii, int), 'arg ii invalid'
+    def _init_1(self,  ii ):
+        assert isinstance(ii, (int, long)), 'arg ii wrong type'
     
         self.inst = shared_ptr[_LibCppTest](new _LibCppTest((<int>ii)))
     def __init__(self, *args):
         if not args:
              self._init_0(*args)
-        elif (len(args)==1) and (isinstance(args[0], int)):
+        elif (len(args)==1) and (isinstance(args[0], (int, long))):
              self._init_1(*args)
         else:
-               raise Exception('can not handle %s' % (args,))
+               raise Exception('can not handle type of %s' % (args,))
     def process9(self, set in_0 ):
-        assert isinstance(in_0, set) and all(isinstance(li, int) for li in in_0), 'arg in_0 invalid'
+        assert isinstance(in_0, set) and all(isinstance(li, (int, long)) for li in in_0), 'arg in_0 wrong type'
         cdef libcpp_set[int] v0 = in_0
         _r = self.inst.get().process9(v0)
         in_0.clear()
@@ -173,7 +173,7 @@ cdef class LibCppTest:
         cdef set py_result = _r
         return py_result
     def process8(self, list in_0 ):
-        assert isinstance(in_0, list) and all(li in [0, 1] for li in in_0), 'arg in_0 invalid'
+        assert isinstance(in_0, list) and all(li in [0, 1] for li in in_0), 'arg in_0 wrong type'
         cdef libcpp_vector[_EEE] * v0 = new libcpp_vector[_EEE]()
         cdef int item0
         for item0 in in_0:

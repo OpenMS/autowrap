@@ -155,10 +155,10 @@ class IntegerConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type):
-        return "int"
+        return ""
 
     def type_check_expression(self, cpp_type, argument_var):
-        return "isinstance(%s, int)" % (argument_var,)
+        return "isinstance(%s, (int, long))" % (argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
@@ -251,7 +251,7 @@ class CharConverter(TypeConverterBase):
         return "cdef char  _r = %s" % cy_call_str
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        return "%s = <char>(%s)" % (output_py_var, input_cpp_var)
+        return "%s = chr(<char>(%s))" % (output_py_var, input_cpp_var)
 
 
 class CharPtrConverter(TypeConverterBase):
