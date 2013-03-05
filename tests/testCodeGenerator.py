@@ -125,6 +125,35 @@ def test_libcpp():
     assert sorted(x.get() for x in in_) == [ 12, 42]
     assert sorted(x.get() for x in out) == [ 12, 42]
 
+    out = t.process12(1, 2.0)
+    assert out.items() == [ (1, 2.0)]
+
+    out = t.process13(libcpp.EEE.A, 2)
+    assert out.items() == [ (libcpp.EEE.A, 2)]
+
+    out = t.process14(libcpp.EEE.A, 3)
+    assert out.items() == [ (3, libcpp.EEE.A)]
+
+    out = t.process15(12)
+    (k, v),  = out.items()
+    assert k == 12
+    assert v.get() == 12
+
+    assert t.process16({42:2.0, 12: 1.0}) == 2.0
+
+    assert t.process17({libcpp.EEE.A :2.0, libcpp.EEE.B: 1.0}) == 2.0
+
+    assert t.process18({23: t, 12:t2}) == t.get()
+
+    dd = dict()
+    t.process19(dd)
+    assert len(dd) == 1
+    assert dd.keys() == [23]
+    assert dd.values()[0].get() == 12
+
+    dd = dict()
+    t.process20(dd)
+    assert dd.items() == [ (23, 42.0) ]
 
 def test_minimal():
 
@@ -343,7 +372,7 @@ def test_templated():
 
 
 if __name__ == "__main__":
-    testMinimal()
+    test_libcpp()
 
 
 

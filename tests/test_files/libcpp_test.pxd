@@ -2,6 +2,7 @@ from libcpp.string cimport string as libcpp_string
 from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
 from libcpp.pair  cimport pair  as libcpp_pair 
+from libcpp.map  cimport map  as libcpp_map 
 
 cdef extern from "libcpp_test.hpp":
 
@@ -31,3 +32,19 @@ cdef extern from "libcpp_test.hpp":
         libcpp_set[int] process9(libcpp_set[int] &)
         libcpp_set[EEE] process10(libcpp_set[EEE] &)
         libcpp_set[LibCppTest] process11(libcpp_set[LibCppTest] &)
+
+        libcpp_map[int, float] process12(int i, float f)
+        libcpp_map[EEE, int] process13(EEE e, int i)
+        libcpp_map[int, EEE] process14(EEE e, int i)
+
+        libcpp_map[int, LibCppTest] process15(int ii)
+
+        float process16(libcpp_map[int, float] in_)
+        float process17(libcpp_map[EEE, float] in_)
+
+        int process18(libcpp_map[int, LibCppTest] in_)
+
+        void  process19(libcpp_map[int, LibCppTest] & in_)
+        void  process20(libcpp_map[int, float] & in_)
+
+

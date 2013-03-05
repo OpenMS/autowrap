@@ -175,7 +175,10 @@ class CodeGenerator(object):
             name = decl.name
         L.info("create wrapper for enum %s" % name)
         code = Code.Code()
-        code.add("cdef class $name:", name=name)
+        code.add("""
+                   |
+                   |cdef class $name:
+                 """, name=name)
         for (name, value) in decl.items:
             code.add("    $name = $value", name=name, value=value)
         self.class_codes[decl.name]=code
@@ -192,14 +195,20 @@ class CodeGenerator(object):
         class_code = Code.Code()
         if r_class.methods:
             class_code.add("""
+                            |
                             |cdef class $cname:
+                            |
                             |    cdef shared_ptr[$cy_type] inst
+                            |
                             |    def __dealloc__(self):
                             |         self.inst.reset()
+                            |
                             """, locals())
         else:
             class_code.add("""
+                            |
                             |cdef class $cname:
+                            |
                             """, locals())
 
         self.class_codes[cname]=class_code
@@ -254,7 +263,9 @@ class CodeGenerator(object):
 
             cy_type = self.cr.cython_type(res_type)
             base_type = res_type.base_type
-            meth_code.add("""def $name(self):
+            meth_code.add("""
+                            |
+                            |def $name(self):
                             |    it = self.inst.get().$begin_name()
                             |    cdef $base_type out
                             |    while it != self.inst.get().$end_name():
@@ -274,7 +285,10 @@ class CodeGenerator(object):
         L.info("   create wrapper decl for overloaded method %s" % py_name)
 
         method_code = Code.Code()
-        method_code.add("""def $py_name(self, *args):""", locals())
+        method_code.add("""
+                          |
+                          |def $py_name(self, *args):
+                        """, locals())
 
         first_iteration = True
         for (dispatched_m_name, method) in zip(dispatched_m_names, methods):
@@ -384,7 +398,10 @@ class CodeGenerator(object):
         if not is_free_fun:
             py_signature_parts.insert(0, "self")
         py_signature = ", ".join(py_signature_parts)
-        code.add("""def $py_name($py_signature):""", locals())
+        code.add("""
+                   |
+                   |def $py_name($py_signature):
+                   """, locals())
 
         # create code which convert python input args to c++ args of wrapped
         # method:
@@ -406,7 +423,9 @@ class CodeGenerator(object):
         conv_code, call_as, cleanup = converter.input_conversion(t, name, 0)
 
         code.add("""
+            |
             |property $name:
+            |
             |    def __set__(self, $py_type $name):
             """, locals())
 
@@ -433,6 +452,7 @@ class CodeGenerator(object):
             to_py_code = "    %s" % to_py_code
 
         code.add("""
+            |
             |    def __get__(self):
             |        $access_stmt
             """, locals())
@@ -638,6 +658,7 @@ class CodeGenerator(object):
         cy_t = self.cr.cython_type(t)
         code = Code.Code()
         code.add("""
+        |
         |def __add__($name self, $name other not None):
         |    cdef $cy_t  * this = self.inst.get()
         |    cdef $cy_t * that = other.inst.get()
@@ -658,6 +679,7 @@ class CodeGenerator(object):
         cy_t = self.cr.cython_type(t)
         code = Code.Code()
         code.add("""
+        |
         |def __iadd__($name self, $name other not None):
         |    cdef $cy_t * this = self.inst.get()
         |    cdef $cy_t * that = other.inst.get()
@@ -736,7 +758,9 @@ class CodeGenerator(object):
             cy_t = self.cr.cython_type(res_t)
             out_converter = self.cr.get(res_t)
 
-            code.add("def %s(self):" % py_name)
+            code.add("""
+                     |
+                     |def $py_name(self):""", locals())
 
             call_stmt = "<%s>(deref(self.inst.get()))" % cy_t
             full_call_stmt = out_converter.call_method(res_t, call_stmt)
@@ -773,6 +797,7 @@ class CodeGenerator(object):
                                                     in ops.items()
                                                     if v)
         meth_code.add("""
+           |
            |def __richcmp__(self, other, op):
            |    if op not in $implemented_op_codes:
            |       op_str = $inv_op_code_map[op]
@@ -795,7 +820,9 @@ class CodeGenerator(object):
         L.info("   create wrapper __copy__")
         meth_code = Code.Code()
         name = class_decl.name
-        meth_code.add("""def __copy__(self):
+        meth_code.add("""
+                        |
+                        |def __copy__(self):
                         |   cdef $name rv = $name.__new__($name)
                         |   rv.inst = shared_ptr[_$name](new _$name(deref(self.inst.get())))
                         |   return rv
@@ -827,6 +854,7 @@ class CodeGenerator(object):
                    |from  libcpp.set     cimport set as libcpp_set
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
+                   |from  libcpp.map     cimport map  as libcpp_map
                    |from  smart_ptr cimport shared_ptr
                    |from  libcpp cimport bool
                    |from cython.operator cimport dereference as deref,

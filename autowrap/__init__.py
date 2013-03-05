@@ -1,3 +1,5 @@
+from version import *
+
 import DeclResolver
 import CodeGenerator
 import PXDParser

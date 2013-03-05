@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <map>
 
 enum EEE {
     A, B
@@ -16,6 +17,7 @@ class LibCppTest {
 
         LibCppTest(const LibCppTest &o): i(o.i)  {
         };
+
 
         bool operator<(const LibCppTest & other) const
         {
@@ -89,5 +91,60 @@ class LibCppTest {
             LibCppTest n(42);
             in.insert(n);
             return in;
+        }
+
+        std::map<int,float> process12(int i, float f) 
+        {
+            std::map<int,float> map;
+            map[i] = f;
+            return map;
+        }
+
+        std::map<EEE, int> process13(EEE e, int i) 
+        {
+            std::map<EEE,int> map;
+            map[e] = i;
+            return map;
+        }
+
+        std::map<int, EEE> process14(EEE e, int i) 
+        {
+            std::map<int, EEE> map;
+            map[i] = e;
+            return map;
+        }
+
+        std::map<int, LibCppTest> process15(int i) 
+        {
+            std::map<int, LibCppTest> map;
+            map[i] = LibCppTest(i);
+            return map;
+        }
+
+        float process16(std::map<int, float> in)
+        {
+            return in[42];
+
+        }
+        float process17(std::map<EEE, float> in)
+        {
+            return in[A];
+
+        }
+
+        int process18(std::map<int, LibCppTest> in)
+        {
+            return in[23].get();
+        }
+
+        void  process19(std::map<int, LibCppTest> & in)
+        {
+            LibCppTest v(12);
+            in[23] = v;
+        }
+
+        void  process20(std::map<int, float> & in)
+        {
+            in[23] = 42.0;
         }
 };
