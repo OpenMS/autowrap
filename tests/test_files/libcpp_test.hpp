@@ -114,9 +114,9 @@ class LibCppTest {
             return map;
         }
 
-        std::map<int, LibCppTest> process15(int i) 
+        std::map<long int, LibCppTest> process15(int i) 
         {
-            std::map<int, LibCppTest> map;
+            std::map<long int, LibCppTest> map;
             map[i] = LibCppTest(i);
             return map;
         }

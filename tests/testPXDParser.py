@@ -12,6 +12,23 @@ def _parse(pxdFileName):
     return autowrap.PXDParser.parse_pxd_file(test_file)
 
 
+
+def test_long():
+    cld, gund, fund = autowrap.PXDParser.parse_str("""
+cdef extern from "*":
+
+    cdef cppclass T[U,V]:
+        pass
+
+    long gun()
+    T[long int,int] fun()
+    """)
+    print cld
+    print str(gund.result_type)
+    print str(fund.result_type)
+
+
+
 def test_minimal():
     cld, = autowrap.PXDParser.parse_str("""
 cdef extern from "Minimal.hpp":
@@ -221,7 +238,7 @@ cdef extern from "A.h":
     assert decl1.name == 'myInt', decl1.name
     assert decl2.name == 'allInt', decl2.name
     assert str(decl1.type_) == "unsigned int"
-    assert str(decl2.type_) == "int *", str(decl2.type_)
+    assert str(decl2.type_) == "long int *", str(decl2.type_)
 
 def test_typedef2():
 

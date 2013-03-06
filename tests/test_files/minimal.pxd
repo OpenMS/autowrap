@@ -65,5 +65,5 @@ cdef extern from "minimal.hpp":
 
 cdef extern from "minimal.hpp" namespace "Minimal":
 
-    int run_static(int) # wrap-attach:Minimal
+    long int run_static(long int) # wrap-attach:Minimal
 

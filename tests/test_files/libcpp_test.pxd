@@ -37,7 +37,7 @@ cdef extern from "libcpp_test.hpp":
         libcpp_map[EEE, int] process13(EEE e, int i)
         libcpp_map[int, EEE] process14(EEE e, int i)
 
-        libcpp_map[int, LibCppTest] process15(int ii)
+        libcpp_map[long int, LibCppTest] process15(int ii)
 
         float process16(libcpp_map[int, float] in_)
         float process17(libcpp_map[EEE, float] in_)

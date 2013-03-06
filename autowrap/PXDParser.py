@@ -93,8 +93,10 @@ def _extract_type(base_type, decl):
                 is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
                 is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
                 is_unsigned = hasattr(arg.base_type, "signed") and not arg.base_type.signed
+                is_long = hasattr(arg.base_type, "longness") and arg.base_type.longness
                 name = arg.base_type.name
-                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned)
+                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned,
+                        is_long)
                 template_parameters.append(ttype)
             elif isinstance(arg, NameNode):
                 name = arg.name
@@ -116,8 +118,9 @@ def _extract_type(base_type, decl):
     is_ptr = isinstance(decl, CPtrDeclaratorNode)
     is_ref = isinstance(decl, CReferenceDeclaratorNode)
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
+    is_long = hasattr(base_type, "longness") and base_type.longness
     return CppType(base_type.name, template_parameters, is_ptr, is_ref,
-                   is_unsigned)
+                   is_unsigned, is_long)
 
 class SubtreeParserInterfaceChecker(type):
 

@@ -8,11 +8,12 @@ class CppType(object):
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
     def __init__(self, base_type, template_args = None, is_ptr=False,
-                 is_ref=False, is_unsigned = False, enum_items=None):
+                 is_ref=False, is_unsigned=False, is_long=False, enum_items=None):
         self.base_type =  "void" if base_type is None else base_type
         self.is_ptr = is_ptr
         self.is_ref = is_ref
         self.is_unsigned = is_unsigned
+        self.is_long = is_long
         self.is_enum = enum_items is not None
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
@@ -76,6 +77,7 @@ class CppType(object):
         self.is_ptr = self.is_ptr or other.is_ptr
         self.is_ref = self.is_ref or other.is_ref
         self.is_unsigned = self.is_unsigned or other.is_unsigned
+        self.is_long = self.is_long or other.is_long
         self.is_enum = self.is_enum or other.is_enum
 
     def __hash__(self):
@@ -99,6 +101,11 @@ class CppType(object):
         else:
             unsigned = ""
 
+        if self.is_long:
+            long_ = "long"
+        else:
+            long_ = ""
+
         ptr  = "*" if self.is_ptr else ""
         ref  = "&" if self.is_ref else ""
         if ptr and ref:
@@ -107,7 +114,8 @@ class CppType(object):
             inner = "[%s]" % (",".join(str(t) for t in self.template_args))
         else:
             inner = ""
-        result = "%s %s%s %s" % (unsigned, self.base_type, inner, ptr or ref)
+        result = "%s %s %s%s %s" % (unsigned, long_, self.base_type, inner, ptr or ref)
+        result = result.replace("  ", " ")
         return result.strip() # if unsigned is "" or ptr is "" and ref is ""
 
     def check_for_recursion(self):
@@ -153,20 +161,41 @@ class CppType(object):
         if t_str is None:
             orig_for_error_message = base_type
             base_type = base_type.strip()
-            is_unsigned, ptr, ref = False, False, False
-            if base_type.startswith("unsigned"):
+            is_unsigned, is_long = False, False
+
+            # order of unsigned and long is arbitrary:
+            if base_type.startswith("unsigned "):
                 is_unsigned = True
-                base_type = base_type[8:].strip()
+                base_type = base_type[9:].strip()
+            if base_type.startswith("long "):
+                is_long = True
+                base_type = base_type[5:].strip()
+
+            if not is_unsigned:
+                if base_type.startswith("unsigned "):
+                    is_unsigned = True
+                    base_type = base_type[9:].strip()
+            if not is_long:
+                if base_type.startswith("long "):
+                    is_long = True
+                    base_type = base_type[5:].strip()
+
+            if base_type.startswith("long"):
+                raise Exception("can not parse %s" % orig_for_error_message)
+
             if base_type.startswith("unsigned"):
                 raise Exception("can not parse %s" % orig_for_error_message)
+
             if " " in base_type:
                 raise Exception("can not parse %s" % orig_for_error_message)
+
             is_ref =  str_.endswith("&")
             is_ptr =  str_.endswith("*")
             return CppType(base_type,
                            is_unsigned=is_unsigned,
                            is_ptr=is_ptr,
-                           is_ref=is_ref)
+                           is_ref=is_ref,
+                           is_long=is_long)
 
         t_args = t_str[1:-1].split(",")
         if t_args == [""]:

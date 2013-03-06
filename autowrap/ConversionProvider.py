@@ -1,8 +1,4 @@
-import pdb
-from collections import namedtuple
-import re
 from collections import defaultdict
-from DeclResolver import ResolvedClass
 
 from Types import CppType
 from Code import Code
@@ -162,12 +158,12 @@ class IntegerConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
-        call_as = "(<%s>%s)" % (cpp_type.base_type, argument_var)
+        call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        return "%s = <%s>%s" % (output_py_var, cpp_type.base_type, input_cpp_var)
+        return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 # TODO: common base class for float, int, str conversion
 

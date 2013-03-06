@@ -43,7 +43,6 @@ def testTypeParse():
     _testType("X[int &,Y[str]]")
     _testType("X[unsigned int &,Y[str]]")
 
-    _testErr("long int")
     _testErr("unsigned unsigned int")
 
 def _testType(t):

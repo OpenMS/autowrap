@@ -73,12 +73,12 @@ cdef class LibCppTest:
     
         _r = self.inst.get().process15((<int>ii))
         py_result = dict()
-        cdef libcpp_map[int, _LibCppTest].iterator it__r = _r.begin()
+        cdef libcpp_map[long int, _LibCppTest].iterator it__r = _r.begin()
         cdef LibCppTest item_py_result
         while it__r != _r.end():
            item_py_result = LibCppTest.__new__(LibCppTest)
            item_py_result.inst = shared_ptr[_LibCppTest](new _LibCppTest((deref(it__r)).second))
-           py_result[<int>(deref(it__r).first)] = item_py_result
+           py_result[<long int>(deref(it__r).first)] = item_py_result
            inc(it__r)
         return py_result
     
