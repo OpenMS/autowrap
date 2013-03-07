@@ -155,6 +155,32 @@ def test_libcpp():
     t.process20(dd)
     assert dd.items() == [ (23, 42.0) ]
 
+
+    d1 = dict()
+    t.process21(d1, { 42: 11})
+    assert d1.get(1) == 11;
+
+    d1 = { 42}
+    d2 = set()
+    t.process22(d1, d2)
+    assert d1 == set()
+    assert d2 == { 42.0 }
+
+    l1 = [1,2]
+    l2 = []
+
+    t.process23(l1, l2)
+    assert l1 == [1]
+    assert l2 == [2.0]
+
+    l1 = [1, 2.0]
+    l2 = [2, 3]
+
+    t.process24(l1, l2)
+    assert l1 == [3, 2.0]
+
+
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,

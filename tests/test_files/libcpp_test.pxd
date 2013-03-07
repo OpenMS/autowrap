@@ -47,4 +47,9 @@ cdef extern from "libcpp_test.hpp":
         void  process19(libcpp_map[int, LibCppTest] & in_)
         void  process20(libcpp_map[int, float] & in_)
 
+        void  process21(libcpp_map[int, float] & in_, libcpp_map[int,int] & arg2)
+        void  process22(libcpp_set[int] &, libcpp_set[float] &)
+        void  process23(libcpp_vector[int] &, libcpp_vector[float] &)
+        void  process24(libcpp_pair[int, float] & in_, libcpp_pair[int,int] & arg2)
+
 

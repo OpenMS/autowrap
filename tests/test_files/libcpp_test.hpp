@@ -147,4 +147,32 @@ class LibCppTest {
         {
             in[23] = 42.0;
         }
+
+        void  process21(std::map<int, float> & in, std::map<int,int> & arg2)
+        {
+            in[1] = (float) arg2[42];
+        }
+
+        void  process22(std::set<int> & in, std::set<float> & arg2)
+        {
+            std::set<int>::iterator it = in.begin();
+            int x = *it;
+            in.erase(it);
+            arg2.insert((float)x);
+        }
+
+        void  process23(std::vector<int> & in, std::vector<float> & arg2)
+        {
+            int x = *(in.rbegin());
+            in.pop_back();
+            arg2.push_back((float)x);
+        }
+
+
+        void  process24(std::pair<int, float> & in, std::pair<int,int> & arg2)
+        {
+            in.first = arg2.second;
+            in.second = (float) arg2.first;
+        }
+           
 };

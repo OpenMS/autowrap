@@ -505,7 +505,6 @@ class StdMapConverter(TypeConverterBase):
             """, locals())
 
         if cpp_type.is_ref:
-            replace = mangle("replace_" + argument_var)
             it = mangle("it_" + argument_var)
 
             if cy_tt_key.is_enum:
@@ -519,28 +518,28 @@ class StdMapConverter(TypeConverterBase):
                 cy_tt = tt_value.base_type
                 item = mangle("item_" + argument_var)
                 cleanup_code = Code().add("""
-                    |cdef $replace = dict()
+                    |replace = dict()
                     |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
                     |cdef $cy_tt $item
                     |while $it != $temp_var.end():
                     |   $item = $cy_tt.__new__($cy_tt)
                     |   $item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
-                    |   $replace[$key_conv] = $item
+                    |   replace[$key_conv] = $item
                     |   inc($it)
                     |$argument_var.clear()
-                    |$argument_var.update($replace)
+                    |$argument_var.update(replace)
                     |del $temp_var
                     """, locals())
             else:
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
                 cleanup_code = Code().add("""
-                    |cdef $replace = dict()
+                    |replace = dict()
                     |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
                     |while $it != $temp_var.end():
-                    |   $replace[$key_conv] = $value_conv
+                    |   replace[$key_conv] = $value_conv
                     |   inc($it)
                     |$argument_var.clear()
-                    |$argument_var.update($replace)
+                    |$argument_var.update(replace)
                     |del $temp_var
                     """, locals())
         else:
@@ -616,6 +615,7 @@ class StdSetConverter(TypeConverterBase):
         tt, = cpp_type.template_args
         temp_var = "v%d" % arg_num
         inner = self.converters.cython_type(tt)
+        it = mangle("it_" + argument_var)
         if inner.is_enum:
             item = "item%d" % arg_num
             code = Code().add("""
@@ -626,11 +626,11 @@ class StdSetConverter(TypeConverterBase):
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
-                    |cdef replace = set()
-                    |cdef libcpp_set[$inner].iterator it = $temp_var.begin()
-                    |while it != $temp_var.end():
-                    |   replace.add(<int> deref(it))
-                    |   inc(it)
+                    |replace = set()
+                    |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   replace.add(<int> deref($it))
+                    |   inc($it)
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
@@ -652,13 +652,13 @@ class StdSetConverter(TypeConverterBase):
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
-                    |cdef replace = set()
-                    |cdef libcpp_set[$inner].iterator it = $temp_var.begin()
-                    |while it != $temp_var.end():
+                    |replace = set()
+                    |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
                     |   $item = $cy_tt.__new__($cy_tt)
-                    |   $item.inst = shared_ptr[$inner](new $inner(deref(it)))
+                    |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
                     |   replace.add($item)
-                    |   inc(it)
+                    |   inc($it)
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
@@ -752,6 +752,7 @@ class StdVectorConverter(TypeConverterBase):
         tt, = cpp_type.template_args
         temp_var = "v%d" % arg_num
         inner = self.converters.cython_type(tt)
+        it = mangle("it_" + argument_var)
         if inner.is_enum:
             item = "item%d" % arg_num
             code = Code().add("""
@@ -763,11 +764,11 @@ class StdVectorConverter(TypeConverterBase):
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
-                    |cdef replace = []
-                    |cdef libcpp_vector[$inner].iterator it = $temp_var.begin()
-                    |while it != $temp_var.end():
-                    |   replace.append(<int> deref(it))
-                    |   inc(it)
+                    |replace = []
+                    |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   replace.append(<int> deref($it))
+                    |   inc($it)
                     |$argument_var[:] = replace
                     |del $temp_var
                     """, locals())
@@ -789,13 +790,13 @@ class StdVectorConverter(TypeConverterBase):
                 """, locals())
             if cpp_type.is_ref:
                 cleanup_code = Code().add("""
-                    |cdef replace = []
-                    |cdef libcpp_vector[$inner].iterator it = $temp_var.begin()
-                    |while it != $temp_var.end():
+                    |replace = []
+                    |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
                     |   $item = $cy_tt.__new__($cy_tt)
-                    |   $item.inst = shared_ptr[$inner](new $inner(deref(it)))
+                    |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
                     |   replace.append($item)
-                    |   inc(it)
+                    |   inc($it)
                     |$argument_var[:] = replace
                     |del $temp_var
                     """, locals())

@@ -46,16 +46,16 @@ cdef class LibCppTest:
         for key, value in in_.items():
            deref(v0)[<int> key] = deref((<LibCppTest>value).inst.get())
         self.inst.get().process19(deref(v0))
-        cdef replace_in_ = dict()
+        replace = dict()
         cdef libcpp_map[int, _LibCppTest].iterator it_in_ = v0.begin()
         cdef LibCppTest item_in_
         while it_in_ != v0.end():
            item_in_ = LibCppTest.__new__(LibCppTest)
            item_in_.inst = shared_ptr[_LibCppTest](new _LibCppTest((deref(it_in_)).second))
-           replace_in_[<int> deref(it_in_).first] = item_in_
+           replace[<int> deref(it_in_).first] = item_in_
            inc(it_in_)
         in_.clear()
-        in_.update(replace_in_)
+        in_.update(replace)
         del v0
     
     def process18(self, dict in_ ):
@@ -122,13 +122,13 @@ cdef class LibCppTest:
         for item0 in in_0:
            v0.insert(deref(item0.inst.get()))
         _r = self.inst.get().process11(deref(v0))
-        cdef replace = set()
-        cdef libcpp_set[_LibCppTest].iterator it = v0.begin()
-        while it != v0.end():
+        replace = set()
+        cdef libcpp_set[_LibCppTest].iterator it_in_0 = v0.begin()
+        while it_in_0 != v0.end():
            item0 = LibCppTest.__new__(LibCppTest)
-           item0.inst = shared_ptr[_LibCppTest](new _LibCppTest(deref(it)))
+           item0.inst = shared_ptr[_LibCppTest](new _LibCppTest(deref(it_in_0)))
            replace.add(item0)
-           inc(it)
+           inc(it_in_0)
         in_0.clear()
         in_0.update(replace)
         del v0
@@ -149,11 +149,11 @@ cdef class LibCppTest:
         for item0 in in_0:
            v0.insert(<_EEE> item0)
         _r = self.inst.get().process10(deref(v0))
-        cdef replace = set()
-        cdef libcpp_set[_EEE].iterator it = v0.begin()
-        while it != v0.end():
-           replace.add(<int> deref(it))
-           inc(it)
+        replace = set()
+        cdef libcpp_set[_EEE].iterator it_in_0 = v0.begin()
+        while it_in_0 != v0.end():
+           replace.add(<int> deref(it_in_0))
+           inc(it_in_0)
         in_0.clear()
         in_0.update(replace)
         del v0
@@ -286,11 +286,11 @@ cdef class LibCppTest:
         for item0 in in_0:
            v0.push_back(<_EEE> item0)
         _r = self.inst.get().process8(deref(v0))
-        cdef replace = []
-        cdef libcpp_vector[_EEE].iterator it = v0.begin()
-        while it != v0.end():
-           replace.append(<int> deref(it))
-           inc(it)
+        replace = []
+        cdef libcpp_vector[_EEE].iterator it_in_0 = v0.begin()
+        while it_in_0 != v0.end():
+           replace.append(<int> deref(it_in_0))
+           inc(it_in_0)
         in_0[:] = replace
         del v0
         py_result = []
@@ -300,20 +300,80 @@ cdef class LibCppTest:
            inc(it__r)
         return py_result
     
+    def process24(self, list in_ , list arg2 ):
+        assert isinstance(in_, list) and len(in_) == 2 and isinstance(in_[0], (int, long)) and isinstance(in_[1], float), 'arg in_ wrong type'
+        assert isinstance(arg2, list) and len(arg2) == 2 and isinstance(arg2[0], (int, long)) and isinstance(arg2[1], (int, long)), 'arg arg2 wrong type'
+        cdef libcpp_pair[int, float] v0
+        v0.first = in_[0]
+        v0.second = in_[1]
+        cdef libcpp_pair[int, int] v1
+        v1.first = arg2[0]
+        v1.second = arg2[1]
+        self.inst.get().process24(v0, v1)
+        arg2[:] = [v1.first, v1.second]
+        in_[:] = [v0.first, v0.second]
+    
     def process20(self, dict in_ ):
         assert isinstance(in_, dict) and all(isinstance(k, (int, long)) for k in in_.keys()) and all(isinstance(v, float) for v in in_.values()), 'arg in_ wrong type'
         cdef libcpp_map[int, float] * v0 = new libcpp_map[int, float]()
         for key, value in in_.items():
            deref(v0)[<int> key] = <float> value
         self.inst.get().process20(deref(v0))
-        cdef replace_in_ = dict()
+        replace = dict()
         cdef libcpp_map[int, float].iterator it_in_ = v0.begin()
         while it_in_ != v0.end():
-           replace_in_[<int> deref(it_in_).first] = <float> deref(it_in_).second
+           replace[<int> deref(it_in_).first] = <float> deref(it_in_).second
            inc(it_in_)
         in_.clear()
-        in_.update(replace_in_)
+        in_.update(replace)
         del v0
+    
+    def process21(self, dict in_ , dict arg2 ):
+        assert isinstance(in_, dict) and all(isinstance(k, (int, long)) for k in in_.keys()) and all(isinstance(v, float) for v in in_.values()), 'arg in_ wrong type'
+        assert isinstance(arg2, dict) and all(isinstance(k, (int, long)) for k in arg2.keys()) and all(isinstance(v, (int, long)) for v in arg2.values()), 'arg arg2 wrong type'
+        cdef libcpp_map[int, float] * v0 = new libcpp_map[int, float]()
+        for key, value in in_.items():
+           deref(v0)[<int> key] = <float> value
+        cdef libcpp_map[int, int] * v1 = new libcpp_map[int, int]()
+        for key, value in arg2.items():
+           deref(v1)[<int> key] = <int> value
+        self.inst.get().process21(deref(v0), deref(v1))
+        replace = dict()
+        cdef libcpp_map[int, int].iterator it_arg2 = v1.begin()
+        while it_arg2 != v1.end():
+           replace[<int> deref(it_arg2).first] = <int> deref(it_arg2).second
+           inc(it_arg2)
+        arg2.clear()
+        arg2.update(replace)
+        del v1
+        replace = dict()
+        cdef libcpp_map[int, float].iterator it_in_ = v0.begin()
+        while it_in_ != v0.end():
+           replace[<int> deref(it_in_).first] = <float> deref(it_in_).second
+           inc(it_in_)
+        in_.clear()
+        in_.update(replace)
+        del v0
+    
+    def process22(self, set in_0 , set in_1 ):
+        assert isinstance(in_0, set) and all(isinstance(li, (int, long)) for li in in_0), 'arg in_0 wrong type'
+        assert isinstance(in_1, set) and all(isinstance(li, float) for li in in_1), 'arg in_1 wrong type'
+        cdef libcpp_set[int] v0 = in_0
+        cdef libcpp_set[float] v1 = in_1
+        self.inst.get().process22(v0, v1)
+        in_1.clear()
+        in_1.update(v1)
+        in_0.clear()
+        in_0.update(v0)
+    
+    def process23(self, list in_0 , list in_1 ):
+        assert isinstance(in_0, list) and all(isinstance(li, (int, long)) for li in in_0), 'arg in_0 wrong type'
+        assert isinstance(in_1, list) and all(isinstance(li, float) for li in in_1), 'arg in_1 wrong type'
+        cdef libcpp_vector[int] v0 = in_0
+        cdef libcpp_vector[float] v1 = in_1
+        self.inst.get().process23(v0, v1)
+        in_1[:] = v1
+        in_0[:] = v0
     
     def _init_0(self):
         self.inst = shared_ptr[_LibCppTest](new _LibCppTest())
