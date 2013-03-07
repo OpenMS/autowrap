@@ -73,7 +73,7 @@ def run(pxds, addons, converters, out, extra_cimports=None, extra_opts=None):
 
     sys.path.insert(0, ".")
     for conv_module in converters:
-        mod_name = os.path.splitext(conv_module)[0].replace("/", ".")
+        mod_name = os.path.splitext(conv_module)[0].replace(os.sep, ".")
         if "__init__" in mod_name:
             continue
         mod = __import__(mod_name)
