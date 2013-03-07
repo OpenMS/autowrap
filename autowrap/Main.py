@@ -13,7 +13,7 @@ def main():
     parser.add_argument("--converters", action="store", nargs="*",
             metavar="converter")
     parser.add_argument("--out", action="store", nargs=1, metavar="pyx file")
-    version_str = "%d.%d.%d" % autowrap.version.version
+    version_str = "%d.%d.%d" % autowrap.version
     parser.add_argument("--version", action='version', version='%(prog)s '\
                                                                  + version_str)
 

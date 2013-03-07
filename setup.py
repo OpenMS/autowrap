@@ -1,5 +1,5 @@
 # the following  import fixes/avoids some nostests issue
-# see 
+# see
 
 try:
     import multiprocessing
@@ -10,7 +10,9 @@ except ImportError:
 
 from setuptools import setup, find_packages
 
-version = '0.2'
+import autowrap
+
+version = '%s.%s.%s' % autowrap.version
 
 setup(name="autowrap",
       version=version,
