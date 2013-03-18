@@ -856,6 +856,7 @@ class CodeGenerator(object):
                    |from  libcpp.pair    cimport pair as libcpp_pair
                    |from  libcpp.map     cimport map  as libcpp_map
                    |from  smart_ptr cimport shared_ptr
+                   |from  AutowrapRefHolder cimport AutowrapRefHolder
                    |from  libcpp cimport bool
                    |from cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
