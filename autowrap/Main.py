@@ -76,7 +76,12 @@ def run(pxds, addons, converters, out, extra_cimports=None, extra_opts=None):
         mod_name = os.path.splitext(conv_module)[0].replace(os.sep, ".")
         if "__init__" in mod_name:
             continue
-        mod = __import__(mod_name)
+        try:
+            mod = __import__(mod_name)
+        except ImportError, e:
+            raise ImportError(e.message +
+                                     ", maybe __init__.py files are missing")
+
         for part in mod_name.split(".")[1:]:
             mod = getattr(mod, part)
         for name, obj in vars(mod).items():
