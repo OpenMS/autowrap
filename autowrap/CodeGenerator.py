@@ -314,10 +314,10 @@ class CodeGenerator(object):
                         + Exception('can not handle type of %s' % (args,))""")
         return method_code
 
-    def create_wrapper_for_method(self, cdcl, cpp_name, methods):
+    def create_wrapper_for_method(self, cdcl, py_name, methods):
 
-        if cpp_name.startswith("operator"):
-            __, __, op = cpp_name.partition("operator")
+        if py_name.startswith("operator"):
+            __, __, op = py_name.partition("operator")
             if op in ["!=", "==", "<", "<=", ">", ">="]:
                 # handled in create_wrapper_for_class, as one has to collect
                 # these
@@ -340,8 +340,8 @@ class CodeGenerator(object):
 
 
         if len(methods) == 1:
-            code = self.create_wrapper_for_nonoverloaded_method(cdcl, cpp_name,
-                                                         cpp_name, methods[0])
+            code = self.create_wrapper_for_nonoverloaded_method(cdcl, py_name,
+                                                         methods[0])
             return [code]
         else:
             # TODO: what happens if two distinct c++ types as float, double
@@ -351,17 +351,16 @@ class CodeGenerator(object):
             codes = []
             dispatched_m_names = []
             for (i, method) in enumerate(methods):
-                dispatched_m_name = "_%s_%d" % (cpp_name, i)
+                dispatched_m_name = "_%s_%d" % (py_name, i)
                 dispatched_m_names.append(dispatched_m_name)
                 code = self.create_wrapper_for_nonoverloaded_method(cdcl,
                                                              dispatched_m_name,
-                                                             cpp_name,
                                                              method,
                                                              )
                 codes.append(code)
 
             code = self._create_overloaded_method_decl(
-                                                cpp_name,
+                                                py_name,
                                                 dispatched_m_names,
                                                 methods,
                                                 True)
@@ -463,8 +462,7 @@ class CodeGenerator(object):
         code.add("        return py_result")
         return code
 
-    def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, cpp_name,
-            method):
+    def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, method):
 
         L.info("   create wrapper for %s ('%s')" % (py_name, method))
         meth_code = Code.Code()
@@ -475,7 +473,7 @@ class CodeGenerator(object):
                                                                    method)
 
         # call wrapped method and convert result value back to python
-
+        cpp_name = method.cpp_decl.name
         call_args_str = ", ".join(call_args)
         cy_call_str = "self.inst.get().%s(%s)" % (cpp_name, call_args_str)
 

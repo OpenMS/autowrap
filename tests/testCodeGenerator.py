@@ -76,27 +76,27 @@ def test_libcpp():
     in1 = [t, 1]
     out = t.process3(in1)
 
-    assert in1[0].get() == 0
+    assert in1[0].gett() == 0
     assert in1[1] == 42
-    assert out[0].get() == 0
+    assert out[0].gett() == 0
     assert out[1] == 42
 
     in1 = [1, t]
     out = t.process4(in1)
 
     assert in1[0] == 42
-    assert in1[1].get() == 0
+    assert in1[1].gett() == 0
     assert out[0] == 42
-    assert out[1].get() == 0
+    assert out[1].gett() == 0
 
 
     t2 = libcpp.LibCppTest(12)
     in1 = [t, t2]
     out = t.process5(in1)
-    assert in1[0].get() == 43
-    assert in1[1].get() == 12
-    assert out[0].get() == 12
-    assert out[1].get() == 43
+    assert in1[0].gett() == 43
+    assert in1[1].gett() == 12
+    assert out[0].gett() == 12
+    assert out[1].gett() == 43
 
     in1 = [ [1,2.0], [2,3.0]]
     out = t.process6(in1)
@@ -122,8 +122,8 @@ def test_libcpp():
 
     in_ = set((t2,))
     out = t.process11(in_)
-    assert sorted(x.get() for x in in_) == [ 12, 42]
-    assert sorted(x.get() for x in out) == [ 12, 42]
+    assert sorted(x.gett() for x in in_) == [ 12, 42]
+    assert sorted(x.gett() for x in out) == [ 12, 42]
 
     out = t.process12(1, 2.0)
     assert out.items() == [ (1, 2.0)]
@@ -137,19 +137,19 @@ def test_libcpp():
     out = t.process15(12)
     (k, v),  = out.items()
     assert k == 12
-    assert v.get() == 12
+    assert v.gett() == 12
 
     assert t.process16({42:2.0, 12: 1.0}) == 2.0
 
     assert t.process17({libcpp.EEE.A :2.0, libcpp.EEE.B: 1.0}) == 2.0
 
-    assert t.process18({23: t, 12:t2}) == t.get()
+    assert t.process18({23: t, 12:t2}) == t.gett()
 
     dd = dict()
     t.process19(dd)
     assert len(dd) == 1
     assert dd.keys() == [23]
-    assert dd.values()[0].get() == 12
+    assert dd.values()[0].gett() == 12
 
     dd = dict()
     t.process20(dd)
