@@ -250,6 +250,33 @@ class CharConverter(TypeConverterBase):
         return "%s = chr(<char>(%s))" % (output_py_var, input_cpp_var)
 
 
+class ConstCharPtrConverter(TypeConverterBase):
+
+    def get_base_types(self):
+        return "const_char",
+
+    def matches(self, cpp_type):
+        return cpp_type.is_ptr
+
+    def matching_python_type(self, cpp_type):
+        return "bytes"
+
+    def type_check_expression(self, cpp_type, argument_var):
+        return "isinstance(%s, bytes)" % (argument_var,)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        code = ""
+        call_as = "(<const_char *>%s)" % argument_var
+        cleanup = ""
+        return code, call_as, cleanup
+
+    def call_method(self, res_type, cy_call_str):
+        return "cdef const_char  * _r = _cast_const_away(%s)" % cy_call_str
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return "%s = <const_char *>(%s)" % (output_py_var, input_cpp_var)
+
+
 class CharPtrConverter(TypeConverterBase):
 
     def get_base_types(self):
@@ -895,6 +922,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters = ConverterRegistry(instance_map)
     converters.register(IntegerConverter())
     converters.register(FloatConverter())
+    converters.register(ConstCharPtrConverter())
     converters.register(CharPtrConverter())
     converters.register(CharConverter())
     converters.register(StdStringConverter())

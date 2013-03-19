@@ -28,10 +28,13 @@ int Minimal::compute(int i)  const{
 float Minimal::compute(float i)  const{
     return i+_i + 42.0;
 }
-const char * Minimal::pass_charptr(const char * p)  const{
+const char * Minimal::pass_const_charptr(const char * p)  const{
     return p;
 }
 
+char * Minimal::pass_charptr(char * p)  const{
+    return p;
+}
 unsigned int Minimal::test_special_converter(unsigned int l) const
 {
     return l; // does nothing, but the convert will !

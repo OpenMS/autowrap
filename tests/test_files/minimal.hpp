@@ -28,7 +28,8 @@ class Minimal {
         Int compute(int, int) const;
         std::string compute(std::string s) const;
 
-        const char *pass_charptr(const char *) const;
+        char *pass_charptr(char *) const;
+        const char *pass_const_charptr(const char *) const;
 
         int compute_int(int i) const;
         int compute_int() const;

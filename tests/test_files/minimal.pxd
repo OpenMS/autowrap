@@ -1,9 +1,12 @@
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector
+from libc.string cimport const_char
 
 from minimal_td cimport *
 
+
 cdef extern from "minimal.hpp":
+
 
     cdef enum ABCorD:
         # wrap-attach:
@@ -24,12 +27,14 @@ cdef extern from "minimal.hpp":
         int compute_int(int)
         int compute_int()
         char * pass_charptr(char *) # has const char * in orig, !
+        const_char * pass_const_charptr(const_char *)
         libcpp_string compute_str(libcpp_string what)
         int compute_charp(char * what)
         int run(Minimal & ref)
         int run2(Minimal *p)
         Minimal create()
         Minimal & getRef()   # wrap-ignore
+
 
         unsigned int test_special_converter(unsigned int)
 

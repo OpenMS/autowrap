@@ -233,6 +233,8 @@ def test_minimal():
     assert minimal.compute_int(4) == 5
     assert minimal.compute("uwe") == "ewu"
     assert minimal.compute_str("emzed") == "dezme"
+    assert minimal.pass_charptr("emzed") == "emzed"
+    assert minimal.pass_const_charptr("emzed") == "emzed"
 
     assert minimal.compute_int() == 42
 
