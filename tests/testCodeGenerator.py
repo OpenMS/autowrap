@@ -335,10 +335,10 @@ def test_templated():
     co.add("""def special(self):
              |    return "hi" """)
 
-    methods = dict(T = [co])
+    methods = dict(T = co)
 
     include_dirs = autowrap.generate_code(decls, instance_map, target=target,
-                                          debug=True, extra_methods=methods)
+                                          debug=True, manual_code=methods)
 
     cpp_source = os.path.join(test_files, "templated.cpp")
     cpp_sources = []

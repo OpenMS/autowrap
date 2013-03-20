@@ -59,15 +59,22 @@ def main():
     run(pxds, addons, converters, out)
 
 
-def run(pxds, addons, converters, out, extra_cimports=None, extra_opts=None):
+def run(pxds, addons, converters, out, extra_inc_dirs=None, extra_opts=None):
 
-    extra_methods = dict()
+    manual_code = dict()
+    cimports = []
     for name in addons:
         clz_name, __  = os.path.splitext(os.path.basename(name))
-        txt = open(name, "r").read()
-        extra_methods.setdefault(clz_name, autowrap.Code.Code()).add(txt)
+        line_iter = open(name, "r")
+        for line in line_iter:
+            if line and line[0] not in "\n\r\t ":
+                cimports.append(line)
+            else:
+                break
+        remainder = "".join(line_iter)
+        manual_code.setdefault(clz_name, autowrap.Code.Code()).add(remainder)
 
-    extra_methods = dict( (k, [v]) for (k,v) in extra_methods.items())
+    #manual_code = dict( (k, [v]) for (k,v) in extra_methods.items())
 
     from ConversionProvider import special_converters, TypeConverterBase
 
@@ -96,8 +103,11 @@ def run(pxds, addons, converters, out, extra_cimports=None, extra_opts=None):
 
 
     inc_dirs = autowrap.parse_and_generate_code(pxds, ".", out, False,
-                                                                extra_methods,
-                                                                extra_cimports)
+                                                                manual_code,
+                                                                cimports)
+    if extra_inc_dirs is not None:
+        inc_dirs += extra_inc_dirs
+
     from Cython.Compiler.Main import compile, CompilationOptions
     from Cython.Compiler.Options import directive_defaults
     directive_defaults["boundscheck"] = False
