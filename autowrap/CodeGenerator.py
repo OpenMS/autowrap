@@ -38,12 +38,12 @@ def fixed_include_dirs():
 class CodeGenerator(object):
 
     def __init__(self, resolved, instance_mapping, target_path=None,
-            extra_methods=None, extra_cimports=None):
+            manual_code=None, extra_cimports=None):
 
-        if extra_methods is None:
-            extra_methods = dict()
+        if manual_code is None:
+            manual_code = dict()
 
-        self.extra_methods = extra_methods
+        self.manual_code = manual_code
         self.extra_cimports = extra_cimports
 
         self.target_path = os.path.abspath(target_path)
@@ -113,8 +113,16 @@ class CodeGenerator(object):
 
         code = "\n".join(ci.render() for ci in self.top_level_code)
         code +=" \n"
+        names = set()
         for n, c in self.class_codes.items():
             code += c.render()
+            code +=" \n"
+            names.add(n)
+
+        # manual code which does not extend wrapped classes:
+        for name, c in self.manual_code.items():
+            if name not in names:
+                code += c.render()
             code +=" \n"
 
         if debug:
@@ -247,10 +255,9 @@ class CodeGenerator(object):
         for ci in codes:
             class_code.add(ci)
 
-        extra_methods_code = self.extra_methods.get(cname)
+        extra_methods_code = self.manual_code.get(cname)
         if extra_methods_code:
-            for extra_code in extra_methods_code:
-                class_code.add(extra_code)
+            class_code.add(extra_methods_code)
 
 
     def _create_iter_methods(self, iterators):

@@ -36,9 +36,9 @@ def test_run():
     converters = glob.glob("test_files/converters/*.py")
     assert converters
 
-    includes = run(pxds, addons, converters, "test_files/out.pyx")
-
-    includes.append("test_files/includes")
+    extra_includes = ["test_files/includes"]
+    includes = run(pxds, addons, converters, "test_files/out.pyx",
+            extra_includes)
 
     mod = compile_and_import("out", ["test_files/out.cpp"], includes)
 
@@ -46,11 +46,16 @@ def test_run():
     ih.set_(3)
     assert ih.get() == 3
 
+    # automatic IntHolder <-> it conversions:
     b = mod.B()
-    b.set_(ih)
-    assert b.get().get() == 3
+    b.set_(7)
+    assert b.get() == 7
 
+    # manually generated method
     assert b.super_get(3) == 4
 
+    # uses extra cimport for M_PI
+    assert abs(b.get_pi()-3.141) < 0.001
 
-
+    # manual class:
+    assert mod.C.c == 3
