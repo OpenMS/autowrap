@@ -1,3 +1,2 @@
-
-cdef extern from "minimal.hpp":
+cdef extern from *:
     ctypedef int Int

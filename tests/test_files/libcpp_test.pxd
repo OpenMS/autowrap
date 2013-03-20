@@ -14,7 +14,7 @@ cdef extern from "libcpp_test.hpp":
         LibCppTest(int ii)
         LibCppTest(LibCppTest) # wrap-ignore
 
-        int  get()
+        int  get() #wrap-as:gett
 
         libcpp_pair[int,libcpp_string] twist(libcpp_pair[libcpp_string, int])
         libcpp_vector[int] process(libcpp_vector[int] &)

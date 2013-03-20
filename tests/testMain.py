@@ -50,5 +50,7 @@ def test_run():
     b.set_(ih)
     assert b.get().get() == 3
 
+    assert b.super_get(3) == 4
+
 
 
