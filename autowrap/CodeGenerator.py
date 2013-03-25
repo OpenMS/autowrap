@@ -715,7 +715,17 @@ class CodeGenerator(object):
                                                                "__getitem__",
                                                                mdcl)
 
-        meth_code.add("    assert %s >= 0" % call_arg)
+        meth_code.add("""
+                     |    if $call_arg < 0:
+                     |        raise IndexError("invalid index %d" % $call_arg)
+                     """, locals())
+
+        size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
+        if size_guard:
+            meth_code.add("""
+                     |    if $call_arg >= self.inst.get().$size_guard:
+                     |        raise IndexError("invalid index %d" % $call_arg)
+                     """, locals())
 
         # call wrapped method and convert result value back to python
 

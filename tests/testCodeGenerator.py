@@ -305,7 +305,14 @@ def test_minimal():
 
     assert m2.test2Lists([m1], [1,2]) == 3
     assert m1==m1
-    assert m1[7] == 8
+
+    # tests operator[] + size:
+    assert  list(m1) == []
+    assert list(m2) == [ m2, m1, m3]
+
+
+
+    #assert m1[7] == 8
 
     assert wrapped.top_function(42) == 84
     assert wrapped.sumup([1,2,3]) == 6

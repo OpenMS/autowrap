@@ -46,6 +46,10 @@ class Minimal {
 
         bool operator==(const Minimal &other) const;
 
+        int size() const {
+            return _mi.size();
+        }
+
         int operator[](const int i) const 
         {
             return i+1;

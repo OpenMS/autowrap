@@ -48,7 +48,8 @@ cdef extern from "minimal.hpp":
 
         int operator()(Minimal) # wrap-cast:toInt
 
-        int operator[](int)
+        int size()
+        int operator[](int) #wrap-upper-limit:size()
 
         int sumup(libcpp_vector[int] what)
         int call(libcpp_vector[Minimal] what) # ref-arg-out:0
