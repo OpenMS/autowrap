@@ -75,7 +75,10 @@ class CodeGenerator(object):
         self.class_codes = defaultdict(list)
 
     def get_include_dirs(self):
-        return fixed_include_dirs() + [self.pxd_dir]
+        if self.pxd_dir is not None:
+            return fixed_include_dirs() + [self.pxd_dir]
+        else:
+            return fixed_include_dirs()
 
     def setup_cimport_paths(self):
 
@@ -87,11 +90,10 @@ class CodeGenerator(object):
             pxd_file = os.path.basename(pxd_path)
             inst.pxd_import_path, __ = os.path.splitext(pxd_file)
 
-        assert len(pxd_dirs) == 1, \
+        assert len(pxd_dirs) <= 1, \
                                   "pxd files must be located in same directory"
 
-        self.pxd_dir = pxd_dirs.pop()
-
+        self.pxd_dir = pxd_dirs.pop() if pxd_dirs else None
 
     def create_pyx_file(self, debug=False):
         self.setup_cimport_paths()
@@ -708,15 +710,16 @@ class CodeGenerator(object):
         L.info("   create wrapper for operator[]")
         meth_code = Code.Code()
 
-        call_args, cleanups, in_types =\
+        (call_arg,) , cleanups, in_types =\
                     self._create_fun_decl_and_input_conversion(meth_code,
                                                                "__getitem__",
                                                                mdcl)
 
+        meth_code.add("    assert %s >= 0" % call_arg)
+
         # call wrapped method and convert result value back to python
 
-        call_args_str = ", ".join(call_args)
-        cy_call_str = "deref(self.inst.get())[%s]" % call_args_str
+        cy_call_str = "deref(self.inst.get())[%s]" % call_arg
 
         res_t = mdcl.result_type
         out_converter = self.cr.get(res_t)

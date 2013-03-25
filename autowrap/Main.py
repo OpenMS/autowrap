@@ -101,7 +101,6 @@ def run(pxds, addons, converters, out, extra_inc_dirs=None, extra_opts=None):
                         continue
                     special_converters.append(inst)
 
-
     inc_dirs = autowrap.parse_and_generate_code(pxds, ".", out, False,
                                                                 manual_code,
                                                                 cimports)
