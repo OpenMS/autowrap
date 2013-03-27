@@ -23,10 +23,21 @@ cdef extern from "*":
     long gun()
     T[long int,int] fun()
     """)
-    print cld
-    print str(gund.result_type)
-    print str(fund.result_type)
+    assert str(gund.result_type) == "long int"
+    assert str(fund.result_type) == "T[long int,int]"
 
+def test_multiline_annotations():
+    cdcl, = autowrap.PXDParser.parse_str("""
+cdef extern from "*":
+
+    cdef cppclass T:
+        fun(int x,    # a:3
+            float y,  # b:4
+           )
+
+    """)
+    mdcl = cdcl.methods["fun"][0]
+    assert mdcl.annotations == dict(a="3", b="4")
 
 
 def test_minimal():

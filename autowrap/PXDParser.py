@@ -64,20 +64,25 @@ def _parse_multiline_annotations(lines):
 def parse_line_annotations(node, lines):
     """
        parses comments at end of line, in most cases the lines of
-       method declarations
+       method declarations.
+       handles method declarations over multiple lines
     """
 
-    parts = lines[node.pos[1] - 1].split("#", 1)
     result = dict()
-    if len(parts)==2:
-        # parse_pxd_file python statements in comments
-        fields = [ f.strip() for f in parts[1].split(" ") ]
-        for f in fields:
-            if ":" in f:
-                key, value = f.split(":", 1)
-            else:
-                key, value = f, True
-        result[key] = value
+    # pos starts counting with 1 and limits are inclusive
+    start = node.pos[1]-1
+    end  = node.end_pos()[1]
+    for line in lines[start:end]:
+        __, __, comment = line.partition("#")
+        if comment:
+            for f in comment.split(" "):
+                f = f.strip()
+                if ":" in f:
+                    key, value = f.split(":", 1)
+                    value = value.strip()
+                else:
+                    key, value = f, True
+            result[key.strip()] = value
     return result
 
 

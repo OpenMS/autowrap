@@ -68,7 +68,6 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     assert subprocess.Popen("python setup.py build_ext --force --inplace",
             shell=True).wait() == 0
     print "BUILT"
-    #Popen("mycmd" + " myarg", shell=True).wait()
     result = __import__(name)
     print "imported"
     if debug:
