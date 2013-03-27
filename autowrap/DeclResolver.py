@@ -342,9 +342,9 @@ def _parse_wrap_instances_comments(cdcl):
         for instance_decl_str in inst_annotations:
             name, type_, tinst_map = parse_alias(cdcl, instance_decl_str)
             r[name] = type_, tinst_map
-    for name, (t, m) in r.items():
-        m_str = Types.printable(m)
-        L.info("parse_wrap_instances_comments %s -> (%s, %s)" %(name, t, m_str))
+    #for name, (t, m) in r.items():
+        #m_str = Types.printable(m)
+        #L.info("parse_wrap_instances_comments %s -> (%s, %s)" %(name, t, m_str))
     return r
 
 
@@ -435,8 +435,8 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
 
 def _resolve_method(method_decl, instance_mapping, type_map):
     L.info("resolve method decl: '%s'" % method_decl)
-    L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
-    L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
+    #L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
+    #L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          type_map, ResolvedMethod)
     L.info("result             : '%s'" % result)
@@ -446,8 +446,8 @@ def _resolve_method(method_decl, instance_mapping, type_map):
 
 def _resolve_function(method_decl, instance_mapping, type_map):
     L.info("resolve function decl: '%s'" % method_decl)
-    L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
-    L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
+    #L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
+    #L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          type_map, ResolvedFunction)
     L.info("result               : '%s'" % result)
