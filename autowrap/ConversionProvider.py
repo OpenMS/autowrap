@@ -3,6 +3,7 @@ from collections import defaultdict
 from Types import CppType
 from Code import Code
 
+import logging as L
 
 def mangle(s):
     s = s.replace("(", "_l_")
@@ -38,6 +39,7 @@ class ConverterRegistry(object):
     def register(self, converter):
 
         assert isinstance(converter, TypeConverterBase)
+        L.info("register %s" % converter)
         converter._set_converter_registry(self)
 
         # we take a defaultdict(list) for lookup as base_type is only some kind
