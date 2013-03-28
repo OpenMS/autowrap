@@ -326,9 +326,9 @@ class TypeToWrapConverter(TypeConverterBase):
 
         cy_type = self.converters.cython_type(cpp_type)
         if cpp_type.is_ptr:
-            call_as = "<%s>(%s.inst.get())" % (cy_type, argument_var)
+            call_as = "(%s.inst.get())" % (argument_var, )
         else:
-            call_as = "<%s>deref(%s.inst.get())" % (cy_type, argument_var)
+            call_as = "(deref(%s.inst.get()))" % (argument_var, )
         cleanup = ""
         return code, call_as, cleanup
 
