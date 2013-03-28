@@ -423,6 +423,8 @@ class CodeGenerator(object):
     def _create_wrapper_for_attribute(self, attribute):
         code = Code.Code()
         name = attribute.name
+        wrap_as = attribute.cpp_decl.annotations.get("wrap-as", name)
+
 
         t = attribute.type_
 
@@ -432,7 +434,7 @@ class CodeGenerator(object):
 
         code.add("""
             |
-            |property $name:
+            |property $wrap_as:
             |
             |    def __set__(self, $py_type $name):
             """, locals())

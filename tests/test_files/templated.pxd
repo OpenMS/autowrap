@@ -16,7 +16,7 @@ cdef extern from "templated.hpp":
         #   Templated := Templated[T]
 
         X _x
-        float f
+        float f #wrap-as:f_att
         libcpp_vector[T] xi 
 
         Templated(X)

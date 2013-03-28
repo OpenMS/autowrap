@@ -376,10 +376,11 @@ def test_templated():
     _, __, tn = y.passs(in_)
     assert tn.get().get() == 11
 
-    templated.f = 2
-    assert templated.f == 2.0
-    templated.f = 4
-    assert templated.f == 4.0
+    # renamed attribute
+    templated.f_att = 2
+    assert templated.f_att == 2.0
+    templated.f_att = 4
+    assert templated.f_att == 4.0
 
     t13 = twrapped.T(13)
     templated._x = t13
