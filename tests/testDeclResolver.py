@@ -542,3 +542,19 @@ cdef extern from "":
     assert A == ("A", 0)
     assert B == ("B", 1)
     assert C == ("C", 2)
+
+
+def test_copy_cons_decl_for_templated_class():
+    (A,), map_ = DeclResolver.resolve_decls_from_string("""
+cdef extern from "":
+
+    cdef cppclass A[T]:
+        # wrap-instances:
+        #   A := A[int]
+        A(A[T] &)
+
+    """)
+
+    assert A.name == "A"
+    m, = A.methods["A"]
+    print m

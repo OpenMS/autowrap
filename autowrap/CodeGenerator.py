@@ -1,3 +1,4 @@
+import pdb
 from contextlib import contextmanager
 import os.path
 import sys
@@ -840,11 +841,12 @@ class CodeGenerator(object):
         L.info("   create wrapper __copy__")
         meth_code = Code.Code()
         name = class_decl.name
+        cy_type = self.cr.cython_type(name)
         meth_code.add("""
                         |
                         |def __copy__(self):
                         |   cdef $name rv = $name.__new__($name)
-                        |   rv.inst = shared_ptr[_$name](new _$name(deref(self.inst.get())))
+                        |   rv.inst = shared_ptr[$cy_type](new $cy_type(deref(self.inst.get())))
                         |   return rv
                         """, locals())
         return meth_code
