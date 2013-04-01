@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -9,7 +8,6 @@ from Cython.Compiler.ExprNodes import *
 
 from Types import CppType
 
-import re
 import os
 
 import logging as L
@@ -72,6 +70,15 @@ def parse_line_annotations(node, lines):
     # pos starts counting with 1 and limits are inclusive
     start = node.pos[1]-1
     end  = node.end_pos()[1]
+
+    while end < len(lines):
+        if lines[end].strip() == "":
+            end += 1
+            continue
+        if lines[end].strip().startswith(")"):
+            end += 1
+        break
+
     for line in lines[start:end]:
         __, __, comment = line.partition("#")
         if comment:

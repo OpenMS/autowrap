@@ -378,3 +378,40 @@ cdef extern from "A.h":
     (__, arg_t), = fun.arguments
     assert str(arg_t) == "int"
 
+def test_annotations():
+    cld, = autowrap.PXDParser.parse_str("""
+cdef extern from "*":
+        cdef cppclass T:
+            # wrap-ignore
+            # wrap-as:
+            #   Z
+
+            void fun() # wrap-as:gun
+            void fun(int x) # wrap-as:gun
+            void gun(
+                    )  # wrap-as:hun
+
+            void gun(
+                    int x
+                    )  # wrap-as:hun
+            void iun(int x)
+            void hun(int x
+                    )  # wrap-as:jun
+""")
+
+    assert len(cld.annotations) == 2
+    assert cld.annotations["wrap-as"] == [ 'Z']
+    assert cld.annotations["wrap-ignore"] is True
+
+    for mdcl in cld.methods["fun"]:
+        assert mdcl.annotations.items() == [ ("wrap-as", "gun")]
+
+    for mdcl in cld.methods["gun"]:
+        assert mdcl.annotations.items() == [ ("wrap-as", "hun")]
+
+    for mdcl in cld.methods["hun"]:
+        assert mdcl.annotations.items() == [ ("wrap-as", "jun")]
+
+    for mdcl in cld.methods["iun"]:
+        assert mdcl.annotations.items() == []
+
