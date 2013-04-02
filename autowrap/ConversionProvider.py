@@ -918,7 +918,6 @@ class StdStringConverter(TypeConverterBase):
 
 special_converters = []
 
-
 def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
 
     converters = ConverterRegistry(instance_map)

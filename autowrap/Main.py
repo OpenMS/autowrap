@@ -74,32 +74,29 @@ def run(pxds, addons, converters, out, extra_inc_dirs=None, extra_opts=None):
         remainder = "".join(line_iter)
         manual_code.setdefault(clz_name, autowrap.Code.Code()).add(remainder)
 
-    #manual_code = dict( (k, [v]) for (k,v) in extra_methods.items())
-
-    from ConversionProvider import special_converters, TypeConverterBase
-
-    sys.path.insert(0, ".")
-    for conv_module in converters:
-        mod_name = os.path.splitext(conv_module)[0].replace(os.sep, ".")
-        if "__init__" in mod_name:
-            continue
+    for mod_path in converters:
+        head, tail = os.path.split(os.path.abspath(mod_path))
+        sys.path.insert(0, head)
         try:
-            mod = __import__(mod_name)
+            mod = __import__(tail)
         except ImportError, e:
             raise ImportError(e.message +
                                      ", maybe __init__.py files are missing")
 
-        for part in mod_name.split(".")[1:]:
-            mod = getattr(mod, part)
-        for name, obj in vars(mod).items():
-            if hasattr(obj, "__mro__"):
-                if obj != TypeConverterBase and TypeConverterBase in obj.__mro__:
-                    try:
-                        inst = obj()
-                    except NotImplementedError:
-                        # for abstract base classes
-                        continue
-                    special_converters.append(inst)
+        if not hasattr(mod, "register_converters"):
+            print
+            print "sys.path     = ", sys.path
+            print
+            print "dir(mod)     = ", dir(mod)
+            print
+            print "mod          = ", mod
+            print "mod.__path__ = ", mod.__path__
+            print "mod.__file__ = ", mod.__file__
+            print
+            raise ImportError("no register_converters in %s" % conv_module)
+
+        mod.register_converters()
+        sys.path.pop(0)
 
     inc_dirs = autowrap.parse_and_generate_code(pxds, ".", out, False,
                                                                 manual_code,

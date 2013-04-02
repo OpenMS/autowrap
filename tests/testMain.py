@@ -33,8 +33,7 @@ def test_run():
     addons = glob.glob("test_files/addons/*.pyx")
     assert addons
 
-    converters = glob.glob("test_files/converters/*.py")
-    assert converters
+    converters = ["test_files/converters"]
 
     extra_includes = ["test_files/includes"]
     includes = run(pxds, addons, converters, "test_files/out.pyx",
@@ -46,7 +45,7 @@ def test_run():
     ih.set_(3)
     assert ih.get() == 3
 
-    # automatic IntHolder <-> it conversions:
+    # automatic IntHolder <-> int conversions:
     b = mod.B()
     b.set_(7)
     assert b.get() == 7

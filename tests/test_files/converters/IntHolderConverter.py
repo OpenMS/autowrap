@@ -3,7 +3,6 @@ from autowrap.ConversionProvider import (TypeConverterBase,
                                          mangle,
                                          StdMapConverter)
 
-
 class IntHolderConverter(TypeConverterBase):
 
     def get_base_types(self):
@@ -32,10 +31,3 @@ class IntHolderConverter(TypeConverterBase):
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <int>(%s.get())" % (output_py_var, input_cpp_var)
-
-
-
-def register_all():
-    from autowrap.ConversionProvider import  special_converters
-    special_converters.append(IntHolderConverter())
-
