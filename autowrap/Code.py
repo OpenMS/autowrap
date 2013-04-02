@@ -5,7 +5,12 @@ class Code(object):
     def __init__(self):
         self.content = []
 
+    def extend(self, other):
+        # keeps identation
+        self.content.extend(other.content)
+
     def add(self,  what, *a, **kw):
+        # may increase indent !
         if a:  # if dict given
             kw.update(a[0])
         if "self" in kw:
