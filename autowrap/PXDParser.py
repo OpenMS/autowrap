@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -93,37 +94,52 @@ def parse_line_annotations(node, lines):
     return result
 
 
+def _extract_template_args(node):
+
+    if isinstance(node, NameNode):
+        return CppType(node.name, None)
+
+    name = node.base.name
+    if isinstance(node.index, TupleNode):
+        args = [ _extract_template_args(n) for n in node.index.args ]
+    elif isinstance(node.index, IndexNode):
+        args = [ _extract_template_args(node.index) ]
+    elif isinstance(node.index, NameNode):
+        args = [ CppType(node.index.name) ]
+    else:
+        raise Exception("can not handle node %s in template arg decl" %
+                node.index)
+    return  CppType(name, args)
+
+
 def _extract_type(base_type, decl):
     """ extracts type information from node in parse_pxd_file tree """
 
     template_parameters = None
     if isinstance(base_type, TemplatedTypeNode):
         template_parameters = []
-        for arg in base_type.positional_args:
-            if isinstance(arg, CComplexBaseTypeNode):
-                arg_decl = arg.declarator
+        for arg_node in base_type.positional_args:
+            if isinstance(arg_node, CComplexBaseTypeNode):
+                arg_decl = arg_node.declarator
                 is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
                 is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
-                is_unsigned = hasattr(arg.base_type, "signed") and not arg.base_type.signed
-                is_long = hasattr(arg.base_type, "longness") and arg.base_type.longness
-                name = arg.base_type.name
+                is_unsigned = hasattr(arg_node.base_type, "signed") \
+                              and not arg_node.base_type.signed
+                is_long = hasattr(arg_node.base_type, "longness") \
+                              and arg_node.base_type.longness
+                name = arg_node.base_type.name
                 ttype = CppType(name, None, is_ptr, is_ref, is_unsigned,
                         is_long)
                 template_parameters.append(ttype)
-            elif isinstance(arg, NameNode):
-                name = arg.name
+            elif isinstance(arg_node, NameNode):
+                name = arg_node.name
                 template_parameters.append(CppType(name))
-            elif isinstance(arg, IndexNode): # nested template !
-                # only handles one nesting level !
-                name = arg.base.name
-                if hasattr(arg.index, "args"):
-                    args = [ CppType(a.name) for a in arg.index.args ]
-                else:
-                    args = [ CppType(arg.index.name) ]
-                tt = CppType(name, args)
+            elif isinstance(arg_node, IndexNode): # nested template !
+                tt = _extract_template_args(arg_node)
                 template_parameters.append(tt)
             else:
-                raise Exception("can not handle template arg %r" % arg)
+                raise Exception("can not handle template arg_node %r" %
+                        arg_node)
 
         base_type = base_type.base_type_node
 

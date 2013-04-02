@@ -415,3 +415,21 @@ cdef extern from "*":
     for mdcl in cld.methods["iun"]:
         assert mdcl.annotations.items() == []
 
+
+def test_parsing_of_nested_template_args():
+
+    td1, td2, td3 = autowrap.PXDParser.parse_str("""
+
+cdef extern from "*":
+
+    ctypedef  A[B[C]]                   pfui
+    ctypedef  A[C,D[E[F]]]              uiii
+    ctypedef  A[Y, B[C[Y], C[Y, D[E]]]] huii
+    """)
+
+    assert str(td1.type_) == "A[B[C]]"
+    assert str(td2.type_) == "A[C,D[E[F]]]"
+    assert str(td3.type_) == "A[Y,B[C[Y],C[Y,D[E]]]]", str(td.type_)
+
+
+
