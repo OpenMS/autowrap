@@ -80,6 +80,8 @@ def run(pxds, addons, converters, out, extra_inc_dirs=None, extra_opts=None):
         try:
             mod = __import__(tail)
         except ImportError, e:
+            print "tried import from ", sys.path[0]
+            print "module I tried to import: ", tail
             raise ImportError(e.message +
                                      ", maybe __init__.py files are missing")
 
