@@ -38,6 +38,15 @@ def fixed_include_dirs():
 
 class CodeGenerator(object):
 
+    """
+    This is the main Code Generator. 
+
+    Its main entry function is "create_pyx_file" which generates the pyx file
+    from the input (given in the initializiation).
+
+    The actual conversion of input/output arguments is done in the
+    ConversionProviders for each argument type.
+    """
     def __init__(self, resolved, instance_mapping, target_path=None,
             manual_code=None, extra_cimports=None):
 
@@ -97,6 +106,12 @@ class CodeGenerator(object):
         self.pxd_dir = pxd_dirs.pop() if pxd_dirs else None
 
     def create_pyx_file(self, debug=False):
+        """This creates the actual Cython code
+
+        It calls create_wrapper_for_class, create_wrapper_for_enum and
+        create_wrapper_for_free_function respectively to create the code for
+        all classes, enums and free functions.
+        """
         self.setup_cimport_paths()
         self.create_cimports()
         self.create_includes()
@@ -200,6 +215,7 @@ class CodeGenerator(object):
             self.class_codes[class_name].add(code)
 
     def create_wrapper_for_class(self, r_class):
+        """Create Cython code for a single class"""
         cname = r_class.name
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
@@ -382,9 +398,17 @@ class CodeGenerator(object):
                                               py_name,
                                               method,
                                               is_free_fun=False):
+        """ Creates the function declarations and the input conversion to C++
+        and the output conversion back to Python.
+
+        The input conversion is directly added to the "code" object while the
+        conversion back to Python is returned as "cleanups".
+        """
         args = augment_arg_names(method)
 
-        # collect conversion data for input args
+        # Step 0: collect conversion data for input args and call
+        # input_conversion for more sophisticated conversion code (e.g.
+        # std::vector<Obj>)
         py_signature_parts = []
         input_conversion_codes = []
         cleanups = []
@@ -403,7 +427,7 @@ class CodeGenerator(object):
             in_types.append(t)
             checks.append((n, converter.type_check_expression(t, n)))
 
-        # create method decl statement
+        # Step 1: create method decl statement
         if not is_free_fun:
             py_signature_parts.insert(0, "self")
         py_signature = ", ".join(py_signature_parts)
@@ -412,10 +436,12 @@ class CodeGenerator(object):
                    |def $py_name($py_signature):
                    """, locals())
 
-        # create code which convert python input args to c++ args of wrapped
-        # method:
+        # Step 2a: create code which convert python input args to c++ args of
+        # wrapped method 
         for n, check in checks:
             code.add("    assert %s, 'arg %s wrong type'" % (check, n))
+        # Step 2b: add any more sophisticated conversion code that was created
+        # above:
         for conv_code in input_conversion_codes:
             code.add(conv_code)
 

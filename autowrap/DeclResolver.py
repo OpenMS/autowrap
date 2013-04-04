@@ -11,7 +11,7 @@ __doc__ = """
     the methods in this module take the class declarations created by
     calling PXDParser.parse and generates a list of resolved class
     declarations.  'resolved' means that all template parameters are
-    resolved  and inherited methods are resolved from super classes.
+    resolved and inherited methods are resolved from super classes.
 
     some preliminaries which you should have in mind to understand the
     code below:

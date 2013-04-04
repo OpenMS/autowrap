@@ -5,6 +5,17 @@ import autowrap.version
 import autowrap.Code
 import argparse
 
+"""
+The autowrap process consists of two steps:
+    i) parsing of files (done by DeclResolver, which in turn uses the PXDParser
+        to parse files)
+    ii) generating the code (CodeGenerator)
+
+this is both done by the call autowrap.parse_and_generate_code in the
+__init__.py file.
+
+"""
+
 def main():
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
     parser.add_argument("pxds", action="store", nargs="+")

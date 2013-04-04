@@ -313,6 +313,8 @@ class CppMethodOrFunctionDecl(BaseDecl):
         other_key = [other.result_type] + [t for (__, t) in other.arguments]
         return self_key == other_key
 
+    def __str__(self):
+        return "CppMethodOrFunctionDecl: %s %s (%s)" % (self.result_type, self.name, ["%s %s" % (str(arg[1]), arg[0]) for arg in self.arguments])
 
 class MethodOrAttributeDecl(object):
 

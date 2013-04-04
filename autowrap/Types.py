@@ -18,6 +18,12 @@ class CppType(object):
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
 
+    def __str__(self):
+        if self.template_args is None:
+            return "CppType: %s" % self.base_type
+        else:
+            return "CppType: %s[%s]" % (self.base_type, self.template_args)
+
     def transformed(self, typemap):
         copied = self.copy()
         copied._transform(typemap, 0)
