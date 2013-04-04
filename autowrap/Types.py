@@ -8,7 +8,8 @@ class CppType(object):
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
     def __init__(self, base_type, template_args = None, is_ptr=False,
-                 is_ref=False, is_unsigned=False, is_long=False, enum_items=None):
+                 is_ref=False, is_unsigned=False, is_long=False,
+                 enum_items=None):
         self.base_type =  "void" if base_type is None else base_type
         self.is_ptr = is_ptr
         self.is_ref = is_ref
@@ -17,12 +18,6 @@ class CppType(object):
         self.is_enum = enum_items is not None
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
-
-    def __str__(self):
-        if self.template_args is None:
-            return "CppType: %s" % self.base_type
-        else:
-            return "CppType: %s[%s]" % (self.base_type, self.template_args)
 
     def transformed(self, typemap):
         copied = self.copy()
@@ -120,7 +115,8 @@ class CppType(object):
             inner = "[%s]" % (",".join(str(t) for t in self.template_args))
         else:
             inner = ""
-        result = "%s %s %s%s %s" % (unsigned, long_, self.base_type, inner, ptr or ref)
+        result = "%s %s %s%s %s" % (unsigned, long_, self.base_type, inner,
+                                    ptr or ref)
         result = result.replace("  ", " ")
         return result.strip() # if unsigned is "" or ptr is "" and ref is ""
 
@@ -160,7 +156,8 @@ class CppType(object):
 
     @staticmethod
     def _from_string(str_):
-        matched = re.match("([a-zA-Z0-9][ a-zA-Z0-9]*)(\[.*\])? *[&\*]?", str_.strip())
+        matched = re.match("([a-zA-Z0-9][ a-zA-Z0-9]*)(\[.*\])? *[&\*]?",
+                            str_.strip())
         if matched is None:
             raise Exception("can not parse '%s'" % str_)
         base_type, t_str = matched.groups()

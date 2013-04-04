@@ -84,6 +84,7 @@ def remove_labels(graph):
     pure_graph = dict((n0, _remove_labels(ni)) for n0, ni in graph.items())
     return pure_graph
 
+
 def find_cycle(graph_as_dict):
     """ modified version of
     http://neopythonic.blogspot.de/2009/01/detecting-cycles-in-directed-graph.html

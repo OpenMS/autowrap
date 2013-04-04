@@ -1,4 +1,3 @@
-import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -20,8 +19,6 @@ Methods in this module use Cythons Parser to build an Cython syntax tree
 from the annotated .pxd files and creates a represenation of the
 included classes and methods.
 """
-
-
 
 
 def parse_class_annotations(node, lines):
@@ -226,8 +223,8 @@ class CppClassDecl(BaseDecl):
 
     __metaclass__ = SubtreeParserInterfaceChecker
 
-    def __init__(self, name, template_parameters, methods, attributes, annotations,
-                 pxd_path):
+    def __init__(self, name, template_parameters, methods, attributes,
+                 annotations, pxd_path):
         super(CppClassDecl, self).__init__(name, annotations, pxd_path)
         self.methods = methods
         self.attributes = attributes
@@ -249,8 +246,8 @@ class CppClassDecl(BaseDecl):
                 elif isinstance(decl, CppAttributeDecl):
                     attributes.append(decl)
 
-        return cls(name, template_parameters, methods, attributes, class_annotations,
-                   pxd_path)
+        return cls(name, template_parameters, methods, attributes,
+                   class_annotations, pxd_path)
 
     def __str__(self):
         rv = ["cppclass %s: " % (self.name, )]
@@ -314,7 +311,8 @@ class CppMethodOrFunctionDecl(BaseDecl):
         return self_key == other_key
 
     def __str__(self):
-        return "CppMethodOrFunctionDecl: %s %s (%s)" % (self.result_type, self.name, ["%s %s" % (str(arg[1]), arg[0]) for arg in self.arguments])
+        return "CppMethodOrFunctionDecl: %s %s (%s)" % (self.result_type,
+                self.name, ["%s %s" % (str(t), n) for n, t in self.arguments])
 
 class MethodOrAttributeDecl(object):
 
@@ -353,7 +351,8 @@ class MethodOrAttributeDecl(object):
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname,tt))
 
-        return CppMethodOrFunctionDecl(result_type, name, args, annotations, pxd_path)
+        return CppMethodOrFunctionDecl(result_type, name, args, annotations,
+                                       pxd_path)
 
     def __str__(self):
         rv = str(self.result_type)

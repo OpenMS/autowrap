@@ -1,4 +1,3 @@
-import pdb
 from contextlib import contextmanager
 import os.path
 import sys
@@ -29,12 +28,12 @@ def augment_arg_names(method):
                                   for i, (n, t) in enumerate(method.arguments)]
 
 
-
 def fixed_include_dirs():
     import pkg_resources
     boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
     data = pkg_resources.resource_filename("autowrap", "data_files")
     return [boost, data]
+
 
 class CodeGenerator(object):
 

@@ -20,7 +20,7 @@ class ConverterRegistry(object):
     Works with two level lookup: first find converters which support base_type,
     then call .matches on them to find the finally matching converters
 
-    Therefore TypeConverterBase has method .get_base_types and .matches
+    Therefore TypeConverterBase has methods .get_base_types and .matches
     """
 
     def __init__(self, instance_mapping):
