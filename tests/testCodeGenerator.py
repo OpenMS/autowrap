@@ -179,7 +179,34 @@ def test_libcpp():
     t.process24(l1, l2)
     assert l1 == [3, 2.0]
 
+    i1 = libcpp.Int(1)
+    i2 = libcpp.Int(2)
+    i3 = libcpp.Int(3)
 
+    assert t.process25([i1,i2,i3]) == 6
+    assert t.process25([]) == 0
+
+    assert t.process26([[i1,i2,i3]]) == 6
+    assert t.process26([[i1,i2,i3],[i1]]) == 7
+    assert t.process26([[i1,i2,i3],[i1], [i1, i2]]) == 10
+
+    empty_list = [ [] ]
+    empty_list = [ [], [], [] ]
+    t.process29(empty_list)
+    assert len(empty_list) == 3
+    assert len(empty_list[0]) == 1
+    assert len(empty_list[1]) == 1
+    assert len(empty_list[2]) == 1
+    assert empty_list[0][0].i_ == 42
+
+    empty_list = [ [ [ [ ] ] ],   [ [ [ ] ] ] ]
+    t.process30(empty_list)
+
+    assert len(empty_list) == 2
+    assert len(empty_list[0]) == 2
+    assert len(empty_list[1]) == 2
+    assert empty_list[0][1][0][0].i_ == 42
+    assert empty_list[1][1][0][0].i_ == 42
 
 def test_minimal():
 

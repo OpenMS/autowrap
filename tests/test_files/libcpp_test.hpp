@@ -8,6 +8,13 @@ enum EEE {
 };
 
 
+class Int {
+    public:
+        int i_;
+        Int(int i): i_(i) { };
+        Int(const Int & i): i_(i.i_) { };
+};
+
 class LibCppTest {
     private:
         int i;
@@ -174,5 +181,62 @@ class LibCppTest {
             in.first = arg2.second;
             in.second = (float) arg2.first;
         }
+
+        int process25(std::vector<Int> in)
+        {
+            int sum = 0;
+            for (std::vector<Int>::const_iterator i = in.begin(); i != in.end(); ++i)
+                sum += i->i_;
+            return sum;
+        }
+
+
+        int process26(std::vector<std::vector<Int> > in)
+        {
+            int sum = 0;
+            for (std::vector<std::vector<Int> >::const_iterator i = in.begin(); i != in.end(); ++i)
+                sum += process25(*i);
+            return sum;
+            
+        }
+
+        int process27(std::vector<std::vector<std::vector<Int> > > in)
+        {
+            int sum = 0;
+            for (std::vector<std::vector<std::vector<Int> > >::const_iterator i = in.begin(); i != in.end(); ++i)
+                sum += process26(*i);
+            return sum;
+            
+        }
+        int process28(std::vector<std::vector<std::vector<std::vector<Int> > > > in)
+        {
+            int sum = 0;
+            for (std::vector<std::vector<std::vector<std::vector<Int> > > >::const_iterator i = in.begin(); i != in.end(); ++i)
+                sum += process27(*i);
+            return sum;
+            
+        }
+        void process29(std::vector<std::vector<Int> > & in)
+        {
+            for (std::vector<std::vector<Int> >::iterator i = in.begin(); i != in.end(); ++i)
+            {
+              i->push_back(42);
+            }
+        }
+        void process30(std::vector<std::vector<std::vector<std::vector<Int> > > > & in)
+        {
+            for (std::vector<std::vector<std::vector<std::vector<Int> > > >::iterator i = in.begin(); i != in.end(); ++i)
+            {
+                std::vector<std::vector<Int> > newvec;
+                std::vector<Int> newvec_inner;
+                Int int_obj = Int(42);
+
+                newvec_inner.push_back(int_obj);
+                newvec.push_back(newvec_inner);
+
+                i->push_back(newvec);
+            }
+        }
+        
            
 };
