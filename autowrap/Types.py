@@ -18,6 +18,25 @@ class CppType(object):
         self.is_enum = enum_items is not None
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
+        self.topmost_is_ref = False
+        if self.is_ref:
+            self.set_is_ref_rec()
+            self.topmost_is_ref = True
+
+    def collect_base_types_rec(self):
+        result = []
+        if self.template_args is None: 
+            return result
+        for t in self.template_args:
+            result.append(t.base_type)
+            result.extend( t.collect_base_types_rec() )
+        return result
+
+    def set_is_ref_rec(self):
+        self.topmost_is_ref = True
+        if self.template_args is None: return
+        for t in self.template_args:
+            t.set_is_ref_rec()
 
     def transformed(self, typemap):
         copied = self.copy()
@@ -129,7 +148,8 @@ class CppType(object):
             raise Exception("re check for '%s' failed" % self)
 
     def _check_for_recursion(self, seen_base_types):
-        if self.base_type in seen_base_types:
+        # Currently, only nested std::vector<> can be handled
+        if self.base_type in seen_base_types and not self.base_type == "libcpp_vector":
             raise Exception("recursion check failed")
         seen_base_types.add(self.base_type)
         for t in self.template_args or []:

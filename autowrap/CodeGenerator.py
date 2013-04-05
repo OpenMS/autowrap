@@ -415,7 +415,9 @@ class CodeGenerator(object):
         checks = []
         in_types = []
         for arg_num, (t, n) in enumerate(args):
-            converter = self.cr.get(t)
+            # get new ConversionProvider using the converter registry 
+            converter = self.cr.get(t) 
+            converter.cr = self.cr
             py_type = converter.matching_python_type(t)
             conv_code, call_as, cleanup =\
                                       converter.input_conversion(t, n, arg_num)

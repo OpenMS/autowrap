@@ -9,6 +9,11 @@ cdef extern from "libcpp_test.hpp":
     cdef enum EEE:
         A, B
 
+    cdef cppclass Int:
+        int i_
+        Int(int i)
+        Int(Int & i)
+
     cdef cppclass LibCppTest:
         LibCppTest()
         LibCppTest(int ii)
@@ -52,4 +57,11 @@ cdef extern from "libcpp_test.hpp":
         void  process23(libcpp_vector[int] &, libcpp_vector[float] &)
         void  process24(libcpp_pair[int, float] & in_, libcpp_pair[int,int] & arg2)
 
+        int   process25(libcpp_vector[Int] in_)
+        int   process26(libcpp_vector[libcpp_vector[Int]] in_)
+        int   process27(libcpp_vector[libcpp_vector[libcpp_vector[Int]]] in_)
+        int   process28(libcpp_vector[libcpp_vector[libcpp_vector[libcpp_vector[Int]]]] in_)
+
+        void  process29(libcpp_vector[libcpp_vector[Int]] & in_)
+        void  process30(libcpp_vector[libcpp_vector[libcpp_vector[libcpp_vector[Int]]]] & in_)
 

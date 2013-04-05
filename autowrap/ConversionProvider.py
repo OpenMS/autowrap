@@ -771,33 +771,244 @@ class StdVectorConverter(TypeConverterBase):
         tt, = cpp_type.template_args
         inner_conv = self.converters.get(tt)
         assert inner_conv is not None, "arg type %s not supported" % tt
-        inner_check = inner_conv.type_check_expression(tt, "li")
+        if arg_var[-4:] == "_rec":
+            arg_var_next = "%s_rec" % arg_var
+        else:
+            # first recursion, set element name
+            arg_var_next = "elemt_rec" 
+        inner_check = inner_conv.type_check_expression(tt, arg_var_next)
 
         return Code().add("""
-          |isinstance($arg_var, list) and all($inner_check for li in $arg_var)
+          |isinstance($arg_var, list) and all($inner_check for $arg_var_next in $arg_var)
           """, locals()).render()
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def _prepare_nonrecursive_cleanup(self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw):
+        # B) Prepare the post-call
+        if cpp_type.topmost_is_ref:
+            # If the vector is passed by reference, we need to store the
+            # result for Python.
+            btm_add = ""
+            if recursion_cnt > 0:
+                # If we are inside a recursion, we have to dereference the
+                # _previous_ iterator.
+                a[0]["temp_var_used"] = "deref(%s)" % it_prev
+                tp_add = "$it = $temp_var_used.begin()"
+            else:
+                tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
+                btm_add = """
+                |$argument_var[:] = replace_$recursion_cnt
+                |del $temp_var
+                """
+                a[0]["temp_var_used"] = temp_var
+
+            # Add cleanup code (loop through the temporary vector C++ and
+            # add items to the python replace_n list).
+            cleanup_code = Code().add(tp_add + """
+                |replace_$recursion_cnt = []
+                |while $it != $temp_var_used.end():
+                |    $item = $cy_tt.__new__($cy_tt)
+                |    $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                |    replace_$recursion_cnt.append($item)
+                |    inc($it)
+                """ + btm_add, *a, **kw)
+        else:
+            if recursion_cnt == 0:
+                cleanup_code = Code().add("del %s" % temp_var)
+            else:
+                cleanup_code = Code()
+                bottommost_code.add("del %s" % temp_var)
+        return cleanup_code
+
+    def _prepare_recursive_cleanup(self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw):
+        # B) Prepare the post-call
+        if cpp_type.topmost_is_ref:
+            # If the vector is passed by reference, we need to store the
+            # result for Python.
+            if recursion_cnt > 0:
+                # If we are inside a recursion, we have to dereference the
+                # _previous_ iterator.
+                a[0]["temp_var_used"] =  "deref(%s)" % it_prev
+                tp_add = "$it = $temp_var_used.begin()"
+            else:
+                tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
+                a[0]["temp_var_used"] = temp_var
+            cleanup_code = Code().add( tp_add + """
+                |replace_$recursion_cnt = []
+                |while $it != $temp_var_used.end():
+                """, *a, **kw)
+        else:
+            if recursion_cnt == 0:
+                cleanup_code = Code().add("del %s" % temp_var)
+            else:
+                cleanup_code = Code()
+                bottommost_code.add("del %s" % temp_var)
+        return cleanup_code
+
+    def _prepare_nonrecursive_precall(self, topmost_code, cpp_type, code_top, *a, **kw):
+            # A) Prepare the pre-call
+            if topmost_code is not None:
+                if cpp_type.topmost_is_ref:
+                    # add cdef statements for the iterators (part of B, post-call but needs to be on top)
+                    code_top += "|cdef libcpp_vector[$inner].iterator $it"
+                topmost_code.add(code_top, *a, **kw) 
+                code_top = ""
+            # Now prepare the loop itself
+            code = Code().add(code_top + """
+                |for $item in $argument_var:
+                |    $temp_var.push_back(deref($item.inst.get()))
+                """, *a, **kw)
+            return code
+
+    def _perform_recursion(self, cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, *a, **kw):
+        converter = self.cr.get(tt) 
+        py_type = converter.matching_python_type(tt)
+        rec_arg_num = "%s_rec" % arg_num 
+        # the current item is the argument var of the recursive call
+        rec_argument_var = item 
+        topmost_code_callback = Code()
+        bottommost_code_callback = Code()
+        # 
+        # Perform the recursive call
+        # 
+        conv_code, call_as, cleanup =\
+                                   converter.input_conversion(tt, rec_argument_var, rec_arg_num, 
+                                       topmost_code_callback, bottommost_code_callback, recursion_cnt + 1)
+        # undo the "deref" if it was added ...
+        new_item = call_as
+        if call_as.find("deref") != -1:
+            new_item = new_item[6:]
+            new_item = new_item[:-1]
+        a[0]["new_item"] = new_item
+
+        #
+        # A) Prepare the pre-call, Step 2
+        # add all the "topmost" code from all recursive calls if we are in the topmost recursion
+        # 
+        if topmost_code is None:
+            code.content.extend(topmost_code_callback.content)
+        else:
+            topmost_code.content.extend(topmost_code_callback.content)
+
+        #
+        # A) Prepare the pre-call, Step 3
+        # add the outer loop
+        # 
+        code.add("""
+            |for $item in $argument_var:
+            """, *a, **kw)
+        #
+        # A) Prepare the pre-call, Step 4
+        # clear the vector since it needs to be empty before we start the inner loop
+        # 
+        code.add(Code().add("""
+            |$new_item.clear()""", *a, **kw))
+        #
+        # A) Prepare the pre-call, Step 5
+        # add the inner loop (may contain more inner loops ... )
+        # 
+        code.add(conv_code)
+        #
+        # A) Prepare the pre-call, Step 6
+        # store the vector from the inner loop in our vector (since
+        # it is a std::vector object, there is no "inst" to get).
+        # 
+        code.add("""
+            |    $temp_var.push_back(deref($new_item))
+            """, *a, **kw)
+
+        #
+        # B) Prepare the post-call, Step 1 
+        # add the inner loop (may contain more inner loops ... )
+        #
+        if hasattr(cleanup, "content"):
+          cleanup_code.add(cleanup)
+        else:
+          cleanup_code.content.append(cleanup)
+
+        #
+        # B) Prepare the post-call, Step 2 
+        # append the result from the inner loop iteration to the current result
+        # (only if we actually give back the reference)
+        #
+        if cpp_type.topmost_is_ref:
+            cleanup_code.add("""
+                |    replace_$recursion_cnt.append(replace_$recursion_cnt_next)
+                |    inc($it)
+                             """, *a, **kw)
+
+        #
+        # B) Prepare the post-call, Step 3
+        # append the "bottommost" code
+        #
+        if bottommost_code is None:
+            # we are the outermost loop
+            cleanup_code.content.extend(bottommost_code_callback.content)
+            if cpp_type.topmost_is_ref:
+                cleanup_code.add("""
+                    |$argument_var[:] = replace_$recursion_cnt
+                    |del $temp_var
+                                 """, *a, **kw)
+        else:
+            bottommost_code.content.extend(bottommost_code_callback.content)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num, topmost_code = None, bottommost_code = None, recursion_cnt = 0):
+        """Do the input conversion for a std::vector<T>
+
+        In this case, the template argument is tt (or "inner"). 
+
+        It is possible to nest or recurse multiple vectors (like in
+        std::vector< std::vector< T > > which is detected since the template
+        argument of tt itself is not None).
+        """
+        # If we are inside a recursion, we expect the toplmost and bottom most code to be present...
+        if recursion_cnt > 1:
+            assert topmost_code is not None
+            assert bottommost_code is not None
         tt, = cpp_type.template_args
-        temp_var = "v%d" % arg_num
+        print "input_conversion", "is ref", cpp_type.topmost_is_ref
+        temp_var = "v%s" % arg_num
         inner = self.converters.cython_type(tt)
-        it = mangle("it_" + argument_var)
-        if inner.is_enum:
-            item = "item%d" % arg_num
+        it = mangle("it_" + argument_var) # + "_%s" % recursion_cnt
+        recursion_cnt_next = recursion_cnt + 1
+        it_prev = ""
+        if recursion_cnt > 0:
+            it_prev = mangle("it_" + argument_var[:-4]) 
+
+        base_type = tt.base_type
+        inner = self.converters.cython_type(tt)
+        cy_tt = tt.base_type
+
+        # Prepare the code that should be at the very outer level of the
+        # function, thus variable declarations (e.g. to prevent a situation
+        # where new is called within a loop multiple times and memory loss
+        # occurs).
+        code_top = """
+            |cdef libcpp_vector[$inner] * $temp_var
+            + = new libcpp_vector[$inner]()
+        """
+
+        contains_classes_to_wrap = tt.template_args is not None and \
+            len( set(self.converters.names_to_wrap).intersection( set(tt.collect_base_types_rec()) )) > 0
+
+        if self.converters.cython_type(tt).is_enum:
+            item = "item%s" % arg_num
+            if topmost_code is not None:
+                raise Exception("Recursion in std::vector<T> not yet implemented for enum")
+                code_top = ""
             code = Code().add("""
                 |cdef libcpp_vector[$inner] * $temp_var
                 + = new libcpp_vector[$inner]()
                 |cdef int $item
                 |for $item in $argument_var:
-                |   $temp_var.push_back(<$inner> $item)
+                |    $temp_var.push_back(<$inner> $item)
                 """, locals())
-            if cpp_type.is_ref:
+            if cpp_type.topmost_is_ref:
                 cleanup_code = Code().add("""
                     |replace = []
                     |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
                     |while $it != $temp_var.end():
-                    |   replace.append(<int> deref($it))
-                    |   inc($it)
+                    |    replace.append(<int> deref($it))
+                    |    inc($it)
                     |$argument_var[:] = replace
                     |del $temp_var
                     """, locals())
@@ -806,44 +1017,61 @@ class StdVectorConverter(TypeConverterBase):
             return code, "deref(%s)" % temp_var, cleanup_code
 
         elif tt.base_type in self.converters.names_to_wrap:
-            base_type = tt.base_type
-            inner = self.converters.cython_type(tt)
-            cy_tt = tt.base_type
-            item = "item%d" % arg_num
-            code = Code().add("""
-                |cdef libcpp_vector[$inner] * $temp_var
-                + = new libcpp_vector[$inner]()
+            # Case 2: We wrap a std::vector<> with a base type we need to wrap
+            item = "item%s" % arg_num
+
+            # Add cdef of the base type to the toplevel code
+            code_top += """
                 |cdef $base_type $item
-                |for $item in $argument_var:
-                |   $temp_var.push_back(deref($item.inst.get()))
-                """, locals())
-            if cpp_type.is_ref:
-                cleanup_code = Code().add("""
-                    |replace = []
-                    |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
-                    |while $it != $temp_var.end():
-                    |   $item = $cy_tt.__new__($cy_tt)
-                    |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
-                    |   replace.append($item)
-                    |   inc($it)
-                    |$argument_var[:] = replace
-                    |del $temp_var
-                    """, locals())
+            """
+
+            code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, locals())
+            cleanup_code = self._prepare_nonrecursive_cleanup(cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
+
+            return code, "deref(%s)" % temp_var, cleanup_code
+        elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
+            len( set(self.converters.names_to_wrap).intersection( set(tt.collect_base_types_rec()) )) > 0:
+                # Only if the std::vector contains a class that we need to wrap somewhere, we cannot do it ...
+                raise Exception("Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
+        elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
+            # Case 3: We wrap a std::vector<> with a base type that is
+            # std::vector<> => recursion
+            item = "%s_rec" % argument_var
+
+
+            # A) Prepare the pre-call
+            code = Code()
+            if topmost_code is not None:
+                if cpp_type.topmost_is_ref:
+                    # add cdef statements for the iterators (part of B, post-call but needs to be on top)
+                    code_top += "|cdef libcpp_vector[$inner].iterator $it"
+                topmost_code.add(code_top, locals()) 
+                code_top = ""
+            if code_top != "": code.add(code_top, locals())
+
+            cleanup_code = self._prepare_recursive_cleanup(cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
+
+            # Go into recursion (if possible)
+            if hasattr(self, "cr"):
+                self._perform_recursion(cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, locals() )
             else:
-                cleanup_code = "del %s" % temp_var
+                raise Exception("Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr")
+
             return code, "deref(%s)" % temp_var, cleanup_code
         else:
+            # Case 4: We wrap a regular type
             inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
             code = Code().add("""
                 |cdef libcpp_vector[$inner] $temp_var = $argument_var
                 """, locals())
 
-            cleanup_code = ""
-            if cpp_type.is_ref:
+            cleanup_code = Code().add("")
+            if cpp_type.topmost_is_ref:
                 cleanup_code = Code().add("""
                     |$argument_var[:] = $temp_var
                     """, locals())
+
             return code, "%s" % temp_var, cleanup_code
 
     def call_method(self, res_type, cy_call_str):
