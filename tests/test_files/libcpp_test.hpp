@@ -238,5 +238,20 @@ class LibCppTest {
             }
         }
         
+        int process31(const std::vector<int> & in)
+        {
+            int sum = 0;
+            for (std::vector<int>::const_iterator i = in.begin(); i != in.end(); ++i)
+                sum += *i;
+            return sum;
+        }
+
+        int process32(const std::vector<std::vector<int> > & in)
+        {
+            int sum = 0;
+            for (std::vector<std::vector<int> >::const_iterator i = in.begin(); i != in.end(); ++i)
+                sum += process31(*i);
+            return sum;
+        }
            
 };

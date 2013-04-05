@@ -208,6 +208,13 @@ def test_libcpp():
     assert empty_list[0][1][0][0].i_ == 42
     assert empty_list[1][1][0][0].i_ == 42
 
+    assert t.process31([1,2,3]) == 6
+    assert t.process31([]) == 0
+
+    assert t.process32([[1,2,3]]) == 6
+    assert t.process32([[1,2,3],[1]]) == 7
+    assert t.process32([[1,2,3],[1], [1, 2]]) == 10
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,
