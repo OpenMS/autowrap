@@ -65,3 +65,5 @@ cdef extern from "libcpp_test.hpp":
         void  process29(libcpp_vector[libcpp_vector[Int]] & in_)
         void  process30(libcpp_vector[libcpp_vector[libcpp_vector[libcpp_vector[Int]]]] & in_)
 
+        int   process31(libcpp_vector[int] in_)
+        int   process32(libcpp_vector[libcpp_vector[int]] in_)
