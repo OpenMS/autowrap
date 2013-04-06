@@ -666,7 +666,7 @@ class CodeGenerator(object):
 
         """ py_name ist name for constructor, as we dispatch overloaded
             constructors in __init__() the name of the method calling the
-            c++ constructor is variable and given by `py_name`.
+            C++ constructor is variable and given by `py_name`.
 
         """
         L.info("   create wrapper for non overloaded constructor %s" % py_name)
@@ -894,6 +894,9 @@ class CodeGenerator(object):
             if resolved.__class__ in (ResolvedMethod,
                                       ResolvedEnum,
                                       ResolvedClass):
+                if hasattr(resolved, "classtype"):
+                    # import the base_type of the classtype
+                    name = resolved.classtype.base_type
                 code.add("from $import_from cimport $name as _$name", locals())
             elif resolved.__class__ in (ResolvedFunction, ):
                 mangled_name = "_" + name + "_" + import_from

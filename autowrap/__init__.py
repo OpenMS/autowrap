@@ -11,6 +11,11 @@ The autowrap process consists of two steps:
     i) parsing of files (done by DeclResolver, which in turn uses the PXDParser
         to parse files)
     ii) generating the code (CodeGenerator)
+
+    The instance mapping maps the C++ types to CppType objects.
+      Note that is generated once during the parsing and then passed into the
+      CodeGenerator where it is used in the ConverterRegistry (and changed again!
+      using process_and_set_instance_mapping).
 """
 
 def parse(files, root):

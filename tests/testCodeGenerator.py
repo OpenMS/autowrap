@@ -215,6 +215,41 @@ def test_libcpp():
     assert t.process32([[1,2,3],[1]]) == 7
     assert t.process32([[1,2,3],[1], [1, 2]]) == 10
 
+    subfxn_templates(libcpp)
+
+
+def subfxn_templates(libcpp):
+    # For the first template, all 3 specified classes must exist including the
+    # basename "TemplateClassName"
+    assert hasattr(libcpp, "TemplateClassName ") is not None
+    assert hasattr(libcpp, "TemplatedWithFloat ") is not None
+    assert hasattr(libcpp, "TemplatedWithDouble") is not None
+
+    # For the second template, only the 2 specified classes must exist but the
+    # basename "OtherTemplateClassName" must not exist
+    assert hasattr(libcpp, "OtherTemplatedWithFloat ") is not None
+    assert hasattr(libcpp, "OtherTemplatedWithDouble ") is not None
+    assert not hasattr(libcpp, "OtherTemplateClassName") is None
+
+    # Initialize each template once and check that the initializing number is stored
+    t = libcpp.TemplateClassName(5)
+    assert t.myInner_ == 5
+
+    t = libcpp.TemplatedWithFloat(10)
+    assert t.myInner_ == 10
+
+    t = libcpp.TemplatedWithDouble(15)
+    assert t.myInner_ == 15
+
+    t = libcpp.OtherTemplatedWithFloat(20)
+    assert t.myInner_ == 20
+
+    t = libcpp.OtherTemplatedWithDouble(25)
+    assert t.myInner_ == 25
+
+    # t = libcpp.TemplateClassName(5)
+
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,

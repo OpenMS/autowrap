@@ -15,6 +15,21 @@ class Int {
         Int(const Int & i): i_(i.i_) { };
 };
 
+template <typename TemplateType>
+class TemplateClassName {
+  public:
+    TemplateType myInner_;
+    TemplateClassName(TemplateType i): myInner_(i) {};
+};
+
+template <typename TemplateType>
+class OtherTemplateClassName {
+  public:
+    TemplateType myInner_;
+    OtherTemplateClassName(TemplateType i): myInner_(i) {};
+};
+
+
 class LibCppTest {
     private:
         int i;
