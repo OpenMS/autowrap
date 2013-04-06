@@ -82,6 +82,9 @@ class CodeGenerator(object):
 
         self.top_level_code = []
         self.class_codes = defaultdict(list)
+        self.wrapped_enums_cnt = 0
+        self.wrapped_classes_cnt = 0
+        self.wrapped_methods_cnt = 0
 
     def get_include_dirs(self):
         if self.pxd_dir is not None:
@@ -194,6 +197,7 @@ class CodeGenerator(object):
         return iterators, non_iter_methods
 
     def create_wrapper_for_enum(self, decl):
+        self.wrapped_enums_cnt += 1
         if decl.cpp_decl.annotations.get("wrap-attach"):
             name = "__"+decl.name
         else:
@@ -215,6 +219,8 @@ class CodeGenerator(object):
 
     def create_wrapper_for_class(self, r_class):
         """Create Cython code for a single class"""
+        self.wrapped_classes_cnt += 1
+        self.wrapped_methods_cnt += len(r_class.methods)
         cname = r_class.name
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
@@ -561,6 +567,7 @@ class CodeGenerator(object):
 
     def create_wrapper_for_free_function(self, decl):
         L.info("create wrapper for free function %s" % decl.name)
+        self.wrapped_methods_cnt += 1
         static_clz = decl.cpp_decl.annotations.get("wrap-attach")
         if static_clz is None:
             code = self._create_wrapper_for_free_function(decl)
