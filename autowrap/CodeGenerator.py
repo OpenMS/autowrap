@@ -150,7 +150,8 @@ class CodeGenerator(object):
         with open(self.target_path, "w") as fp:
             print >> fp, code
 
-    def filterout_iterators(self, methods):
+    def filterout_iterators(self, r_class):
+        methods = r_class.methods
         def parse(anno):
             m = re.match("(\S+)\((\S+)\)", anno)
             assert m is not None, "invalid iter annotation"
@@ -165,9 +166,13 @@ class CodeGenerator(object):
                 annotations = method.cpp_decl.annotations
                 if "wrap-iter-begin" in annotations:
                     py_name, res_type = parse(annotations["wrap-iter-begin"])
+                    # get a new res_type if the corresponding key exists in the local_type_mapping of the classes' template arguments
+                    res_type = r_class.local_type_mapping.get(res_type.base_type, res_type)
                     begin_iterators[py_name] = (method, res_type)
                 elif "wrap-iter-end" in annotations:
                     py_name, res_type = parse(annotations["wrap-iter-end"])
+                    # get a new res_type if the corresponding key exists in the local_type_mapping of the classes' template arguments
+                    res_type = r_class.local_type_mapping.get(res_type.base_type, res_type)
                     end_iterators[py_name] = (method, res_type)
                 else:
                     non_iter_methods[name].append(method)
@@ -251,7 +256,7 @@ class CodeGenerator(object):
             if not attribute.wrap_ignore:
                 class_code.add(self._create_wrapper_for_attribute(attribute))
 
-        iterators, non_iter_methods = self.filterout_iterators(r_class.methods)
+        iterators, non_iter_methods = self.filterout_iterators(r_class)
 
         for (name, methods) in non_iter_methods.items():
             if name == r_class.name:

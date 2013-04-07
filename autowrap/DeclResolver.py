@@ -77,9 +77,13 @@ class ResolvedClass(object):
     """ contains all info for generating wrapping code of
         resolved class.
         "Resolved" means that template parameters and typedefs are resolved.
+
+        classtype contains the type of the baseclass (in case of a templated
+        class), while the local_type_mapping contain the mappings of the
+        template arguments to their actual types.
     """
 
-    def __init__(self, name, methods, attributes, decl, classtype=None):
+    def __init__(self, name, methods, attributes, decl, classtype=None, local_type_mapping={}):
         self.name = name
         # resolve overloadings
         self.methods = OrderedDict()
@@ -89,6 +93,7 @@ class ResolvedClass(object):
 
         self.cpp_decl = decl
         if classtype is not None: self.classtype = classtype
+        self.local_type_mapping = local_type_mapping
         #self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
 
@@ -439,8 +444,8 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
                     continue
                 r_method = _resolve_method(mdcl, i_mapping, local_mapping, name)
                 r_methods.append(r_method)
-        # also store the original classtype (type_) for the cimport statement
-        r_class = ResolvedClass(name, r_methods, r_attributes, class_decl, type_) 
+        # also store the original classtype (type_) and the mapping of the local template arguments for the cimport statement
+        r_class = ResolvedClass(name, r_methods, r_attributes, class_decl, type_, local_mapping) 
         resolved_classes.append(r_class)
     return resolved_classes
 
