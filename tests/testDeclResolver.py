@@ -1,9 +1,9 @@
-import pdb
 import autowrap.DeclResolver as DeclResolver
 import autowrap.PXDParser
 import os
 from autowrap.Types import CppType
 from autowrap.Utils import print_map
+
 
 from utils import expect_exception
 

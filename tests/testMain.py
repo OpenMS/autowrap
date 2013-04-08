@@ -50,11 +50,26 @@ def test_run():
     b.set_(7)
     assert b.get() == 7
 
+    # test iter wrapping
+    ih, = list(b)
+    assert ih.get() == 7
+
     # manually generated method
     assert b.super_get(3) == 4
 
     # uses extra cimport for M_PI
     assert abs(b.get_pi()-3.141) < 0.001
 
+    # type without automatic conversion:
+    c = mod.C()
+    fh = mod.FloatHolder(2.0)
+    c.set_(fh)
+    assert c.get().get() == 2.0
+
+    fh, = list(c)
+    assert fh.get() == 2.0
+
     # manual class:
     assert mod.CC.cc == 3
+
+

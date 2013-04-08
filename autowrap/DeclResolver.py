@@ -1,4 +1,3 @@
-import pdb
 # encoding: utf-8
 import PXDParser
 import Types
@@ -80,7 +79,7 @@ class ResolvedClass(object):
         "Resolved" means that template parameters and typedefs are resolved.
     """
 
-    def __init__(self, name, methods, attributes, decl):
+    def __init__(self, name, methods, attributes, decl, instance_map, local_map):
         self.name = name
         # resolve overloadings
         self.methods = OrderedDict()
@@ -91,6 +90,8 @@ class ResolvedClass(object):
         self.cpp_decl = decl
         #self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+        self.local_map = local_map
+        self.instance_map = instance_map
 
     def get_flattened_methods(self):
         return [m for methods in self.methods.values() for m in methods]
@@ -105,12 +106,14 @@ class ResolvedMethod(object):
         "resolved" means that template parameters are resolved.
     """
 
-    def __init__(self, name, result_type, arguments, decl):
+    def __init__(self, name, result_type, arguments, decl, instance_map, local_map):
         self.name = name
         self.result_type = result_type
         self.arguments = arguments
         self.cpp_decl = decl
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+        self.local_map = local_map
+        self.instance_amp = instance_map
 
     def __str__(self):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
@@ -419,7 +422,8 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
                 else:
                     r_method = _resolve_method(mdcl, i_mapping, local_mapping)
                 r_methods.append(r_method)
-        r_class = ResolvedClass(cinst_name, r_methods, r_attributes, class_decl)
+        r_class = ResolvedClass(cinst_name, r_methods, r_attributes,
+                class_decl, i_mapping, local_mapping)
         resolved_classes.append(r_class)
     return resolved_classes
 
@@ -438,12 +442,12 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
     return local_map
 
 
-def _resolve_constructor(cinst_name, method_decl, instance_mapping, type_map):
+def _resolve_constructor(cinst_name, method_decl, instance_mapping, local_type_map):
     L.info("resolve method decl: '%s'" % method_decl)
     L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
-    L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
+    L.info("\n   tm= %s" % Types.printable(local_type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
-                                         type_map, ResolvedMethod)
+                                         local_type_map, ResolvedMethod)
 
     result.name = cinst_name
 
@@ -453,41 +457,41 @@ def _resolve_constructor(cinst_name, method_decl, instance_mapping, type_map):
 
 
 
-def _resolve_method(method_decl, instance_mapping, type_map):
+def _resolve_method(method_decl, instance_mapping, local_type_map):
     L.info("resolve method decl: '%s'" % method_decl)
     #L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
     #L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
-                                         type_map, ResolvedMethod)
+                                         local_type_map, ResolvedMethod)
     L.info("result             : '%s'" % result)
     L.info("")
     return result
 
 
-def _resolve_function(method_decl, instance_mapping, type_map):
+def _resolve_function(method_decl, instance_mapping, local_type_map):
     L.info("resolve function decl: '%s'" % method_decl)
     #L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
     #L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
-                                         type_map, ResolvedFunction)
+                                         local_type_map, ResolvedFunction)
     L.info("result               : '%s'" % result)
     L.info("")
     return result
 
 
-def _resolve_method_or_function(method_decl, instance_mapping, type_map, clz):
+def _resolve_method_or_function(method_decl, instance_mapping, local_type_map, clz):
     """
     resolves aliases in return and argument types
     """
     result_type = _resolve_alias(method_decl.result_type, instance_mapping,
-                                type_map)
+                                local_type_map)
     args = []
     for arg_name, arg_type in method_decl.arguments:
-        arg_type = _resolve_alias(arg_type, instance_mapping, type_map)
+        arg_type = _resolve_alias(arg_type, instance_mapping, local_type_map)
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
     #name = _resolve_constructor(name, instance_mapping)
-    return clz(name, result_type, args, method_decl)
+    return clz(name, result_type, args, method_decl, instance_mapping, local_type_map)
 
 def _resolve_attribute(adecl, instance_mapping, type_map):
     type_ = _resolve_alias(adecl.type_, instance_mapping, type_map)
