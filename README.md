@@ -32,6 +32,46 @@ you could generate the following .pyx file and run autowrap
 which will generate Cython code that allows direct access to the public
 internal variable `i_` as well as to the two constructors.
 
+Compiling 
+-------------
+To compile the above examples to .pyx (assuming your .pxd file is called
+`test.pxd` and the C++ header file `libcpp_test.hpp`), run the following in
+python:
+
+    import autowrap
+    print autowrap.__path__ # to get the path for $AUTOWRAP_PATH
+    debug_output = False
+    output_file = "testlibrary.pyx"
+    autowrap.parse_and_generate_code(["test.pxd"], ".", output_file,  debug_output)
+
+and you should get a file `output.pyx` which you can then feed into Cython.
+
+Unfortunately, for the next steps to work, Cython also expects the two pxd
+files `smart_ptr.pxd` and `AutowrapRefHolder.pxd` to be present, which you can
+find in `./autowrap/data_files/` and need to copy to your folder first before
+executing Cython:
+
+    cp /$AUTOWRAP_PATH/data_files/smart_ptr.pxd .
+    cp /$AUTOWRAP_PATH/data_files/AutowrapRefHolder.pxd .
+    cython --cplus testlibrary.pyx 
+
+Compiling the .cpp depends of course on your system, one example could be
+
+    gcc -pthread -fno-strict-aliasing -DNDEBUG -g -fwrapv -O2 -Wall -fPIC \
+    -I/usr/lib/python2.7/dist-packages/numpy/core/include \
+    -I/$AUTOWRAP_PATH/data_files/boost -I/$AUTOWRAP_PATH/data_files  \
+    -I/usr/include/python2.7 -c testlibrary.cpp -o testlibrary.o
+
+    g++ -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-Bsymbolic-functions \
+    -Wl,-z,relro testlibrary.o -o testlibrary.so -Wl,-s
+
+Once this is done, you can write in Python: 
+
+    import testlibrary
+    myint = testlibrary.Int(5)
+
+Of course there are smarter ways to do the compilation process (for example with distutils), have a look at 
+[http://docs.cython.org/src/reference/compilation.html](http://docs.cython.org/src/reference/compilation.html)
 
 More complex example
 ---------------------
