@@ -22,7 +22,7 @@ class IntHolderConverter(TypeConverterBase):
         # was called !
         ih_name = "ih_" + argument_var
         code = Code().add("""
-                          |cdef _IntHolder $ih_name
+                          |cdef _Holder[int] $ih_name
                           |$ih_name.set(<int>$argument_var)
                           """, locals())
         call_as = "(%s)" % ih_name

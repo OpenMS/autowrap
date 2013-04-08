@@ -57,4 +57,4 @@ def test_run():
     assert abs(b.get_pi()-3.141) < 0.001
 
     # manual class:
-    assert mod.C.c == 3
+    assert mod.CC.cc == 3
