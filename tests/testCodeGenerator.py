@@ -215,6 +215,18 @@ def test_libcpp():
     assert t.process32([[1,2,3],[1]]) == 7
     assert t.process32([[1,2,3],[1], [1, 2]]) == 10
 
+    input1 = 10.0
+    input2 = 10.0
+    input1, input2 = t.process33(input1, input2)
+    assert (input1 - 30) < 1e-6
+    assert (input2 - 50) < 1e-6
+
+    input1 = 10
+    input2 = 10
+    input1, input2 = t.process34(input1, input2)
+    assert input1 == 30
+    assert input2 == 50
+
     subfxn_templates(libcpp)
 
 

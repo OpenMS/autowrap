@@ -121,6 +121,11 @@ class ResolvedMethod(object):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
         return "%s %s(%s)" % (self.result_type, self.name, ", ".join(args))
 
+    def has_special_return_type(self):
+        return "wrap-return" in self.cpp_decl.annotations
+
+    def get_special_return_type(self):
+        return self.cpp_decl.annotations["wrap-return"]
 
 class ResolvedFunction(ResolvedMethod):
 

@@ -567,6 +567,11 @@ class CodeGenerator(object):
             meth_code.add(to_py_code)
             meth_code.add("    return %s" % (", ".join(out_vars)))
 
+        # The method has a hand-annotated return type (necessary for by-reference passing of basic types)
+        if method.has_special_return_type():
+            if to_py_code is not None:
+                raise Exception("Cannot have special return type on non-void funtion %s" % method.cpp_decl)
+            meth_code.add("    %s" % (method.get_special_return_type()))
         return meth_code
 
 

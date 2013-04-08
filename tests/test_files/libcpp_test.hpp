@@ -268,5 +268,17 @@ class LibCppTest {
                 sum += process31(*i);
             return sum;
         }
+
+        void process33(double & ret_1, double & ret_2)
+        {
+            ret_1 += 20.0;
+            ret_2 += 40.0;
+        }
+
+        void process34(int & ret_1, int & ret_2)
+        {
+            ret_1 += 20;
+            ret_2 += 40;
+        }
            
 };

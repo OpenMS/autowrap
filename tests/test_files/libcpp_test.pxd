@@ -86,3 +86,7 @@ cdef extern from "libcpp_test.hpp":
         int   process31(libcpp_vector[int] in_)
         int   process32(libcpp_vector[libcpp_vector[int]] in_)
 
+        void   process33(double & ret_1, double & ret_2) # wrap-return:return(ret_1,ret_2)
+        void   process34(int & ret_1, int & ret_2) # wrap-return:return(ret_1,ret_2)
+
+
