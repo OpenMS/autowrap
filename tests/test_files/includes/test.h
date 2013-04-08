@@ -1,18 +1,21 @@
 
-class IntHolder {
-    private: int i_;
+template<class U>
+class Holder {
+    private: U i_;
     public:
-    IntHolder(): i_(0) { };
-    IntHolder(const IntHolder & other): i_(other.i_) { };
-    int get() { return i_ ;};
-    void set(int i) { i_ = i; };
+    Holder(): i_(0) { };
+    Holder(const Holder<U> & other): i_(other.i_) { };
+    U get() { return i_ ;};
+    void set(U i) { i_ = i; };
 };
 
-class B {
-    private: IntHolder i_;
+template <class U>
+class Outer {
+    private: Holder<U> i_;
     public:
-    B(): i_() { };
-    B(const B & other): i_(other.i_) { };
-    IntHolder get() { return i_; };
-    void set(IntHolder i) { i_ = i; };
+    Outer(): i_() { };
+    Outer(const Outer<U> & other): i_(other.i_) { };
+    Holder<U> get() { return i_; };
+    void set(Holder<U> i) { i_ = i; };
 };
+

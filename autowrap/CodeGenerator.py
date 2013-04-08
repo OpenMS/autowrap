@@ -884,9 +884,10 @@ class CodeGenerator(object):
         for resolved in self.resolved:
             import_from = resolved.pxd_import_path
             name = resolved.name
-            if resolved.__class__ in (ResolvedMethod,
-                                      ResolvedEnum,
-                                      ResolvedClass):
+            if resolved.__class__ in (ResolvedEnum,):
+                code.add("from $import_from cimport $name as _$name", locals())
+            elif resolved.__class__ in (ResolvedClass, ):
+                name = resolved.cpp_decl.name
                 code.add("from $import_from cimport $name as _$name", locals())
             elif resolved.__class__ in (ResolvedFunction, ):
                 mangled_name = "_" + name + "_" + import_from

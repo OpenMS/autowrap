@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from Types import CppType
+from Types import CppType # , printable
 from Code import Code
 
 import logging as L
@@ -23,15 +23,23 @@ class ConverterRegistry(object):
     Therefore TypeConverterBase has methods .get_base_types and .matches
     """
 
-    def __init__(self, instance_mapping):
-        self.lookup = defaultdict(list)
-        self.names_to_wrap = instance_mapping.keys()
-        self.process_and_set_instance_mapping(instance_mapping)
+    def __init__(self, instance_mapping, names_of_classes_to_wrap,
+            names_of_enums_to_wrap):
 
-    def process_and_set_instance_mapping(self, instance_mapping):
+        self.lookup = defaultdict(list)
+
+        self.names_of_wrapper_classes = instance_mapping.keys()
+        self.names_of_classes_to_wrap = names_of_classes_to_wrap
+        self.names_of_enums_to_wrap = names_of_enums_to_wrap
+
+        self.process_and_set_type_mapping(instance_mapping)
+
+    def process_and_set_type_mapping(self, instance_mapping):
         # as original c++ class decls are decorated with a beginning "_"
         # we have to process  the instance mapping:
-        map_ = dict((name, CppType("_"+name)) for name in self.names_to_wrap)
+
+        map_ = dict((name, CppType("_"+name)) for name in
+                self.names_of_classes_to_wrap+self.names_of_enums_to_wrap)
         self.instance_mapping = dict()
         for alias, type_ in instance_mapping.items():
             self.instance_mapping[alias] = type_.transformed(map_)
@@ -59,7 +67,6 @@ class ConverterRegistry(object):
         # allways take the latest converter which allows overwriting existing
         # standard converters !
         return rv[-1]
-
 
     def cython_type(self, type_):
         if isinstance(type_, basestring):
@@ -389,7 +396,7 @@ class StdPairConverter(TypeConverterBase):
         if i1.is_enum:
             assert not t1.is_ptr
             arg0 = "(<%s>%s[0])" % (t1, argument_var)
-        elif t1.base_type in self.converters.names_to_wrap:
+        elif t1.base_type in self.converters.names_of_wrapper_classes:
             assert not t1.is_ptr
             arg0 = "deref((<%s>%s[0]).inst.get())" % (t1, argument_var)
         else:
@@ -397,7 +404,7 @@ class StdPairConverter(TypeConverterBase):
         if i2.is_enum:
             assert not t2.is_ptr
             arg1 = "(<%s>%s[0])" % (t2, argument_var)
-        elif t2.base_type in self.converters.names_to_wrap:
+        elif t2.base_type in self.converters.names_of_wrapper_classes:
             assert not t2.is_ptr
             arg1 = "deref((<%s>%s[1]).inst.get())" % (t2, argument_var)
         else:
@@ -411,7 +418,7 @@ class StdPairConverter(TypeConverterBase):
 
         cleanup_code = Code()
         if cpp_type.is_ref:
-            if not i1.is_enum and t1.base_type in self.converters.names_to_wrap:
+            if not i1.is_enum and t1.base_type in self.converters.names_of_wrapper_classes:
                 temp1 = "temp1"
                 cleanup_code.add("""
                     |cdef $t1 $temp1 = $t1.__new__($t1)
@@ -419,7 +426,7 @@ class StdPairConverter(TypeConverterBase):
                                    """, locals())
             else:
                 temp1 = "%s.first" % temp_var
-            if not i2.is_enum and t2.base_type in self.converters.names_to_wrap:
+            if not i2.is_enum and t2.base_type in self.converters.names_of_wrapper_classes:
                 temp2 = "temp2"
                 cleanup_code.add("""
                     |cdef $t2 $temp2 = $t2.__new__($t2)
@@ -451,7 +458,7 @@ class StdPairConverter(TypeConverterBase):
             code.add("""cdef $i1 out1 = (<$i1> $input_cpp_var.first)
                        """, locals())
 
-        elif t1.base_type in self.converters.names_to_wrap:
+        elif t1.base_type in self.converters.names_of_wrapper_classes:
             out1 = "out1"
             code.add("""cdef $t1 out1 = $t1.__new__($t1)
                        |out1.inst = shared_ptr[$i1](new $i1($input_cpp_var.first))
@@ -463,7 +470,7 @@ class StdPairConverter(TypeConverterBase):
             out2 = "out2"
             code.add("""cdef $i2 out2 = (<$i2> $input_cpp_var.second)
                        """, locals())
-        elif t2.base_type in self.converters.names_to_wrap:
+        elif t2.base_type in self.converters.names_of_wrapper_classes:
             out2 = "out2"
             code.add("""cdef $t2 out2 = $t2.__new__($t2)
                        |out2.inst = shared_ptr[$i2](new $i2($input_cpp_var.second))
@@ -513,14 +520,14 @@ class StdMapConverter(TypeConverterBase):
 
         if cy_tt_key.is_enum:
             key_conv = "<%s> key" % cy_tt_key
-        elif tt_key.base_type in self.converters.names_to_wrap:
+        elif tt_key.base_type in self.converters.names_of_wrapper_classes:
             raise Exception("can not handle wrapped classes as keys in map")
         else:
             key_conv = "<%s> key" % cy_tt_key
 
         if cy_tt_value.is_enum:
             value_conv = "<%s> value" % cy_tt_value
-        elif tt_value.base_type in self.converters.names_to_wrap:
+        elif tt_value.base_type in self.converters.names_of_wrapper_classes:
             value_conv = "deref((<%s>value).inst.get())" % tt_value.base_type
         else:
             value_conv = "<%s> value" % cy_tt_value
@@ -538,12 +545,12 @@ class StdMapConverter(TypeConverterBase):
 
             if cy_tt_key.is_enum:
                 key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
-            elif tt_key.base_type in self.converters.names_to_wrap:
+            elif tt_key.base_type in self.converters.names_of_wrapper_classes:
                 raise Exception("can not handle wrapped classes as keys in map")
             else:
                 key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
 
-            if not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_to_wrap:
+            if not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes:
                 cy_tt = tt_value.base_type
                 item = mangle("item_" + argument_var)
                 cleanup_code = Code().add("""
@@ -589,12 +596,12 @@ class StdMapConverter(TypeConverterBase):
 
         it = mangle("it_" + input_cpp_var)
 
-        if not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_to_wrap:
+        if not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
             raise Exception("can not handle wrapped classes as keys in map")
         else:
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
 
-        if not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_to_wrap:
+        if not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes:
             cy_tt = tt_value.base_type
             item = mangle("item_" + output_py_var)
             code = Code().add("""
@@ -668,7 +675,7 @@ class StdSetConverter(TypeConverterBase):
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
 
-        elif tt.base_type in self.converters.names_to_wrap:
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
             base_type = tt.base_type
             inner = self.converters.cython_type(tt)
             cy_tt = tt.base_type
@@ -731,7 +738,7 @@ class StdSetConverter(TypeConverterBase):
                 """, locals())
             return code
 
-        elif tt.base_type in self.converters.names_to_wrap:
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
             cy_tt = tt.base_type
             inner = self.converters.cython_type(tt)
             it = mangle("it_" + input_cpp_var)
@@ -878,8 +885,7 @@ class StdVectorConverter(TypeConverterBase):
         if call_as.find("deref") != -1:
             new_item = new_item[6:]
             new_item = new_item[:-1]
-        a[0]["new_item"] = new_item
-
+        a[0]["new_item"] = new_item 
         #
         # A) Prepare the pre-call, Step 2
         # add all the "topmost" code from all recursive calls if we are in the topmost recursion
@@ -988,7 +994,7 @@ class StdVectorConverter(TypeConverterBase):
         """
 
         contains_classes_to_wrap = tt.template_args is not None and \
-            len( set(self.converters.names_to_wrap).intersection( set(tt.collect_base_types_rec()) )) > 0
+            len( set(self.converters.names_of_wrapper_classes).intersection( set(tt.collect_base_types_rec()) )) > 0
 
         if self.converters.cython_type(tt).is_enum:
             item = "item%s" % arg_num
@@ -1016,7 +1022,7 @@ class StdVectorConverter(TypeConverterBase):
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
 
-        elif tt.base_type in self.converters.names_to_wrap:
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
             # Case 2: We wrap a std::vector<> with a base type we need to wrap
             item = "item%s" % arg_num
 
@@ -1030,7 +1036,7 @@ class StdVectorConverter(TypeConverterBase):
 
             return code, "deref(%s)" % temp_var, cleanup_code
         elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
-            len( set(self.converters.names_to_wrap).intersection( set(tt.collect_base_types_rec()) )) > 0:
+            len( set(self.converters.names_of_wrapper_classes).intersection( set(tt.collect_base_types_rec()) )) > 0:
                 # Only if the std::vector contains a class that we need to wrap somewhere, we cannot do it ...
                 raise Exception("Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
         elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
@@ -1095,7 +1101,7 @@ class StdVectorConverter(TypeConverterBase):
                 """, locals())
             return code
 
-        elif tt.base_type in self.converters.names_to_wrap:
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
             cy_tt = tt.base_type
             inner = self.converters.cython_type(tt)
             it = mangle("it_" + input_cpp_var)
@@ -1148,7 +1154,14 @@ special_converters = []
 
 def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
 
-    converters = ConverterRegistry(instance_map)
+    names_of_classes_to_wrap = list(set(c.cpp_decl.name for c in
+        classes_to_wrap))
+    names_of_enums_to_wrap = list(set(c.cpp_decl.name for c in enums_to_wrap))
+
+    converters = ConverterRegistry(instance_map,
+                                   names_of_classes_to_wrap,
+                                   names_of_enums_to_wrap)
+
     converters.register(IntegerConverter())
     converters.register(FloatConverter())
     converters.register(ConstCharPtrConverter())
