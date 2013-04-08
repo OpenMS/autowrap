@@ -1,3 +1,4 @@
+import pdb
 # encoding: utf-8
 import PXDParser
 import Types
@@ -318,9 +319,9 @@ def _parse_all_wrap_instances_comments(class_decls):
 
         cdef cppclass A[U]:
             #wrap-instances:
-            #  AA[int]
+            #  AA := A[int]
 
-        generates an entry  'A[int]' : ( 'AA', cldA, {'U': 'int'} ) in r
+        generates an entry  'AA' : ( A[int], {'U': 'int'} ) in r
         where cldA is the class_decl of A.
     """
     r = dict()
@@ -398,7 +399,7 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
 
     r = _parse_wrap_instances_comments(class_decl)
     resolved_classes = []
-    for name, (type_, t_arg_mapping) in r.items():
+    for cinst_name, (type_, t_arg_mapping) in r.items():
         local_mapping = _build_local_typemap(t_arg_mapping, typedef_mapping)
 
         r_attributes = []
@@ -412,9 +413,13 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
                 ignore = mdcl.annotations.get("wrap-ignore", False)
                 if ignore:
                     continue
-                r_method = _resolve_method(mdcl, i_mapping, local_mapping)
+                if mdcl.name == class_decl.name:
+                    r_method = _resolve_constructor(cinst_name, mdcl,
+                                                      i_mapping, local_mapping)
+                else:
+                    r_method = _resolve_method(mdcl, i_mapping, local_mapping)
                 r_methods.append(r_method)
-        r_class = ResolvedClass(name, r_methods, r_attributes, class_decl)
+        r_class = ResolvedClass(cinst_name, r_methods, r_attributes, class_decl)
         resolved_classes.append(r_class)
     return resolved_classes
 
@@ -431,6 +436,21 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
     # resolve indirections induced by update:
     Utils.flatten(local_map)
     return local_map
+
+
+def _resolve_constructor(cinst_name, method_decl, instance_mapping, type_map):
+    L.info("resolve method decl: '%s'" % method_decl)
+    L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
+    L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
+    result = _resolve_method_or_function(method_decl, instance_mapping,
+                                         type_map, ResolvedMethod)
+
+    result.name = cinst_name
+
+    L.info("result             : '%s'" % result)
+    L.info("")
+    return result
+
 
 
 def _resolve_method(method_decl, instance_mapping, type_map):
@@ -466,14 +486,14 @@ def _resolve_method_or_function(method_decl, instance_mapping, type_map, clz):
         arg_type = _resolve_alias(arg_type, instance_mapping, type_map)
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
-    name = _resolve_constructor(name, instance_mapping)
+    #name = _resolve_constructor(name, instance_mapping)
     return clz(name, result_type, args, method_decl)
 
 def _resolve_attribute(adecl, instance_mapping, type_map):
     type_ = _resolve_alias(adecl.type_, instance_mapping, type_map)
     return ResolvedAttribute(adecl.name, type_, adecl)
 
-def _resolve_constructor(name, instance_mapping):
+def __resolve_constructor(name, instance_mapping):
     map_ = dict( (t.base_type, n) for (n, t) in instance_mapping.items())
     return map_.get(name, name)
 

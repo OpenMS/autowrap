@@ -122,14 +122,22 @@ def test_simple():
     assert f3.name == "run_static"
 
 def test_singular():
-    # TODO: this test is broken !
-    return 
+
     resolved, map_ = _resolve("templates.pxd")
 
     assert len(resolved) == 2, len(resolved)
     res0, res1 = resolved
     assert res0.name == "TemplatesInt", res0.name
     assert res1.name == "TemplatesMixed", res1.name
+
+    res0_names =  map(lambda m: m.name, res0.get_flattened_methods())
+    res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
+    print res0_names
+    print res1_names
+    assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
+            "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
+
+
     res0_restypes = map(str, (m.result_type for m in
         res0.get_flattened_methods()))
 
@@ -139,6 +147,9 @@ def test_singular():
                              'TemplatesInt'], res0_restypes
 
     res0_names =  map(lambda m: m.name, res0.get_flattened_methods())
+    res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
+    print res0_names
+    print res1_names
     assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
