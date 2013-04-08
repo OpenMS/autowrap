@@ -19,6 +19,7 @@ class CppType(object):
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
         self.topmost_is_ref = False
+        self.is_dummy = False
         if self.is_ref:
             self.set_is_ref_rec()
             self.topmost_is_ref = True
@@ -66,7 +67,10 @@ class CppType(object):
         return rv
 
     def inv_transformed(self, typemap):
-        inv_typemap = dict((v, CppType(k)) for (k,v) in typemap.items())
+        # In the inverse transform we have to remove the "dummy" entries (e.g.
+        # those that map to the C++ name of a templated class even if no Python
+        # equivalent exists) 
+        inv_typemap = dict((v, CppType(k)) for (k,v) in typemap.items() if not v.is_dummy)
         return self._inv_transform(inv_typemap)
 
     def _inv_transform(self, inv_typemap):
@@ -176,7 +180,8 @@ class CppType(object):
 
     @staticmethod
     def _from_string(str_):
-        matched = re.match("([a-zA-Z0-9][ a-zA-Z0-9]*)(\[.*\])? *[&\*]?",
+        # TODO is there a reason why "_" is not in the regex?
+        matched = re.match("([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?",
                             str_.strip())
         if matched is None:
             raise Exception("can not parse '%s'" % str_)

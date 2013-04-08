@@ -12,7 +12,17 @@ import os
 
 import logging as L
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
+try:
+    from collections import OrderedDict
+except ImportError:
+    print """ Cannot import OrderedDict (only in Python 2.7). 
+    If you have a previous version of Python, please download the ordereddict
+    package from PyPI (https://pypi.python.org/pypi/ordereddict) to make this
+    work.
+    """
+    from ordereddict import OrderedDict
+
 
 """
 Methods in this module use Cythons Parser to build an Cython syntax tree
@@ -154,8 +164,11 @@ class SubtreeParserInterfaceChecker(type):
         parseTree = dict_.get("parseTree")
         assert parseTree is not None, msg
         assert isinstance(parseTree, classmethod), msg
-        nargs = parseTree.__func__.func_code.co_argcount
-        assert nargs == 4, msg
+        try:
+            nargs = parseTree.__func__.func_code.co_argcount
+            assert nargs == 4, msg
+        except AttributeError:
+            print "Detected an attribute error in SubtreeParserInterfaceChecker, maybe you are not using Python 2.7?"
         return type(name, bases, dict_)
 
 

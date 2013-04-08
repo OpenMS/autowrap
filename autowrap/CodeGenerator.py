@@ -82,6 +82,9 @@ class CodeGenerator(object):
 
         self.top_level_code = []
         self.class_codes = defaultdict(list)
+        self.wrapped_enums_cnt = 0
+        self.wrapped_classes_cnt = 0
+        self.wrapped_methods_cnt = 0
 
     def get_include_dirs(self):
         if self.pxd_dir is not None:
@@ -147,7 +150,8 @@ class CodeGenerator(object):
         with open(self.target_path, "w") as fp:
             print >> fp, code
 
-    def filterout_iterators(self, methods):
+    def filterout_iterators(self, r_class):
+        methods = r_class.methods
         def parse(anno):
             m = re.match("(\S+)\((\S+)\)", anno)
             assert m is not None, "invalid iter annotation"
@@ -162,9 +166,13 @@ class CodeGenerator(object):
                 annotations = method.cpp_decl.annotations
                 if "wrap-iter-begin" in annotations:
                     py_name, res_type = parse(annotations["wrap-iter-begin"])
+                    # get a new res_type if the corresponding key exists in the local_type_mapping of the classes' template arguments
+                    res_type = r_class.local_type_mapping.get(res_type.base_type, res_type)
                     begin_iterators[py_name] = (method, res_type)
                 elif "wrap-iter-end" in annotations:
                     py_name, res_type = parse(annotations["wrap-iter-end"])
+                    # get a new res_type if the corresponding key exists in the local_type_mapping of the classes' template arguments
+                    res_type = r_class.local_type_mapping.get(res_type.base_type, res_type)
                     end_iterators[py_name] = (method, res_type)
                 else:
                     non_iter_methods[name].append(method)
@@ -194,6 +202,7 @@ class CodeGenerator(object):
         return iterators, non_iter_methods
 
     def create_wrapper_for_enum(self, decl):
+        self.wrapped_enums_cnt += 1
         if decl.cpp_decl.annotations.get("wrap-attach"):
             name = "__"+decl.name
         else:
@@ -215,6 +224,8 @@ class CodeGenerator(object):
 
     def create_wrapper_for_class(self, r_class):
         """Create Cython code for a single class"""
+        self.wrapped_classes_cnt += 1
+        self.wrapped_methods_cnt += len(r_class.methods)
         cname = r_class.name
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
@@ -245,7 +256,7 @@ class CodeGenerator(object):
             if not attribute.wrap_ignore:
                 class_code.add(self._create_wrapper_for_attribute(attribute))
 
-        iterators, non_iter_methods = self.filterout_iterators(r_class.methods)
+        iterators, non_iter_methods = self.filterout_iterators(r_class)
 
         for (name, methods) in non_iter_methods.items():
             if name == r_class.name:
@@ -556,11 +567,17 @@ class CodeGenerator(object):
             meth_code.add(to_py_code)
             meth_code.add("    return %s" % (", ".join(out_vars)))
 
+        # The method has a hand-annotated return type (necessary for by-reference passing of basic types)
+        if method.has_special_return_type():
+            if to_py_code is not None:
+                raise Exception("Cannot have special return type on non-void funtion %s" % method.cpp_decl)
+            meth_code.add("    %s" % (method.get_special_return_type()))
         return meth_code
 
 
     def create_wrapper_for_free_function(self, decl):
         L.info("create wrapper for free function %s" % decl.name)
+        self.wrapped_methods_cnt += 1
         static_clz = decl.cpp_decl.annotations.get("wrap-attach")
         if static_clz is None:
             code = self._create_wrapper_for_free_function(decl)
@@ -659,7 +676,7 @@ class CodeGenerator(object):
 
         """ py_name ist name for constructor, as we dispatch overloaded
             constructors in __init__() the name of the method calling the
-            c++ constructor is variable and given by `py_name`.
+            C++ constructor is variable and given by `py_name`.
 
         """
         L.info("   create wrapper for non overloaded constructor %s" % py_name)
@@ -887,6 +904,9 @@ class CodeGenerator(object):
             if resolved.__class__ in (ResolvedMethod,
                                       ResolvedEnum,
                                       ResolvedClass):
+                if hasattr(resolved, "classtype"):
+                    # import the base_type of the classtype
+                    name = resolved.classtype.base_type
                 code.add("from $import_from cimport $name as _$name", locals())
             elif resolved.__class__ in (ResolvedFunction, ):
                 mangled_name = "_" + name + "_" + import_from

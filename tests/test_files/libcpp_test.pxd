@@ -14,6 +14,24 @@ cdef extern from "libcpp_test.hpp":
         Int(int i)
         Int(Int & i)
 
+    # example where one instance exists with the base class name
+    cdef cppclass TemplateClassName[TemplateType]:
+        # wrap-instances:
+        #   TemplateClassName := TemplateClassName[int]
+        #   TemplatedWithFloat := TemplateClassName[float]
+        #   TemplatedWithDouble := TemplateClassName[double]
+        TemplateType myInner_
+        TemplateClassName(TemplateType i)
+
+    # example where no instance exists with the base class name
+    # we should make sure that no Python class "OtherTemplateClassName" is generated
+    cdef cppclass OtherTemplateClassName[TemplateType]:
+        # wrap-instances:
+        #   OtherTemplatedWithFloat := OtherTemplateClassName[float]
+        #   OtherTemplatedWithDouble := OtherTemplateClassName[double]
+        TemplateType myInner_
+        OtherTemplateClassName(TemplateType i)
+
     cdef cppclass LibCppTest:
         LibCppTest()
         LibCppTest(int ii)
@@ -67,3 +85,8 @@ cdef extern from "libcpp_test.hpp":
 
         int   process31(libcpp_vector[int] in_)
         int   process32(libcpp_vector[libcpp_vector[int]] in_)
+
+        void   process33(double & ret_1, double & ret_2) # wrap-return:return(ret_1,ret_2)
+        void   process34(int & ret_1, int & ret_2) # wrap-return:return(ret_1,ret_2)
+
+
