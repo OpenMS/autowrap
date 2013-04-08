@@ -1,3 +1,4 @@
+import pdb
 from contextlib import contextmanager
 import os.path
 import sys
@@ -6,8 +7,9 @@ from collections import defaultdict
 
 from ConversionProvider import setup_converter_registry
 from DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
-                          ResolvedMethod, ResolvedFunction)
-from Types import CppType
+                          ResolvedFunction)
+
+from Types import CppType, printable
 
 import Code
 
@@ -151,8 +153,8 @@ class CodeGenerator(object):
         def parse(anno):
             m = re.match("(\S+)\((\S+)\)", anno)
             assert m is not None, "invalid iter annotation"
-            name, type_name = m.groups()
-            return name, CppType(type_name)
+            name, type_str = m.groups()
+            return name, CppType.from_string(type_str)
 
         begin_iterators = dict()
         end_iterators = dict()
@@ -269,7 +271,7 @@ class CodeGenerator(object):
 
         #assert cons_created, "no constructor for %s created" % cname
 
-        codes = self._create_iter_methods(iterators)
+        codes = self._create_iter_methods(iterators, r_class.instance_map, r_class.local_map)
         for ci in codes:
             class_code.add(ci)
 
@@ -278,7 +280,7 @@ class CodeGenerator(object):
             class_code.add(extra_methods_code)
 
 
-    def _create_iter_methods(self, iterators):
+    def _create_iter_methods(self, iterators, instance_mapping, local_mapping):
         codes = []
         for name, (begin_decl, end_decl, res_type) in iterators.items():
             L.info("   create wrapper for iter %s" % name)
@@ -286,8 +288,15 @@ class CodeGenerator(object):
             begin_name = begin_decl.name
             end_name = end_decl.name
 
+            # TODO: this step is dupblicated from DeclResolver.py
+            # can we cobine botho maps to one single map ?
+            res_type = res_type.transformed(local_mapping)
+            res_type = res_type.inv_transformed(instance_mapping)
+
             cy_type = self.cr.cython_type(res_type)
             base_type = res_type.base_type
+
+
             meth_code.add("""
                             |
                             |def $name(self):
