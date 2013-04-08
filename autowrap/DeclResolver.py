@@ -3,7 +3,21 @@ import PXDParser
 import Types
 import Utils
 import os
-from collections import OrderedDict, defaultdict, Counter
+from collections import defaultdict
+
+try:
+    from collections import OrderedDict
+    from collections import Counter
+except ImportError:
+    print """ Cannot import OrderedDict (only in Python 2.7). 
+    If you have a previous version of Python, please download the ordereddict
+    package from PyPI (https://pypi.python.org/pypi/ordereddict) to make this
+    work.
+    Please also download this backport for the Counter and save it in a file
+    called "counter_backport" in your PYTHONPATH : http://code.activestate.com/recipes/576611-counter-class/
+    """
+    from ordereddict import OrderedDict
+    from counter_backport import Counter
 
 
 __doc__ = """
