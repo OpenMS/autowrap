@@ -1,4 +1,5 @@
 #include <vector>
+#include <boost/smart_ptr.hpp>
 
 template<class U>
 class Holder {
@@ -32,4 +33,23 @@ class Outer {
         return container.end();
     };
 };
+
+template <class U>
+class SharedPtrTest {
+
+    public:
+        U sum_values(boost::shared_ptr<Holder<U> > ptr1,
+                     boost::shared_ptr<Holder<U> > ptr2)
+        {
+            return ptr1.get()->get() + ptr2.get()->get();
+        }
+
+        void set_inner_value(boost::shared_ptr<Holder<U> > & ptr, U value)
+        {
+            ptr = boost::shared_ptr<Holder<U> >(new Holder<U>(value));
+        }
+
+
+};
+
 

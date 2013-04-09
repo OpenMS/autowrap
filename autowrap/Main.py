@@ -39,8 +39,6 @@ def _main(argv):
 
     options, input_ = parser.parse_args(argv)
 
-    print options, input_
-
     assert options.out is not None, "need --out argument"
     out = options.out
     __, out_ext = os.path.splitext(out)
@@ -57,7 +55,11 @@ def _main(argv):
                 for basename in os.listdir(item):
                     collected.append((os.path.join(item, basename)))
             else:
-                collected.extend(glob.glob(item))
+                found = glob.glob(item)
+                if found:
+                    collected.extend(found)
+                else:
+                    print "WARNING!  '%s' did not match any file" % item
         collected = sorted(set(collected))
         result = []
         for item in collected:
@@ -72,7 +74,7 @@ def _main(argv):
     if not pxds:
         parser.exit(1, "\nno pxd input files specified\n")
     addons = collect(options.addons, ".pyx")
-    converters = options.converters
+    converters = options.converters or []
     print
     print "STATUS:"
     print "   %5d pxd input files to parse" % len(pxds)

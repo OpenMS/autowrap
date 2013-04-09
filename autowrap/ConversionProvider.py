@@ -76,12 +76,6 @@ class ConverterRegistry(object):
 
 class TypeConverterBase(object):
 
-    def __init__(self):
-        self._of_classes_to_wrap = None
-
-    def set_classes_to_wrap(self, classes_to_wrap):
-        self._of_classes_to_wrap = classes_to_wrap
-
     def set_enums_to_wrap(self, enums_to_wrap):
         self.enums_to_wrap = enums_to_wrap
 
@@ -173,6 +167,7 @@ class IntegerConverter(TypeConverterBase):
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
+
 
 # TODO: common base class for float, int, str conversion
 
@@ -1150,6 +1145,47 @@ class StdStringConverter(TypeConverterBase):
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
 
 
+
+class SharedPtrConverter(TypeConverterBase):
+    """
+    This converter deals with functions that expect a shared_ptr[BaseClass] as
+    an argument. For this to work, BaseClass needs to have a Python type and
+    thus the expected pointer already exists at BaseClass.inst => all we need
+    to do is to pass this inst shared_ptr to the function.
+    """
+
+    def get_base_types(self):
+        return "shared_ptr",
+
+    def matches(self, cpp_type):
+        tt, = cpp_type.template_args
+        return tt in self.converters.names_of_wrapper_classes
+
+    def matching_python_type(self, cpp_type):
+        tt, = cpp_type.template_args
+        return str(tt)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        tt, = cpp_type.template_args
+        inner = self.converters.cython_type(tt)
+        # Cython expects us to get a C++ type (we cannot just stick var.inst into the function)
+        code = Code().add("""
+            |cdef shared_ptr[$inner] input_$argument_var = $argument_var.inst
+            """, locals())
+        call_as = "input_" + argument_var
+        cleanup = ""
+        # Put the pointer back if we pass by reference
+        if cpp_type.is_ref:
+            cleanup = Code().add("""
+                |$argument_var.inst = input_$argument_var
+                """, locals())
+        return code, call_as, cleanup
+
+    def type_check_expression(self, cpp_type, argument_var):
+        # We can just use the Python type of the template argument
+        tt, = cpp_type.template_args
+        return "isinstance(%s, %s)" % (argument_var, tt)
+
 special_converters = []
 
 def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
@@ -1173,6 +1209,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(StdMapConverter())
     converters.register(StdPairConverter())
     converters.register(VoidConverter())
+    converters.register(SharedPtrConverter())
 
     for clz in classes_to_wrap:
         converters.register(TypeToWrapConverter(clz))
