@@ -3,7 +3,8 @@ import PXDParser
 import Types
 import Utils
 import os
-from collections import OrderedDict, defaultdict, Counter
+from collections import defaultdict
+from tools import OrderKeepingDictionary
 
 
 __doc__ = """
@@ -82,7 +83,7 @@ class ResolvedClass(object):
     def __init__(self, name, methods, attributes, decl, instance_map, local_map):
         self.name = name
         # resolve overloadings
-        self.methods = OrderedDict()
+        self.methods = OrderKeepingDictionary()
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
         self.attributes = attributes
@@ -310,8 +311,7 @@ def _build_typedef_mapping(decls):
 def _check_typedefs(decls):
     left_sides = [decl.name for decl in decls]
     if len(left_sides) != len(set(left_sides)):
-        c = Counter(left_sides)
-        multiples = [k for (k,v) in c.items() if c>1]
+        multiples = [ls for ls in left_sides if left_sides.count(ls)>1]
         msg = "multiple typedefs for name(s) '%s'" % (", ".join(multiples))
         raise Exception(msg)
 

@@ -160,11 +160,11 @@ def test_libcpp():
     t.process21(d1, { 42: 11})
     assert d1.get(1) == 11;
 
-    d1 = { 42}
+    d1 = set((42,))
     d2 = set()
     t.process22(d1, d2)
     assert d1 == set()
-    assert d2 == { 42.0 }
+    assert d2 == set((42,))
 
     l1 = [1,2]
     l2 = []

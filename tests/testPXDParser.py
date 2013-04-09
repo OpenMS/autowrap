@@ -1,3 +1,4 @@
+import pdb
 import autowrap.PXDParser
 import os
 
@@ -36,7 +37,7 @@ cdef extern from "*":
            )
 
     """)
-    mdcl = cdcl.methods["fun"][0]
+    mdcl, = cdcl.methods.get("fun")
     assert mdcl.annotations == dict(a="3", b="4")
 
 
@@ -150,7 +151,7 @@ cdef extern from "":
     """)
 
     assert A.name == "A"
-    method, = A.methods.values()[0]
+    method, = A.methods.get("A")
     assert method.name == "A"
     assert len(method.arguments) == 0
 
@@ -409,11 +410,11 @@ cdef extern from "*":
     for mdcl in cld.methods["gun"]:
         assert mdcl.annotations.items() == [ ("wrap-as", "hun")]
 
-    for mdcl in cld.methods["hun"]:
-        assert mdcl.annotations.items() == [ ("wrap-as", "jun")]
-
     for mdcl in cld.methods["iun"]:
         assert mdcl.annotations.items() == []
+
+    for mdcl in cld.methods["hun"]:
+        assert mdcl.annotations.items() == [ ("wrap-as", "jun")]
 
 
 def test_parsing_of_nested_template_args():
