@@ -1,3 +1,4 @@
+import pdb
 #encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
@@ -270,7 +271,6 @@ class CppAttributeDecl(BaseDecl):
         self.type_ = type_
 
 
-
 class CppMethodOrFunctionDecl(BaseDecl):
 
     def __init__(self, result_type,  name, arguments, annotations, pxd_path):
@@ -298,6 +298,7 @@ class CppMethodOrFunctionDecl(BaseDecl):
         return "CppMethodOrFunctionDecl: %s %s (%s)" % (self.result_type,
                 self.name, ["%s %s" % (str(t), n) for n, t in self.arguments])
 
+
 class MethodOrAttributeDecl(object):
 
     @classmethod
@@ -320,7 +321,7 @@ class MethodOrAttributeDecl(object):
         args = []
         for arg in decl.args:
             argdecl = arg.declarator
-            if isinstance(argdecl, CReferenceDeclaratorNode): 
+            if isinstance(argdecl, CReferenceDeclaratorNode):
                 argname = argdecl.base.name
             elif isinstance(argdecl, CPtrDeclaratorNode):
                 base = argdecl.base
@@ -360,6 +361,10 @@ def parse_str(what):
 def parse_pxd_file(path):
 
     options, sources = parse_command_line(["--cplus", path])
+
+    import pkg_resources
+    data = pkg_resources.resource_filename("autowrap", "data_files")
+    options.include_path = [data]
 
     path = os.path.abspath(path)
     basename = os.path.basename(path)

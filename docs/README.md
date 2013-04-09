@@ -20,9 +20,6 @@ Assuming you want to wrap the following C++ class
             int i_;
             IntHolder(int i): i_(i) { };
             IntHolder(const IntHolder & i): i_(i.i_) { };
-            int add(const IntHolder & other) {
-                return i_ + other.i_;
-            }
     };
 
 
@@ -34,7 +31,6 @@ you could generate the following .pyd file and run autowrap
             int i_
             IntHolder(int i)
             IntHolder(IntHolder & i)
-            int add(IntHolder o)
 
 
 which will generate Cython code that allows direct access to the public
@@ -84,7 +80,69 @@ And you can use the final module running
     >>> ih = py_int_holder.IntHolder(42)
     >>> print ih.i_
     42
-    >>> print ih.add(ih)
-    84
 
-Further docs can be found in 'docs/' folder.
+
+More complex example
+---------------------
+
+Assuming you want to wrap the following C++ class
+
+    template <typename TemplateType>
+    class TemplateClassName {
+      public:
+        TemplateType myInner_;
+        TemplateClassName(TemplateType i): myInner_(i) {};
+        void process_data(double & ret_1, double & ret_2)
+        {
+            ret_1 += 20.0;
+            ret_2 += 40.0;
+        }
+    };
+
+you could generate the following .pyx file and run autowrap
+
+    cdef extern from "libcpp_test.hpp":
+        # example where no instance exists with the base class name
+        # we should make sure that no Python class "TemplateClassName" is generated
+        cdef cppclass TemplateClassName[TemplateType]:
+            # wrap-instances:
+            #   TemplatedWithFloat := TemplateClassName[float]
+            #   TemplatedWithDouble := TemplateClassName[double]
+            TemplateType myInner_
+            TemplateClassName(TemplateType i)
+            void process_data(double & ret_1, double & ret_2) #wrap-return:return(ret_1, ret_2)
+
+which will generate Cython code that allows direct access to the public
+internal variable `myInner_` as well as to the two constructors and the `process_data` function.
+
+Annotations
+---------------------
+autowrap understands the following annotations for methods (put after the
+corresponding method as a comment):
+
+- `# wrap-ignore`  
+Autowrap will not wrap this method (it may still be important for Cython to
+have this method in the .pxd file)
+
+- `# wrap-return:return(a,b)`  
+Will return the tuple of variables a and b after processing
+
+autowrap understands the following annotations for classes (put after the
+class with one indent):
+
+- `# wrap-inherits:  
+   #  SuperClassA  
+   #  SuperClassB`
+
+Assuming that the current class inherits from SuperClassA and SuperClassB,
+this will add methods from SuperClassA and SuperClassB to the class in
+question.
+
+- `# wrap-instances:  
+   #  ClassA := TemplatedClass[A]  
+   #  ClassB := TemplatedClass[B]`
+
+This will create two Python objects, ClassA and ClassB which are derived from
+TemplatedClass but with different template arguments (note that Cython does
+not handle integer templates).
+
