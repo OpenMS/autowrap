@@ -12,7 +12,9 @@ import os
 
 import logging as L
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
+
+from tools import OrderKeepingDictionary
 
 """
 Methods in this module use Cythons Parser to build an Cython syntax tree
@@ -147,17 +149,6 @@ def _extract_type(base_type, decl):
     return CppType(base_type.name, template_parameters, is_ptr, is_ref,
                    is_unsigned, is_long)
 
-class SubtreeParserInterfaceChecker(type):
-
-    def __new__(mcs, name, bases, dict_):
-        msg = "TreeHandlerInterface not implemented"
-        parseTree = dict_.get("parseTree")
-        assert parseTree is not None, msg
-        assert isinstance(parseTree, classmethod), msg
-        nargs = parseTree.__func__.func_code.co_argcount
-        assert nargs == 4, msg
-        return type(name, bases, dict_)
-
 
 class BaseDecl(object):
 
@@ -168,8 +159,6 @@ class BaseDecl(object):
 
 
 class CTypeDefDecl(BaseDecl):
-
-    __metaclass__ = SubtreeParserInterfaceChecker
 
     def __init__(self, new_name, type_,  annotations, pxd_path):
         super(CTypeDefDecl, self).__init__(new_name, annotations, pxd_path)
@@ -188,8 +177,6 @@ class CTypeDefDecl(BaseDecl):
 
 
 class EnumDecl(BaseDecl):
-
-    __metaclass__ = SubtreeParserInterfaceChecker
 
     def __init__(self, name, items, annotations, pxd_path):
         super(EnumDecl, self).__init__(name, annotations, pxd_path)
@@ -221,8 +208,6 @@ class EnumDecl(BaseDecl):
 
 class CppClassDecl(BaseDecl):
 
-    __metaclass__ = SubtreeParserInterfaceChecker
-
     def __init__(self, name, template_parameters, methods, attributes,
                  annotations, pxd_path):
         super(CppClassDecl, self).__init__(name, annotations, pxd_path)
@@ -235,13 +220,12 @@ class CppClassDecl(BaseDecl):
         name = node.name
         template_parameters = node.templates
         class_annotations = parse_class_annotations(node, lines)
-        methods = OrderedDict()
+        methods = OrderKeepingDictionary()
         attributes = []
         for att in node.attributes:
             decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
             if decl is not None:
                 if isinstance(decl, CppMethodOrFunctionDecl):
-                    # an OrderedDefaultDict(list) would be nice here:
                     methods.setdefault(decl.name,[]).append(decl)
                 elif isinstance(decl, CppAttributeDecl):
                     attributes.append(decl)
