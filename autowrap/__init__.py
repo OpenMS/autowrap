@@ -26,17 +26,19 @@ def generate_code(decls, instance_map, target, debug, manual_code=None,
                                       extra_cimports)
     gen.create_pyx_file(debug)
     includes = gen.get_include_dirs()
+    print "Autwrap has wrapped %s classes, %s methods and %s enums" % (
+        gen.wrapped_classes_cnt,
+        gen.wrapped_methods_cnt,
+        gen.wrapped_enums_cnt)
     return includes
 
 def parse_and_generate_code(files, root, target, debug, manual_code=None,
         extra_cimports=None):
 
-    if debug:
-        print "Autowrap here, will start to parse and generate code. "\
+    print "Autowrap will start to parse and generate code. "\
               "Will parse %s files" % len(files)
     decls, instance_map = parse(files, root)
-    if debug:
-        print "Done parsing the files, will generate the code..."
+    print "Done parsing the files, will generate the code..."
     return generate_code(decls, instance_map, target, debug, manual_code,
             extra_cimports)
 
