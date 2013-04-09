@@ -26,7 +26,7 @@ Assuming you want to wrap the following C++ class
     };
 
 
-you could create the following .pxd fil
+you could create the following .pxd file
 
 
     cdef extern from "int_holder.hpp":
@@ -38,8 +38,8 @@ you could create the following .pxd fil
 
 
 To create files .pyx and .cpp for wrapping the class `IntHolder` change the
-working directory to the folder containing `int_holder.hpp` and
-`int_holder.pxd` and run
+working directory to the example folder which allready contains
+`int_holder.hpp` and `int_holder.pxd` and run
 
     $ autowrap --out py_int_holder.pyx int_holder.pxd
 
