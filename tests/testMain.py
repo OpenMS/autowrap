@@ -88,4 +88,10 @@ def test_run():
     # manual class:
     assert mod.CC.cc == 3
 
+    assert mod.SharedPtrTestInt().sum_values(ih, ih) == 14
+
+    mod.SharedPtrTestFloat().set_inner_value(fh, 12.0)
+    assert fh.get() == 12.0
+
+
 
