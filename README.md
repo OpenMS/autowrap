@@ -7,8 +7,8 @@ This module uses the Cython "header" `.pxd` files to automatically generate
 Cython input `.pyx` files. It does so by parsing the header files and possibly
 annotations in the header files to generate correct Cython code.
 
-First steps
----------------------
+A Minimal Example
+-----------------
 
 We assume that you installed `autowrap` already, so that running
 
@@ -29,7 +29,7 @@ Assuming you want to wrap the following C++ class
             }
     };
 
-you could create the following .pxd file
+you could create the following `.pxd` file
 
     cdef extern from "int_holder.hpp":
         cdef cppclass IntHolder:
@@ -38,9 +38,9 @@ you could create the following .pxd file
             IntHolder(IntHolder & i)
             int add(IntHolder o)
 
-These files are allready conttained in the `examples/` folder.
+These files are already conttained in the `examples/` folder.
 
-To create files .pyx and .cpp for wrapping the class `IntHolder`
+To create files `.pyx` and `.cpp` for wrapping the class `IntHolder`
 run 
 
     $ autowrap --out py_int_holder.pyx int_holder.pxd
