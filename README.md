@@ -9,7 +9,7 @@ annotations in the header files to generate correct Cython code. For an
 example, please have a look at `examples/int_holder.h` and
 `example/int_holder.pxd` which together form the input to the program.
 
-Simple example
+First steps
 ---------------------
 
 Assuming you want to wrap the following C++ class
@@ -26,7 +26,7 @@ Assuming you want to wrap the following C++ class
     };
 
 
-you could generate the following .pyd file and run autowrap
+you could create the following .pxd fil
 
 
     cdef extern from "int_holder.hpp":
@@ -37,19 +37,14 @@ you could generate the following .pyd file and run autowrap
             int add(IntHolder o)
 
 
-which will generate Cython code that allows direct access to the public
-internal variable `i_` as well as to the two constructors.
-
-Compiling 
--------------
-
-To compile the above examples to .pyx and .cpp files change the directory
-to the folder containing `int_holder.hpp` and `int_holder.pxd` and run
+To create files .pyx and .cpp for wrapping the class `IntHolder` change the
+working directory to the folder containing `int_holder.hpp` and
+`int_holder.pxd` and run
 
     $ autowrap --out py_int_holder.pyx int_holder.pxd
 
-which will generate files `py_int_holder.pyx` and `py_int_holder.cpp`
-which you can compile using the following file `setup.py` which we
+This will generate files `py_int_holder.pyx` and `py_int_holder.cpp`
+which you can compile using the following file `setup.py` file which we
 provide in the `examples` folder:
 
 
@@ -78,7 +73,7 @@ You can build the final Python extension module by running
 
     $ python setup.py build_ext --inplace
 
-And you can use the final module running
+And you can use the final module as follows
 
     >>> import py_int_holder
     >>> ih = py_int_holder.IntHolder(42)
