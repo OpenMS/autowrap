@@ -1,3 +1,4 @@
+import pdb
 template = """
 
 from distutils.core import setup, Extension
@@ -21,11 +22,26 @@ setup(cmdclass = {'build_ext' : build_ext},
 
 """
 
+def test_from_command_line():
+    import os
+    old_dir = os.path.abspath(os.getcwd())
+    os.chdir("test_files")
+    args =  ["pxds/*.pxd", "--out", "out.pyx", "--addons=/addons",
+                                                    "--converters=converters"]
+    from autowrap.Main import _main
+    try:
+        _main(args)
+    finally:
+        os.chdir(old_dir)
+
 def test_run():
+
     from autowrap.Main import run
     from autowrap.Utils import compile_and_import
 
     import glob
+    import os
+    print os.getcwd()
 
     pxds = glob.glob("test_files/pxds/*.pxd")
     assert pxds
