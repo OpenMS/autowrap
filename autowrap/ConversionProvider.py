@@ -191,12 +191,12 @@ class FloatConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
-        call_as = "(<float>%s)" % argument_var
+        call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        return "%s = <float>%s" % (output_py_var, input_cpp_var)
+        return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
 class EnumConverter(TypeConverterBase):

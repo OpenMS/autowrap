@@ -1,4 +1,3 @@
-import pdb
 import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
@@ -7,14 +6,29 @@ import autowrap.Code
 import autowrap
 
 import os
+import math
 import copy
 
 from utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
-def test_shared_ptr():
+def test_number_conv():
 
+    target = os.path.join(test_files, "number_conv.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code(["number_conv.pxd"],
+                                root=test_files, target=target,  debug=True)
+
+    mod = autowrap.Utils.compile_and_import("number_conv", [target, ],
+                                                include_dirs)
+
+    mf =  mod.add_max_float(0)
+    mf2 =  mod.add_max_float(mf)
+    assert not math.isinf(mf2), "somehow overflow happened"
+
+
+def test_shared_ptr():
 
     target = os.path.join(test_files, "shared_ptr_test.pyx")
     include_dirs = autowrap.CodeGenerator.fixed_include_dirs() + [test_files]
