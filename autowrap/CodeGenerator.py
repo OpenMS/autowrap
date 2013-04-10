@@ -542,19 +542,6 @@ class CodeGenerator(object):
         else:
             meth_code.add(full_call_stmt)
 
-        out_vars = ["py_result"]
-        if "ref-arg-out" in method.cpp_decl.annotations:
-            out_ixs = map(int, method.cpp_decl.annotations["ref-arg-out"])
-            for i, (type_, call_arg) in enumerate(zip(in_types, call_args)):
-                if i in out_ixs:
-                    to_py_code = self.cr.get(type_).output_conversion(type_,
-                                                                    call_arg,
-                                                                    "pyr_%d" %i)
-                    out_vars.append("pyr_%d" % i)
-                    if isinstance(to_py_code, basestring):
-                        to_py_code = "    %s" % to_py_code
-                    meth_code.add(to_py_code)
-
         for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
@@ -569,7 +556,7 @@ class CodeGenerator(object):
             if isinstance(to_py_code, basestring):
                 to_py_code = "    %s" % to_py_code
             meth_code.add(to_py_code)
-            meth_code.add("    return %s" % (", ".join(out_vars)))
+            meth_code.add("    return py_result")
 
         return meth_code
 
