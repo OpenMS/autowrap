@@ -8,21 +8,21 @@ Introduction
 
 One important application of [Cython](http://cython.org) is to wrap C++ classes
 for using them in Python. As Cythons syntax is quite similar to the syntax of
-Python writing a wrapper can be learned easily, and Cython prevents you
-from many typical errors which might get in your way if you try  to write
+Python writing a wrapper can be learned easily. Further Cython prevents you
+from many typical errors which might get in your way if you write
 such a wrapper in C++.
 
 
-This wrapping process consist of four steps:
+This wrapping process typically consist of four steps:
 
   1. Rewrite parts of the header files of your C++ library in so called `.pxd`
-     files. These give Cython the needed information for calling the
-     library and for error checking the code from the following step.
+     files. These give Cython information for calling the
+     library and for error checking the code written in the following step.
 
   2. Write Cython code which wrapps the C++ library. This code resists
      in one or more `.pyx` files.
 
-  3. Use Cython to translate this code  to C++ code.
+  3. Translate these `.pyx` files to C++ code with Cython.
 
   4. Use distutils to compile and link the C++ code to the final  Python
      extension module.
@@ -36,7 +36,7 @@ In order to steer and configure this process the `.pxd` files can be
 annotated using special formatted comments.
 
 The main work which remains is writing the `.pxd` files. This is comparable to
-the declaration you have to provide if you use
+the declarations you have to provide if you use
 [SIP](http://www.riverbankcomputing.com/software/sip)
 or [SWIG](http://swig.org).
 
@@ -101,11 +101,15 @@ inside the `examples`folder.  This will generate files `py_int_holder.pyx` and
           ext_modules=[ext]
          )
 
+
+To get some insight how autowrap works, you can inspect files `py_int_holder.pyx` 
+and `py_int_holder.cpp`.
+
 Building the Python extension module now is done by running
 
     $ python setup.py build_ext --inplace
 
-This module can be used as follows
+This module can now be used as follows
 
     >>> import py_int_holder
     >>> ih = py_int_holder.IntHolder(42)
@@ -114,4 +118,4 @@ This module can be used as follows
     >>> print ih.add(ih)
     84
 
-Further docs can be found in 'docs/' folder.
+Further docs can be found in `docs/` folder.
