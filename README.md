@@ -3,9 +3,43 @@ autowrap
 
 Generates Python Extension modules from [Cythons](http://cython.org) PXD files.
 
-This module uses the Cython "header" `.pxd` files to automatically generate
-Cython input `.pyx` files. It does so by parsing the header files and possibly
-annotations in the header files to generate correct Cython code.
+Introduction
+------------
+
+One important application of [Cython](http://cython.org) is to wrap C++ classes
+for using them in Python. As Cythons syntax is quite similar to the syntax of
+Python writing a wrapper can be learned easily, and Cython prevents you
+from many typical errors which might get in your way if you try  to write
+such a wrapper in C++.
+
+
+This wrapping process consist of four steps:
+
+  1. Rewrite parts of the header files of your C++ library in so called `.pxd`
+     files. These give Cython the needed information for calling the
+     library and for error checking the code from the following step.
+
+  2. Write Cython code which wrapps the C++ library. This code resists
+     in one or more `.pyx` files.
+
+  3. Use Cython to translate this code  to C++ code.
+
+  4. Use distutils to compile and link the C++ code to the final  Python
+     extension module.
+
+Depending on the size of your library step 2 can be tedious and
+the code will consist of many similar code blocks with only minor differences.
+
+This is where autowrap comes into play: autowrap replaces step 2 by
+parsing the `.pxd` files and generating correct code for step 3.
+In order to steer and configure this process the `.pxd` files can be
+annotated using special formatted comments.
+
+The main work which remains is writing the `.pxd` files. This is comparable to
+the declaration you have to provide if you use
+[SIP](http://www.riverbankcomputing.com/software/sip)
+or [SWIG](http://swig.org).
+
 
 A Minimal Example
 -----------------
@@ -14,7 +48,7 @@ We assume that you installed `autowrap` already, so that running
 
     $ autowrap --help
 
-will not fail.
+does not fail.
 
 
 Assuming you want to wrap the following C++ class
@@ -41,7 +75,7 @@ you could create the following `.pxd` file
 These files are already conttained in the `examples/` folder.
 
 To create files `.pyx` and `.cpp` for wrapping the class `IntHolder`
-run 
+run
 
     $ autowrap --out py_int_holder.pyx int_holder.pxd
 
@@ -67,11 +101,11 @@ inside the `examples`folder.  This will generate files `py_int_holder.pyx` and
           ext_modules=[ext]
          )
 
-You can build the final Python extension module by running
+Building the Python extension module now is done by running
 
     $ python setup.py build_ext --inplace
 
-And you can use the final module as follows
+This module can be used as follows
 
     >>> import py_int_holder
     >>> ih = py_int_holder.IntHolder(42)
