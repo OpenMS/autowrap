@@ -108,7 +108,6 @@ class TypeConverterBase(object):
         raise NotImplementedError()
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
-        """How to convert if this type is the return type"""
         raise NotImplementedError()
 
 
@@ -161,20 +160,9 @@ class IntegerConverter(TypeConverterBase):
         return "isinstance(%s, (int, long))" % (argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
-        # C++ cares whether its a int or a long reference!
-        real_type = cpp_type.base_type
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
-        # If its a reference, we have to at least make the function work properly and warn the user
-        if cpp_type.is_ref:
-            code = Code().add("""
-                |cdef $real_type input_$argument_var = (<$real_type>$argument_var)
-                """, locals())
-            # TODO ensure that the user has used wrap-return
-            L.warning("Python cannot pass basic types by reference (attempted to pass %s %s), make sure you use wrap-return! " % (cpp_type, argument_var))
-            call_as = "input_%s" % argument_var
-            cleanup = "%s = input_%s" % (argument_var, argument_var)
         return code, call_as, cleanup
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
@@ -186,7 +174,7 @@ class IntegerConverter(TypeConverterBase):
 class FloatConverter(TypeConverterBase):
 
     """
-    wraps float and double. "double" base_type is converted to "float" by the
+    wraps long and int. "long" base_type is converted to "int" by the
     cython parser !
     """
     def get_base_types(self):
@@ -202,21 +190,9 @@ class FloatConverter(TypeConverterBase):
         return "isinstance(%s, float)" % (argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
-        # C++ cares whether its a float or a double reference!
-        real_type = cpp_type.base_type
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
-
-        # If its a reference, we have to at least make the function work properly and warn the user
-        if cpp_type.is_ref:
-            code = Code().add("""
-                |cdef $real_type input_$argument_var = (<$real_type>$argument_var)
-                """, locals())
-            # TODO ensure that the user has used wrap-return
-            L.warning("Python cannot pass basic types by reference (attempted to pass %s %s), make sure you use wrap-return! " % (cpp_type, argument_var))
-            call_as = "input_%s" % argument_var
-            cleanup = "%s = input_%s" % (argument_var, argument_var)
         return code, call_as, cleanup
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
@@ -990,6 +966,7 @@ class StdVectorConverter(TypeConverterBase):
             assert topmost_code is not None
             assert bottommost_code is not None
         tt, = cpp_type.template_args
+        print "input_conversion", "is ref", cpp_type.topmost_is_ref
         temp_var = "v%s" % arg_num
         inner = self.converters.cython_type(tt)
         it = mangle("it_" + argument_var) # + "_%s" % recursion_cnt
@@ -1166,6 +1143,7 @@ class StdStringConverter(TypeConverterBase):
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
+
 
 
 class SharedPtrConverter(TypeConverterBase):
