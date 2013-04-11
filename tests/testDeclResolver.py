@@ -324,7 +324,10 @@ cdef extern from "A.h":
         pass
     """)
     assert instance.name == "Ax"
-    real_type, = map_.values()
+    real_type = map_.values()[0]
+    assert map_.has_key("A")
+    assert map_.has_key("Ax")
+    real_type = map_["Ax"]
     assert str(real_type) == "A[int *]", str(real_type)
 
 def test_multi_decls_in_one_file():

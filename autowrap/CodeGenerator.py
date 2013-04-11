@@ -152,7 +152,8 @@ class CodeGenerator(object):
         with open(self.target_path, "w") as fp:
             print >> fp, code
 
-    def filterout_iterators(self, methods):
+    def filterout_iterators(self, r_class):
+        methods = r_class.methods
         def parse(anno):
             m = re.match("(\S+)\((\S+)\)", anno)
             assert m is not None, "invalid iter annotation"
@@ -167,9 +168,13 @@ class CodeGenerator(object):
                 annotations = method.cpp_decl.annotations
                 if "wrap-iter-begin" in annotations:
                     py_name, res_type = parse(annotations["wrap-iter-begin"])
+                    # get a new res_type if the corresponding key exists in the local_type_mapping of the classes' template arguments
+                    res_type = r_class.local_type_mapping.get(res_type.base_type, res_type)
                     begin_iterators[py_name] = (method, res_type)
                 elif "wrap-iter-end" in annotations:
                     py_name, res_type = parse(annotations["wrap-iter-end"])
+                    # get a new res_type if the corresponding key exists in the local_type_mapping of the classes' template arguments
+                    res_type = r_class.local_type_mapping.get(res_type.base_type, res_type)
                     end_iterators[py_name] = (method, res_type)
                 else:
                     non_iter_methods[name].append(method)
@@ -253,7 +258,7 @@ class CodeGenerator(object):
             if not attribute.wrap_ignore:
                 class_code.add(self._create_wrapper_for_attribute(attribute))
 
-        iterators, non_iter_methods = self.filterout_iterators(r_class.methods)
+        iterators, non_iter_methods = self.filterout_iterators(r_class)
 
         for (name, methods) in non_iter_methods.items():
             if name == r_class.name:
@@ -558,6 +563,11 @@ class CodeGenerator(object):
             meth_code.add(to_py_code)
             meth_code.add("    return py_result")
 
+        # The method has a hand-annotated return type (necessary for by-reference passing of basic types)
+        if method.has_special_return_type():
+            if to_py_code is not None:
+                raise Exception("Cannot have special return type on non-void funtion %s" % method.cpp_decl)
+            meth_code.add("    %s" % (method.get_special_return_type()))
         return meth_code
 
 
@@ -662,7 +672,7 @@ class CodeGenerator(object):
 
         """ py_name ist name for constructor, as we dispatch overloaded
             constructors in __init__() the name of the method calling the
-            c++ constructor is variable and given by `py_name`.
+            C++ constructor is variable and given by `py_name`.
 
         """
         L.info("   create wrapper for non overloaded constructor %s" % py_name)

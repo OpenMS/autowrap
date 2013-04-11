@@ -4,7 +4,24 @@ import Types
 import Utils
 import os
 from collections import defaultdict
+<<<<<<< HEAD
 from tools import OrderKeepingDictionary
+=======
+
+try:
+    from collections import OrderedDict
+    from collections import Counter
+except ImportError:
+    print """ Cannot import OrderedDict (only in Python 2.7). 
+    If you have a previous version of Python, please download the ordereddict
+    package from PyPI (https://pypi.python.org/pypi/ordereddict) to make this
+    work.
+    Please also download this backport for the Counter and save it in a file
+    called "counter_backport" in your PYTHONPATH : http://code.activestate.com/recipes/576611-counter-class/
+    """
+    from ordereddict import OrderedDict
+    from counter_backport import Counter
+>>>>>>> bae4496018b6a359ad3b2570957e885d7070f16c
 
 
 __doc__ = """
@@ -78,9 +95,17 @@ class ResolvedClass(object):
     """ contains all info for generating wrapping code of
         resolved class.
         "Resolved" means that template parameters and typedefs are resolved.
+
+        classtype contains the type of the baseclass (in case of a templated
+        class), while the local_type_mapping contain the mappings of the
+        template arguments to their actual types.
     """
 
+<<<<<<< HEAD
     def __init__(self, name, methods, attributes, decl, instance_map, local_map):
+=======
+    def __init__(self, name, methods, attributes, decl, classtype=None, local_type_mapping={}):
+>>>>>>> bae4496018b6a359ad3b2570957e885d7070f16c
         self.name = name
         # resolve overloadings
         self.methods = OrderKeepingDictionary()
@@ -89,6 +114,8 @@ class ResolvedClass(object):
         self.attributes = attributes
 
         self.cpp_decl = decl
+        if classtype is not None: self.classtype = classtype
+        self.local_type_mapping = local_type_mapping
         #self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
         self.local_map = local_map
@@ -120,14 +147,22 @@ class ResolvedMethod(object):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
         return "%s %s(%s)" % (self.result_type, self.name, ", ".join(args))
 
+    def has_special_return_type(self):
+        return "wrap-return" in self.cpp_decl.annotations
+
+    def get_special_return_type(self):
+        return self.cpp_decl.annotations["wrap-return"]
 
 class ResolvedFunction(ResolvedMethod):
 
     pass
 
 
-
+# Main Entry points: from files or from string
 def resolve_decls_from_files(pathes, root):
+    """This is the main entry point: resolve .pxd declarations from files
+
+    """
     decls = []
     for path in pathes:
         full_path = os.path.join(root, path)
@@ -172,8 +207,10 @@ def _resolve_decls(decls):
     for e in enum_decls:
         enum_mapping[e.name] = Types.CppType(e.name, enum_items=e.items)
 
-    # register class aliases
-    instance_mapping = _parse_all_wrap_instances_comments(class_decls)
+    # register class aliases -> we want to add parent classes to the dictionary
+    # in order to be able to correctly map the templated classes to their C++
+    # equivalents
+    instance_mapping = _parse_all_wrap_instances_comments(class_decls, True)
     # remove local targ mappings:
     instance_mapping = dict( (k, v0) for (k, (v0,v1)) in
                                                       instance_mapping.items())
@@ -316,25 +353,41 @@ def _check_typedefs(decls):
         raise Exception(msg)
 
 
-def _parse_all_wrap_instances_comments(class_decls):
-    """ parses annotations of all classes and registers aliases for
-        classes.
+def _parse_all_wrap_instances_comments(class_decls, addParentClasses=False):
+    """ Parses from a set of CppClassDecl the corresponding types including the wrap-instances comments.
+
+    For a regular, non-templated class it will return a dictionary { 'A' : (CppTypeA, {}) } 
+    For a templated class, for example
 
         cdef cppclass A[U]:
             #wrap-instances:
+<<<<<<< HEAD
             #  AA := A[int]
 
         generates an entry  'AA' : ( A[int], {'U': 'int'} ) in r
         where cldA is the class_decl of A.
+=======
+            #  A_int := A[int]
+
+    it will return a dictionary { 'A_int' : (CppTypeA, {'U': CppTypeInt} ) } 
+
+    Note that if addParentClasses is True, an additional entry for 'A' will be
+    added _even_ if no declaration A := ... is given! This is important so that
+    the type of base class 'A' can also be mapped correctly.
+>>>>>>> bae4496018b6a359ad3b2570957e885d7070f16c
     """
     r = dict()
     for cdcl in class_decls:
-        r.update(_parse_wrap_instances_comments(cdcl))
+        r.update(_parse_wrap_instances_comments(cdcl, addParentClasses))
     return r
 
 
 
-def _parse_wrap_instances_comments(cdcl):
+def _parse_wrap_instances_comments(cdcl, addParentClasses=False):
+    """ Parses from a CppClassDecl the corresponding types including the wrap-instances comments.
+
+    See _parse_all_wrap_instances_comments for more detailed documentation.
+    """
 
     inst_annotations = cdcl.annotations.get("wrap-instances")
     r = dict()
@@ -346,6 +399,16 @@ def _parse_wrap_instances_comments(cdcl):
         for instance_decl_str in inst_annotations:
             name, type_, tinst_map = parse_alias(cdcl, instance_decl_str)
             r[name] = type_, tinst_map
+        if not r.has_key(cdcl.name) and addParentClasses:
+            # If the parent does not have an entry (e.g. only A_int exists but
+            # A does not exist) we have slight problem. We still need to
+            # translate instances of A to their C++ types. Thus we add them
+            # here to the dictionary.
+            # Make sure to copy the type and mark the copy as dummy entry
+            # (important for the inv_transformed fxn in Types).
+            newtype_ = type_.copy()
+            newtype_.is_dummy = True
+            r[cdcl.name] = newtype_, tinst_map
     #for name, (t, m) in r.items():
         #m_str = Types.printable(m)
         #L.info("parse_wrap_instances_comments %s -> (%s, %s)" %(name, t, m_str))
@@ -463,6 +526,7 @@ def _resolve_method(method_decl, instance_mapping, local_type_map):
     #L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
+                                         type_map, ResolvedMethod, classname)
     L.info("result             : '%s'" % result)
     L.info("")
     return result
@@ -490,16 +554,36 @@ def _resolve_method_or_function(method_decl, instance_mapping, local_type_map, c
         arg_type = _resolve_alias(arg_type, instance_mapping, local_type_map)
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
-    #name = _resolve_constructor(name, instance_mapping)
     return clz(name, result_type, args, method_decl, instance_mapping, local_type_map)
 
 def _resolve_attribute(adecl, instance_mapping, type_map):
     type_ = _resolve_alias(adecl.type_, instance_mapping, type_map)
     return ResolvedAttribute(adecl.name, type_, adecl)
 
-def __resolve_constructor(name, instance_mapping):
-    map_ = dict( (t.base_type, n) for (n, t) in instance_mapping.items())
-    return map_.get(name, name)
+def _resolve_constructor(name, instance_mapping, classname):
+    """ Will resolve the constructor from the class name of the template, the
+    mappings and the "Python classname" for this instance.
+    """
+    # Construct a map that contains for each basetype the mapping to the
+    # correct classes. For templated classes, the base type will map to a list
+    # of instances
+    map_ = {}
+    for n, t in instance_mapping.items():
+        li = map_.get(t.base_type, [])
+        li.append(n)
+        map_[t.base_type] = li
+
+    if map_.has_key(name):
+        li = map_[name]
+        # If there is only one entry, we return it (no templates)
+        if len(li) == 1: return li[0]
+        # If the classname is in the list, we return the correct classname
+        if classname in li: return classname
+        else:
+            # This should never happen
+            raise Exception("_resolve_constructor did not have classname in map %s" % map_)
+    else:
+        return name
 
 
 def _resolve_alias(cpp_type, wrap_inst_decls, type_map):
