@@ -989,7 +989,8 @@ class StdVectorConverter(TypeConverterBase):
         """
 
         contains_classes_to_wrap = tt.template_args is not None and \
-            len( set(self.converters.names_of_wrapper_classes).intersection( set(tt.collect_base_types_rec()) )) > 0
+            len( set(self.converters.names_of_wrapper_classes).intersection(
+                set(tt.all_occuring_base_types()) )) > 0
 
         if self.converters.cython_type(tt).is_enum:
             item = "item%s" % arg_num
@@ -1031,7 +1032,8 @@ class StdVectorConverter(TypeConverterBase):
 
             return code, "deref(%s)" % temp_var, cleanup_code
         elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
-            len( set(self.converters.names_of_wrapper_classes).intersection( set(tt.collect_base_types_rec()) )) > 0:
+            len( set(self.converters.names_of_wrapper_classes).intersection(
+                set(tt.all_occuring_base_types()) )) > 0:
                 # Only if the std::vector contains a class that we need to wrap somewhere, we cannot do it ...
                 raise Exception("Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
         elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:

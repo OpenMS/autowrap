@@ -312,12 +312,6 @@ def test_minimal():
 
 
     in_ = [m2, minimal]
-    i, modified = minimal.call(in_)   # input ref arg
-    assert i==1
-    assert len(modified) == 3
-    assert m2 == modified[0]
-    assert minimal == modified[1]
-    assert m2 == modified[2]
 
     m3 = copy.copy(m2)
     assert m3 == m2

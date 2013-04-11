@@ -53,6 +53,7 @@ class ResolvedTypeDef(object):
         self.type_ = decl.type_
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
 
+
 class ResolvedEnum(object):
 
     def __init__(self, decl):
@@ -64,6 +65,7 @@ class ResolvedEnum(object):
         L.info("created resolved enum: %s" % (decl.name, ))
         L.info("           with items: %s" % (decl.items))
         L.info("")
+
 
 class ResolvedAttribute(object):
 
@@ -100,6 +102,7 @@ class ResolvedClass(object):
     def __str__(self):
         return "\n   ".join([self.name] + map(str, self.methods))
 
+
 class ResolvedMethod(object):
 
     """ contains all info for generating wrapping code of
@@ -107,7 +110,8 @@ class ResolvedMethod(object):
         "resolved" means that template parameters are resolved.
     """
 
-    def __init__(self, name, result_type, arguments, decl, instance_map, local_map):
+    def __init__(self, name, result_type, arguments, decl, instance_map,
+                 local_map):
         self.name = name
         self.result_type = result_type
         self.arguments = arguments
@@ -325,13 +329,13 @@ def _parse_all_wrap_instances_comments(class_decls):
             #  AA := A[int]
 
         generates an entry  'AA' : ( A[int], {'U': 'int'} ) in r
-        where cldA is the class_decl of A.
+        where "A[int]" is CppType("A", [CppType["int"])
+
     """
     r = dict()
     for cdcl in class_decls:
         r.update(_parse_wrap_instances_comments(cdcl))
     return r
-
 
 
 def _parse_wrap_instances_comments(cdcl):
@@ -346,9 +350,6 @@ def _parse_wrap_instances_comments(cdcl):
         for instance_decl_str in inst_annotations:
             name, type_, tinst_map = parse_alias(cdcl, instance_decl_str)
             r[name] = type_, tinst_map
-    #for name, (t, m) in r.items():
-        #m_str = Types.printable(m)
-        #L.info("parse_wrap_instances_comments %s -> (%s, %s)" %(name, t, m_str))
     return r
 
 
@@ -379,8 +380,6 @@ def parse_inst_decl(str_):
         return name, Types.CppType.from_string(decl_str)
     except:
         raise Exception("could not parse instance delcaration '%s'" % str_)
-
-
 
 
 def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
@@ -444,23 +443,16 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
 
 def _resolve_constructor(cinst_name, method_decl, instance_mapping, local_type_map):
     L.info("resolve method decl: '%s'" % method_decl)
-    L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
-    L.info("\n   tm= %s" % Types.printable(local_type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
-
     result.name = cinst_name
-
     L.info("result             : '%s'" % result)
     L.info("")
     return result
 
 
-
 def _resolve_method(method_decl, instance_mapping, local_type_map):
     L.info("resolve method decl: '%s'" % method_decl)
-    #L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
-    #L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
     L.info("result             : '%s'" % result)
@@ -470,8 +462,6 @@ def _resolve_method(method_decl, instance_mapping, local_type_map):
 
 def _resolve_function(method_decl, instance_mapping, local_type_map):
     L.info("resolve function decl: '%s'" % method_decl)
-    #L.info("\n   im= %s" % Types.printable(instance_mapping, "\n       "))
-    #L.info("\n   tm= %s" % Types.printable(type_map, "\n       "))
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedFunction)
     L.info("result               : '%s'" % result)
@@ -479,7 +469,8 @@ def _resolve_function(method_decl, instance_mapping, local_type_map):
     return result
 
 
-def _resolve_method_or_function(method_decl, instance_mapping, local_type_map, clz):
+def _resolve_method_or_function(method_decl, instance_mapping, local_type_map,
+                                clz):
     """
     resolves aliases in return and argument types
     """
@@ -490,20 +481,16 @@ def _resolve_method_or_function(method_decl, instance_mapping, local_type_map, c
         arg_type = _resolve_alias(arg_type, instance_mapping, local_type_map)
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
-    #name = _resolve_constructor(name, instance_mapping)
-    return clz(name, result_type, args, method_decl, instance_mapping, local_type_map)
+    return clz(name, result_type, args, method_decl, instance_mapping,
+               local_type_map)
+
 
 def _resolve_attribute(adecl, instance_mapping, type_map):
     type_ = _resolve_alias(adecl.type_, instance_mapping, type_map)
     return ResolvedAttribute(adecl.name, type_, adecl)
 
-def __resolve_constructor(name, instance_mapping):
-    map_ = dict( (t.base_type, n) for (n, t) in instance_mapping.items())
-    return map_.get(name, name)
-
 
 def _resolve_alias(cpp_type, wrap_inst_decls, type_map):
     cpp_type = cpp_type.transformed(type_map)
-    #cpp_type = cpp_type.transformed(wrap_inst_decls)
     alias = cpp_type.inv_transformed(wrap_inst_decls)
     return alias

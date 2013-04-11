@@ -1,4 +1,3 @@
-import pdb
 from contextlib import contextmanager
 import os.path
 import sys
@@ -9,7 +8,7 @@ from ConversionProvider import setup_converter_registry
 from DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
                           ResolvedFunction)
 
-from Types import CppType, printable
+from Types import CppType# , printable
 
 import Code
 

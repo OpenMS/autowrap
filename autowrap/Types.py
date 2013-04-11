@@ -23,15 +23,6 @@ class CppType(object):
             self.set_is_ref_rec()
             self.topmost_is_ref = True
 
-    def collect_base_types_rec(self):
-        result = []
-        if self.template_args is None: 
-            return result
-        for t in self.template_args:
-            result.append(t.base_type)
-            result.extend( t.collect_base_types_rec() )
-        return result
-
     def set_is_ref_rec(self):
         self.topmost_is_ref = True
         if self.template_args is None: return
