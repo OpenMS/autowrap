@@ -15,6 +15,21 @@ class Int {
         Int(const Int & i): i_(i.i_) { };
 };
 
+template <typename TemplateType>
+class TemplateClassName {
+  public:
+    TemplateType myInner_;
+    TemplateClassName(TemplateType i): myInner_(i) {};
+};
+
+template <typename TemplateType>
+class OtherTemplateClassName {
+  public:
+    TemplateType myInner_;
+    OtherTemplateClassName(TemplateType i): myInner_(i) {};
+};
+
+
 class LibCppTest {
     private:
         int i;
@@ -252,6 +267,18 @@ class LibCppTest {
             for (std::vector<std::vector<int> >::const_iterator i = in.begin(); i != in.end(); ++i)
                 sum += process31(*i);
             return sum;
+        }
+
+        void process33(double & ret_1, double & ret_2)
+        {
+            ret_1 += 20.0;
+            ret_2 += 40.0;
+        }
+
+        void process34(int & ret_1, int & ret_2)
+        {
+            ret_1 += 20;
+            ret_2 += 40;
         }
            
 };
