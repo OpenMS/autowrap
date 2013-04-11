@@ -119,3 +119,17 @@ This module can now be used as follows
     84
 
 Further docs can be found in `docs/` folder.
+
+
+Credits
+-------
+
+Many thanks go to:
+
+   - Hannes Roest, ETH Zürich, for contributing new ideas, patches, and
+     fruitful discussions.
+
+   - Lars Gustav Malmström, ETH Zürich for getting the ball rolling.
+
+   - the developers of Cython for contributing such a powerfull and high
+     quality tool.
