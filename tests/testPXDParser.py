@@ -387,8 +387,8 @@ cdef extern from "*":
             # wrap-as:
             #   Z
 
-            void fun() # wrap-as:gun
-            void fun(int x) # wrap-as:gun
+            void fun() # wrap-test:test  wrap-as:gun
+            void fun(int x) # wrap-as:gun wrap-test:test
             void gun(
                     )  # wrap-as:hun
 
@@ -405,16 +405,17 @@ cdef extern from "*":
     assert cld.annotations["wrap-ignore"] is True
 
     for mdcl in cld.methods["fun"]:
-        assert mdcl.annotations.items() == [ ("wrap-as", "gun")]
+        # Also test if multiple annotations are correctly represented
+        assert mdcl.annotations == {'wrap-as' : 'gun', 'wrap-test' : 'test'}
 
     for mdcl in cld.methods["gun"]:
-        assert mdcl.annotations.items() == [ ("wrap-as", "hun")]
+        assert mdcl.annotations == {'wrap-as' : 'hun'}
 
     for mdcl in cld.methods["iun"]:
-        assert mdcl.annotations.items() == []
+        assert mdcl.annotations == {}
 
     for mdcl in cld.methods["hun"]:
-        assert mdcl.annotations.items() == [ ("wrap-as", "jun")]
+        assert mdcl.annotations == {'wrap-as' : 'jun'}
 
 
 def test_parsing_of_nested_template_args():

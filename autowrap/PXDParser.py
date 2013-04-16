@@ -10,6 +10,7 @@ from Cython.Compiler.ExprNodes import *
 from Types import CppType
 
 import os
+import re
 
 import logging as L
 
@@ -85,12 +86,13 @@ def parse_line_annotations(node, lines):
         if comment:
             for f in comment.split(" "):
                 f = f.strip()
+                if not f:
+                    continue
                 if ":" in f:
                     key, value = f.split(":", 1)
-                    value = value.strip()
                 else:
                     key, value = f, True
-            result[key.strip()] = value
+                result[key] = value
     return result
 
 
