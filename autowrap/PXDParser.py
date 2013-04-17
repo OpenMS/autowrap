@@ -90,6 +90,7 @@ def parse_line_annotations(node, lines):
                     continue
                 if ":" in f:
                     key, value = f.split(":", 1)
+                    assert value.strip(), "empty value for key %s" % key
                 else:
                     key, value = f, True
                 result[key] = value

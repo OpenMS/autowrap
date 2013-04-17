@@ -379,6 +379,30 @@ cdef extern from "A.h":
     (__, arg_t), = fun.arguments
     assert str(arg_t) == "int"
 
+
+def test_annotation_typical_error_detection():
+    # tests typical error for key:value decls in comments
+    # with " " behind ":", eg "wrap-as: xyz" instead of "wrap-as:xyz":
+    try:
+        cdcl, = autowrap.PXDParser.parse_str("""
+
+cdef extern from "*":
+    cdef cppclass T:
+        void fun() # wrap-as: xyz
+        """)
+    except:
+        pass
+    else:
+        assert False, "expected exception"
+
+    # annotation below is ok now !
+    cdcl, = autowrap.PXDParser.parse_str("""
+
+cdef extern from "*":
+    cdef cppclass T:
+        void fun() # wrap-as:xyz
+        """)
+
 def test_annotations():
     cld, = autowrap.PXDParser.parse_str("""
 cdef extern from "*":
