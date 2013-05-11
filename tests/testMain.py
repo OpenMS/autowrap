@@ -25,7 +25,8 @@ setup(cmdclass = {'build_ext' : build_ext},
 def test_from_command_line():
     import os
     old_dir = os.path.abspath(os.getcwd())
-    os.chdir("test_files")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(os.path.join(script_dir, "test_files") )
     args =  ["pxds/*.pxd", "--out", "out.pyx", "--addons=/addons",
                                                     "--converters=converters"]
     from autowrap.Main import _main
@@ -41,21 +42,22 @@ def test_run():
 
     import glob
     import os
-    print os.getcwd()
 
-    pxds = glob.glob("test_files/pxds/*.pxd")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    pxds = glob.glob(script_dir + "/test_files/pxds/*.pxd")
     assert pxds
 
-    addons = glob.glob("test_files/addons/*.pyx")
+    addons = glob.glob(script_dir + "/test_files/addons/*.pyx")
     assert addons
 
-    converters = ["test_files/converters"]
+    converters = [script_dir + "/test_files/converters"]
 
-    extra_includes = ["test_files/includes"]
-    includes = run(pxds, addons, converters, "test_files/out.pyx",
+    extra_includes = [script_dir + "/test_files/includes"]
+    includes = run(pxds, addons, converters, script_dir + "/test_files/out.pyx",
             extra_includes)
 
-    mod = compile_and_import("out", ["test_files/out.cpp"], includes)
+    mod = compile_and_import("out", [script_dir + "/test_files/out.cpp"], includes)
 
     ih = mod.IntHolder()
     ih.set_(3)
