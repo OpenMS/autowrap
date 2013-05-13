@@ -1,0 +1,5 @@
+To run the tests run nose as follows
+
+   $ nosetests -w tests
+
+from the projects directory
