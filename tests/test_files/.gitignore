@@ -1,3 +1,5 @@
 *.o
 *.cpp
 *.so
+libcpp_test.pyx
+out.pyx
