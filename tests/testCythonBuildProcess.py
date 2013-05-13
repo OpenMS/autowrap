@@ -2,9 +2,9 @@ import os
 import autowrap.Utils
 
 
-def setup():
-    assert os.environ.get("VIRTUAL_ENV") != None, "PLEASE RUN THIS TEST IN"\
-                                                  "VIRTUAL ENV !!!"
+#def setup():
+    #assert os.environ.get("VIRTUAL_ENV") != None, "PLEASE RUN THIS TEST IN"\
+                                                  #"VIRTUAL ENV !!!"
 
 test_files = os.path.join(os.path.dirname(__file__), 'test_files')
 
