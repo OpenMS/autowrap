@@ -27,6 +27,20 @@ def test_number_conv():
     mf2 =  mod.add_max_float(mf)
     assert not math.isinf(mf2), "somehow overflow happened"
 
+    repr_ = "%.13e" % mod.pass_full_precision(0.05)
+    assert repr_.startswith("5.0000000000000"),\
+            "loss of precision during conversion: %s" % repr_
+
+    inl = [ 0.05]
+    outl = mod.pass_full_precision_vec(inl)
+
+    repr_ = "%.13e" % inl[0]
+    assert repr_.startswith("5.0000000000000"),\
+            "loss of precision during conversion: %s" % repr_
+
+    repr_ = "%.13e" % outl[0]
+    assert repr_.startswith("5.0000000000000"),\
+            "loss of precision during conversion: %s" % repr_
 
 def test_shared_ptr():
 

@@ -171,14 +171,33 @@ class IntegerConverter(TypeConverterBase):
 
 # TODO: common base class for float, int, str conversion
 
+class DoubleConverter(TypeConverterBase):
+
+    def get_base_types(self):
+        return "double",
+
+    def matches(self, cpp_type):
+        return not cpp_type.is_ptr
+
+    def matching_python_type(self, cpp_type):
+        return "double"
+
+    def type_check_expression(self, cpp_type, argument_var):
+        return "isinstance(%s, float)" % (argument_var,)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        code = ""
+        call_as = "(<%s>%s)" % (cpp_type, argument_var)
+        cleanup = ""
+        return code, call_as, cleanup
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
+
 class FloatConverter(TypeConverterBase):
 
-    """
-    wraps long and int. "long" base_type is converted to "int" by the
-    cython parser !
-    """
     def get_base_types(self):
-        return "float", "double",
+        return "float",
 
     def matches(self, cpp_type):
         return not cpp_type.is_ptr
@@ -1202,6 +1221,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
 
     converters.register(IntegerConverter())
     converters.register(FloatConverter())
+    converters.register(DoubleConverter())
     converters.register(ConstCharPtrConverter())
     converters.register(CharPtrConverter())
     converters.register(CharConverter())
