@@ -27,6 +27,8 @@ class LibCppTest {
         LibCppTest(const LibCppTest &o): i(o.i)  {
         };
 
+        std::vector<Int> * integer_vector_ptr;
+        Int * integer_ptr;
 
         bool operator<(const LibCppTest & other) const
         {
