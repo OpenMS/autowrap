@@ -1,3 +1,4 @@
+#cython: c_string_encoding=ascii  # for cython>=0.19
 from  libcpp.string  cimport string as libcpp_string
 from  libcpp.set     cimport set as libcpp_set
 from  libcpp.vector  cimport vector as libcpp_vector
