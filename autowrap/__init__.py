@@ -1,7 +1,5 @@
 from version import *
 
-import DeclResolver
-import CodeGenerator
 
 import logging as L
 L.basicConfig(level=L.INFO)
@@ -14,11 +12,13 @@ The autowrap process consists of two steps:
 """
 
 def parse(files, root):
+    import DeclResolver
     return DeclResolver.resolve_decls_from_files(files, root)
 
 def generate_code(decls, instance_map, target, debug, manual_code=None,
         extra_cimports=None):
 
+    import CodeGenerator
     gen = CodeGenerator.CodeGenerator(decls,
                                       instance_map,
                                       target,

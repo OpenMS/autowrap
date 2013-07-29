@@ -796,7 +796,7 @@ class StdVectorConverter(TypeConverterBase):
             arg_var_next = "%s_rec" % arg_var
         else:
             # first recursion, set element name
-            arg_var_next = "elemt_rec" 
+            arg_var_next = "elemt_rec"
         inner_check = inner_conv.type_check_expression(tt, arg_var_next)
 
         return Code().add("""
@@ -871,7 +871,7 @@ class StdVectorConverter(TypeConverterBase):
                 if cpp_type.topmost_is_ref:
                     # add cdef statements for the iterators (part of B, post-call but needs to be on top)
                     code_top += "|cdef libcpp_vector[$inner].iterator $it"
-                topmost_code.add(code_top, *a, **kw) 
+                topmost_code.add(code_top, *a, **kw)
                 code_top = ""
             # Now prepare the loop itself
             code = Code().add(code_top + """
@@ -881,29 +881,29 @@ class StdVectorConverter(TypeConverterBase):
             return code
 
     def _perform_recursion(self, cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, *a, **kw):
-        converter = self.cr.get(tt) 
+        converter = self.cr.get(tt)
         py_type = converter.matching_python_type(tt)
-        rec_arg_num = "%s_rec" % arg_num 
+        rec_arg_num = "%s_rec" % arg_num
         # the current item is the argument var of the recursive call
-        rec_argument_var = item 
+        rec_argument_var = item
         topmost_code_callback = Code()
         bottommost_code_callback = Code()
-        # 
+        #
         # Perform the recursive call
-        # 
+        #
         conv_code, call_as, cleanup =\
-                                   converter.input_conversion(tt, rec_argument_var, rec_arg_num, 
+                                   converter.input_conversion(tt, rec_argument_var, rec_arg_num,
                                        topmost_code_callback, bottommost_code_callback, recursion_cnt + 1)
         # undo the "deref" if it was added ...
         new_item = call_as
         if call_as.find("deref") != -1:
             new_item = new_item[6:]
             new_item = new_item[:-1]
-        a[0]["new_item"] = new_item 
+        a[0]["new_item"] = new_item
         #
         # A) Prepare the pre-call, Step 2
         # add all the "topmost" code from all recursive calls if we are in the topmost recursion
-        # 
+        #
         if topmost_code is None:
             code.content.extend(topmost_code_callback.content)
         else:
@@ -912,32 +912,32 @@ class StdVectorConverter(TypeConverterBase):
         #
         # A) Prepare the pre-call, Step 3
         # add the outer loop
-        # 
+        #
         code.add("""
             |for $item in $argument_var:
             """, *a, **kw)
         #
         # A) Prepare the pre-call, Step 4
         # clear the vector since it needs to be empty before we start the inner loop
-        # 
+        #
         code.add(Code().add("""
             |$new_item.clear()""", *a, **kw))
         #
         # A) Prepare the pre-call, Step 5
         # add the inner loop (may contain more inner loops ... )
-        # 
+        #
         code.add(conv_code)
         #
         # A) Prepare the pre-call, Step 6
         # store the vector from the inner loop in our vector (since
         # it is a std::vector object, there is no "inst" to get).
-        # 
+        #
         code.add("""
             |    $temp_var.push_back(deref($new_item))
             """, *a, **kw)
 
         #
-        # B) Prepare the post-call, Step 1 
+        # B) Prepare the post-call, Step 1
         # add the inner loop (may contain more inner loops ... )
         #
         if hasattr(cleanup, "content"):
@@ -946,7 +946,7 @@ class StdVectorConverter(TypeConverterBase):
           cleanup_code.content.append(cleanup)
 
         #
-        # B) Prepare the post-call, Step 2 
+        # B) Prepare the post-call, Step 2
         # append the result from the inner loop iteration to the current result
         # (only if we actually give back the reference)
         #
@@ -974,7 +974,7 @@ class StdVectorConverter(TypeConverterBase):
     def input_conversion(self, cpp_type, argument_var, arg_num, topmost_code = None, bottommost_code = None, recursion_cnt = 0):
         """Do the input conversion for a std::vector<T>
 
-        In this case, the template argument is tt (or "inner"). 
+        In this case, the template argument is tt (or "inner").
 
         It is possible to nest or recurse multiple vectors (like in
         std::vector< std::vector< T > > which is detected since the template
@@ -985,14 +985,13 @@ class StdVectorConverter(TypeConverterBase):
             assert topmost_code is not None
             assert bottommost_code is not None
         tt, = cpp_type.template_args
-        print "input_conversion", "is ref", cpp_type.topmost_is_ref
         temp_var = "v%s" % arg_num
         inner = self.converters.cython_type(tt)
         it = mangle("it_" + argument_var) # + "_%s" % recursion_cnt
         recursion_cnt_next = recursion_cnt + 1
         it_prev = ""
         if recursion_cnt > 0:
-            it_prev = mangle("it_" + argument_var[:-4]) 
+            it_prev = mangle("it_" + argument_var[:-4])
 
         base_type = tt.base_type
         inner = self.converters.cython_type(tt)
@@ -1067,7 +1066,7 @@ class StdVectorConverter(TypeConverterBase):
                 if cpp_type.topmost_is_ref:
                     # add cdef statements for the iterators (part of B, post-call but needs to be on top)
                     code_top += "|cdef libcpp_vector[$inner].iterator $it"
-                topmost_code.add(code_top, locals()) 
+                topmost_code.add(code_top, locals())
                 code_top = ""
             if code_top != "": code.add(code_top, locals())
 
