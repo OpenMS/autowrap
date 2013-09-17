@@ -1,5 +1,4 @@
-import pdb
-#encoding: utf-8
+# encoding: utf-8
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
 from Cython.Compiler import Pipeline
@@ -70,8 +69,8 @@ def parse_line_annotations(node, lines):
 
     result = dict()
     # pos starts counting with 1 and limits are inclusive
-    start = node.pos[1]-1
-    end  = node.end_pos()[1]
+    start = node.pos[1] - 1
+    end = node.end_pos()[1]
 
     while end < len(lines):
         if lines[end].strip() == "":
@@ -104,15 +103,15 @@ def _extract_template_args(node):
 
     name = node.base.name
     if isinstance(node.index, TupleNode):
-        args = [ _extract_template_args(n) for n in node.index.args ]
+        args = [_extract_template_args(n) for n in node.index.args]
     elif isinstance(node.index, IndexNode):
-        args = [ _extract_template_args(node.index) ]
+        args = [_extract_template_args(node.index)]
     elif isinstance(node.index, NameNode):
-        args = [ CppType(node.index.name) ]
+        args = [CppType(node.index.name)]
     else:
         raise Exception("can not handle node %s in template arg decl" %
                 node.index)
-    return  CppType(name, args)
+    return CppType(name, args)
 
 
 def _extract_type(base_type, decl):
@@ -137,7 +136,7 @@ def _extract_type(base_type, decl):
             elif isinstance(arg_node, NameNode):
                 name = arg_node.name
                 template_parameters.append(CppType(name))
-            elif isinstance(arg_node, IndexNode): # nested template !
+            elif isinstance(arg_node, IndexNode):  # nested template !
                 tt = _extract_template_args(arg_node)
                 template_parameters.append(tt)
             else:
@@ -164,7 +163,7 @@ class BaseDecl(object):
 
 class CTypeDefDecl(BaseDecl):
 
-    def __init__(self, new_name, type_,  annotations, pxd_path):
+    def __init__(self, new_name, type_, annotations, pxd_path):
         super(CTypeDefDecl, self).__init__(new_name, annotations, pxd_path)
         self.type_ = type_
 
@@ -230,7 +229,7 @@ class CppClassDecl(BaseDecl):
             decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
             if decl is not None:
                 if isinstance(decl, CppMethodOrFunctionDecl):
-                    methods.setdefault(decl.name,[]).append(decl)
+                    methods.setdefault(decl.name, []).append(decl)
                 elif isinstance(decl, CppAttributeDecl):
                     attributes.append(decl)
 
@@ -264,7 +263,8 @@ class CppClassDecl(BaseDecl):
         for name, decls in dd.items():
             for decl in decls:
                 if not self.has_method(decl):
-                    self.methods.setdefault(decl.name,[]).append(decl)
+                    self.methods.setdefault(decl.name, []).append(decl)
+
 
 class CppAttributeDecl(BaseDecl):
 
@@ -276,7 +276,7 @@ class CppAttributeDecl(BaseDecl):
 
 class CppMethodOrFunctionDecl(BaseDecl):
 
-    def __init__(self, result_type,  name, arguments, annotations, pxd_path):
+    def __init__(self, result_type, name, arguments, annotations, pxd_path):
         super(CppMethodOrFunctionDecl, self).__init__(name, annotations,
                                                       pxd_path)
         self.result_type = result_type
@@ -308,7 +308,7 @@ class MethodOrAttributeDecl(object):
     def parseTree(cls, node, lines, pxd_path):
         annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
-            return None # nested classes only can be delcared in pxd
+            return None  # nested classes only can be delcared in pxd
 
         decl, = node.declarators
         result_type = _extract_type(node.base_type, decl)
@@ -337,7 +337,7 @@ class MethodOrAttributeDecl(object):
                 else:
                     argname = argdecl.name
             tt = _extract_type(arg.base_type, argdecl)
-            args.append((argname,tt))
+            args.append((argname, tt))
 
         return CppMethodOrFunctionDecl(result_type, name, args, annotations,
                                        pxd_path)
@@ -356,7 +356,7 @@ def parse_str(what):
     with tempfile.NamedTemporaryFile(delete=False) as fp:
         fp.write(what)
         fp.flush()
-        fp.close() # needed for reading it on win
+        fp.close()  # needed for reading it on win
         result = parse_pxd_file(fp.name)
         return result
 
@@ -409,25 +409,25 @@ def parse_pxd_file(path):
     def cimport(b, _, __):
         print "cimport", b.module_name, "as", b.as_name
 
-    handlers = { CEnumDefNode : EnumDecl.parseTree,
-                 CppClassNode : CppClassDecl.parseTree,
-                 CTypeDefNode : CTypeDefDecl.parseTree,
-                 CVarDefNode  : MethodOrAttributeDecl.parseTree,
-                 CImportStatNode  : cimport,
+    handlers = {CEnumDefNode: EnumDecl.parseTree,
+                 CppClassNode: CppClassDecl.parseTree,
+                 CTypeDefNode: CTypeDefDecl.parseTree,
+                 CVarDefNode: MethodOrAttributeDecl.parseTree,
+                 CImportStatNode: cimport,
                  }
 
     result = []
     for body in iter_bodies(root):
         handler = handlers.get(type(body))
         if handler is not None:
-            L.info("parsed %s, handler=%s" % (body.__class__, handler.im_self))
+            # L.info("parsed %s, handler=%s" % (body.__class__, handler.im_self))
             result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):
                 handler = handlers.get(type(node))
                 if handler is not None:
-                    L.info("parsed %s, handler=%s" % (node.__class__,
-                                                      handler.im_self))
+                    # L.info("parsed %s, handler=%s" % (node.__class__,
+                                                      #handler.im_self))
                     result.append(handler(node, lines, path))
     return result
 

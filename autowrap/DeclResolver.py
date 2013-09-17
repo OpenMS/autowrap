@@ -302,7 +302,7 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     for method in transformed_methods:
         L.info("attach to %s: %s" % (cdcl.name, method))
     cdcl.attach_base_methods(transformed_methods)
-    L.info("")
+    #L.info("")
 
 
 def _build_typedef_mapping(decls):
@@ -446,8 +446,8 @@ def _resolve_constructor(cinst_name, method_decl, instance_mapping, local_type_m
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
     result.name = cinst_name
-    L.info("result             : '%s'" % result)
-    L.info("")
+    #L.info("result             : '%s'" % result)
+    #L.info("")
     return result
 
 
@@ -455,8 +455,8 @@ def _resolve_method(method_decl, instance_mapping, local_type_map):
     L.info("resolve method decl: '%s'" % method_decl)
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
-    L.info("result             : '%s'" % result)
-    L.info("")
+    #L.info("result             : '%s'" % result)
+    #L.info("")
     return result
 
 
@@ -464,8 +464,8 @@ def _resolve_function(method_decl, instance_mapping, local_type_map):
     L.info("resolve function decl: '%s'" % method_decl)
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedFunction)
-    L.info("result               : '%s'" % result)
-    L.info("")
+    #L.info("result               : '%s'" % result)
+    #L.info("")
     return result
 
 
