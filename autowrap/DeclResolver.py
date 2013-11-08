@@ -45,6 +45,7 @@ __doc__ = """
 
 import logging as L
 
+
 class ResolvedTypeDef(object):
 
     def __init__(self, decl):
@@ -91,7 +92,7 @@ class ResolvedClass(object):
         self.attributes = attributes
 
         self.cpp_decl = decl
-        #self.items = getattr(decl, "items", [])
+        # self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
         self.local_map = local_map
         self.instance_map = instance_map
@@ -130,7 +131,6 @@ class ResolvedFunction(ResolvedMethod):
     pass
 
 
-
 def resolve_decls_from_files(pathes, root):
     decls = []
     for path in pathes:
@@ -162,10 +162,10 @@ def _resolve_decls(decls):
     def filter_out(tt):
         return [d for d in decls if isinstance(d, tt) and d.name is not None]
 
-    typedef_decls  = filter_out(PXDParser.CTypeDefDecl)
+    typedef_decls = filter_out(PXDParser.CTypeDefDecl)
     function_decls = filter_out(PXDParser.CppMethodOrFunctionDecl)
-    enum_decls     = filter_out(PXDParser.EnumDecl)
-    class_decls    = filter_out(PXDParser.CppClassDecl)
+    enum_decls = filter_out(PXDParser.EnumDecl)
+    class_decls = filter_out(PXDParser.CppClassDecl)
 
     class_decls = _resolve_all_inheritances(class_decls)
 
@@ -179,29 +179,24 @@ def _resolve_decls(decls):
     # register class aliases
     instance_mapping = _parse_all_wrap_instances_comments(class_decls)
     # remove local targ mappings:
-    instance_mapping = dict( (k, v0) for (k, (v0,v1)) in
-                                                      instance_mapping.items())
+    instance_mapping = dict((k, v0) for (k, (v0, v1)) in instance_mapping.items())
 
     # resolve  typedefs in class aliase values
     instance_mapping = dict((k, v.transformed(typedef_mapping)) for (k, v) in
-                                                      instance_mapping.items())
+                            instance_mapping.items())
 
     # add enum mapping to class instances mapping
     intersecting_names = set(instance_mapping) & set(enum_mapping)
-    assert not intersecting_names, "enum names and class decls overlap: %s"\
-                                   % intersecting_names
+    assert not intersecting_names, "enum names and class decls overlap: %s" % intersecting_names
 
     instance_mapping.update(enum_mapping)
 
-    functions = [_resolve_function(f, instance_mapping, typedef_mapping)
-                                                       for f in function_decls]
+    functions = [_resolve_function(f, instance_mapping, typedef_mapping) for f in function_decls]
 
     enums = [ResolvedEnum(e) for e in enum_decls]
     typedefs = [ResolvedTypeDef(t) for t in typedef_decls]
 
-    classes = _resolve_class_decls(class_decls,
-                                   typedef_mapping,
-                                   instance_mapping)
+    classes = _resolve_class_decls(class_decls, typedef_mapping, instance_mapping)
 
     return classes + enums + functions + typedefs, instance_mapping
 
@@ -289,20 +284,19 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
 
     # check if parmetirization signature matches:
     if len(used_parameters) != len(super_targs):
-        raise Exception("deriving %s from %s does not match"
-                        % (cdcl.name, super_cld.name))
+        raise Exception("deriving %s from %s does not match" % (cdcl.name, super_cld.name))
 
     # map template parameters in super class to the parameters used in current
     # class:
     mapping = dict(zip(super_targs, used_parameters))
     # get copy of methods from super class ans transform template params:
     transformed_methods = super_cld.get_transformed_methods(mapping)
-    transformed_methods = dict((k,v) for (k,v) in transformed_methods.items()
-                                if k != super_cld.name) # remove constructors
+    transformed_methods = dict((k, v) for (k, v) in transformed_methods.items()
+                               if k != super_cld.name)  # remove constructors
     for method in transformed_methods:
         L.info("attach to %s: %s" % (cdcl.name, method))
     cdcl.attach_base_methods(transformed_methods)
-    #L.info("")
+    # L.info("")
 
 
 def _build_typedef_mapping(decls):
@@ -315,7 +309,7 @@ def _build_typedef_mapping(decls):
 def _check_typedefs(decls):
     left_sides = [decl.name for decl in decls]
     if len(left_sides) != len(set(left_sides)):
-        multiples = [ls for ls in left_sides if left_sides.count(ls)>1]
+        multiples = [ls for ls in left_sides if left_sides.count(ls) > 1]
         msg = "multiple typedefs for name(s) '%s'" % (", ".join(multiples))
         raise Exception(msg)
 
@@ -387,9 +381,7 @@ def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
     """
     all_resolved_classes = []
     for class_decl in class_decls:
-        resolved_classes = _resolve_class_decl(class_decl,
-                                               typedef_mapping,
-                                               instance_mapping)
+        resolved_classes = _resolve_class_decl(class_decl, typedef_mapping, instance_mapping)
         all_resolved_classes.extend(resolved_classes)
     return all_resolved_classes
 
@@ -406,8 +398,7 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
 
         r_attributes = []
         for adcl in class_decl.attributes:
-            r_attributes.append(_resolve_attribute(adcl, i_mapping,
-                                                                local_mapping))
+            r_attributes.append(_resolve_attribute(adcl, i_mapping, local_mapping))
 
         r_methods = []
         for (mname, mdcls) in class_decl.methods.items():
@@ -416,21 +407,19 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
                 if ignore:
                     continue
                 if mdcl.name == class_decl.name:
-                    r_method = _resolve_constructor(cinst_name, mdcl,
-                                                      i_mapping, local_mapping)
+                    r_method = _resolve_constructor(cinst_name, mdcl, i_mapping, local_mapping)
                 else:
                     r_method = _resolve_method(mdcl, i_mapping, local_mapping)
                 r_methods.append(r_method)
         r_class = ResolvedClass(cinst_name, r_methods, r_attributes,
-                class_decl, i_mapping, local_mapping)
+                                class_decl, i_mapping, local_mapping)
         resolved_classes.append(r_class)
     return resolved_classes
 
 
 def _build_local_typemap(t_param_mapping, typedef_mapping):
     # for resolving typedefed types in template instance args:
-    local_map = dict((n, t.transformed(typedef_mapping)) for (n, t) in \
-            t_param_mapping.items())
+    local_map = dict((n, t.transformed(typedef_mapping)) for (n, t) in t_param_mapping.items())
 
     # for resolving 'free' typedefs in method args and result types:
     if set(local_map) & set(typedef_mapping):
@@ -446,8 +435,8 @@ def _resolve_constructor(cinst_name, method_decl, instance_mapping, local_type_m
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
     result.name = cinst_name
-    #L.info("result             : '%s'" % result)
-    #L.info("")
+    # L.info("result             : '%s'" % result)
+    # L.info("")
     return result
 
 
@@ -455,8 +444,8 @@ def _resolve_method(method_decl, instance_mapping, local_type_map):
     L.info("resolve method decl: '%s'" % method_decl)
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
-    #L.info("result             : '%s'" % result)
-    #L.info("")
+    # L.info("result             : '%s'" % result)
+    # L.info("")
     return result
 
 
@@ -464,8 +453,8 @@ def _resolve_function(method_decl, instance_mapping, local_type_map):
     L.info("resolve function decl: '%s'" % method_decl)
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedFunction)
-    #L.info("result               : '%s'" % result)
-    #L.info("")
+    # L.info("result               : '%s'" % result)
+    # L.info("")
     return result
 
 
@@ -475,14 +464,13 @@ def _resolve_method_or_function(method_decl, instance_mapping, local_type_map,
     resolves aliases in return and argument types
     """
     result_type = _resolve_alias(method_decl.result_type, instance_mapping,
-                                local_type_map)
+                                 local_type_map)
     args = []
     for arg_name, arg_type in method_decl.arguments:
         arg_type = _resolve_alias(arg_type, instance_mapping, local_type_map)
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
-    return clz(name, result_type, args, method_decl, instance_mapping,
-               local_type_map)
+    return clz(name, result_type, args, method_decl, instance_mapping, local_type_map)
 
 
 def _resolve_attribute(adecl, instance_mapping, type_map):

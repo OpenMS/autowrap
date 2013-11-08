@@ -1,16 +1,16 @@
-#encoding: utf-8
+# encoding: utf-8
 import copy
 import re
+
 
 class CppType(object):
 
     CTYPES = ["int", "long", "double", "float", "char", "void"]
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
-    def __init__(self, base_type, template_args = None, is_ptr=False,
-                 is_ref=False, is_unsigned=False, is_long=False,
-                 enum_items=None):
-        self.base_type =  "void" if base_type is None else base_type
+    def __init__(self, base_type, template_args=None, is_ptr=False, is_ref=False,
+                 is_unsigned=False, is_long=False, enum_items=None):
+        self.base_type = "void" if base_type is None else base_type
         self.is_ptr = is_ptr
         self.is_ref = is_ref
         self.is_unsigned = is_unsigned
@@ -25,7 +25,8 @@ class CppType(object):
 
     def set_is_ref_rec(self):
         self.topmost_is_ref = True
-        if self.template_args is None: return
+        if self.template_args is None:
+            return
         for t in self.template_args:
             t.set_is_ref_rec()
 
@@ -49,7 +50,7 @@ class CppType(object):
                 self._overwrite_base_type(aliased_t)
                 self.template_args = aliased_t.template_args
         for t in self.template_args or []:
-            t._transform(typemap, indent+1)
+            t._transform(typemap, indent + 1)
 
     def _rm_flags(self):
         rv = self.copy()
@@ -57,7 +58,7 @@ class CppType(object):
         return rv
 
     def inv_transformed(self, typemap):
-        inv_typemap = dict((v, CppType(k)) for (k,v) in typemap.items())
+        inv_typemap = dict((v, CppType(k)) for (k, v) in typemap.items())
         return self._inv_transform(inv_typemap)
 
     def _inv_transform(self, inv_typemap):
@@ -73,7 +74,7 @@ class CppType(object):
             return res
         if self.template_args is not None:
             trans_targs = [t._inv_transform(inv_typemap) for t in
-                    self.template_args]
+                           self.template_args]
             self.template_args = trans_targs
         return self
 
@@ -117,8 +118,8 @@ class CppType(object):
         else:
             long_ = ""
 
-        ptr  = "*" if self.is_ptr else ""
-        ref  = "&" if self.is_ref else ""
+        ptr = "*" if self.is_ptr else ""
+        ref = "&" if self.is_ref else ""
         if ptr and ref:
             raise NotImplementedError("can not handel ref and ptr together")
         if self.template_args is not None:
@@ -128,7 +129,7 @@ class CppType(object):
         result = "%s %s %s%s %s" % (unsigned, long_, self.base_type, inner,
                                     ptr or ref)
         result = result.replace("  ", " ")
-        return result.strip() # if unsigned is "" or ptr is "" and ref is ""
+        return result.strip()  # if unsigned is "" or ptr is "" and ref is ""
 
     def check_for_recursion(self):
         try:
@@ -159,17 +160,13 @@ class CppType(object):
 
     @staticmethod
     def from_string(str_):
-        try:
-            return CppType._from_string(str_)
-        except Exception, e:
-            raise
-            #raise Exception("could not parse '%s'" % str_)
+        return CppType._from_string(str_)
 
     @staticmethod
     def _from_string(str_):
         # TODO is there a reason why "_" is not in the regex?
         matched = re.match("([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?",
-                            str_.strip())
+                           str_.strip())
         if matched is None:
             raise Exception("can not parse '%s'" % str_)
         base_type, t_str = matched.groups()
@@ -204,28 +201,25 @@ class CppType(object):
             if " " in base_type:
                 raise Exception("can not parse %s" % orig_for_error_message)
 
-            is_ref =  str_.endswith("&")
-            is_ptr =  str_.endswith("*")
-            return CppType(base_type,
-                           is_unsigned=is_unsigned,
-                           is_ptr=is_ptr,
-                           is_ref=is_ref,
+            is_ref = str_.endswith("&")
+            is_ptr = str_.endswith("*")
+            return CppType(base_type, is_unsigned=is_unsigned, is_ptr=is_ptr, is_ref=is_ref,
                            is_long=is_long)
 
         t_args = t_str[1:-1].split(",")
         if t_args == [""]:
-            t_types= []
+            t_types = []
         else:
-            t_types = [ CppType.from_string(t.strip()) for t in t_args ]
-        is_ref =  str_.endswith("&")
-        is_ptr =  str_.endswith("*")
+            t_types = [CppType.from_string(t.strip()) for t in t_args]
+        is_ref = str_.endswith("&")
+        is_ptr = str_.endswith("*")
 
         return CppType(base_type, t_types, is_ref=is_ref, is_ptr=is_ptr)
+
 
 def printable(type_map, join_str=", "):
     if not type_map:
         return "None"
-    rules = sorted("%s -> %s" %(k, v) for (k,v) in type_map.items())
+    rules = sorted("%s -> %s" % (k, v) for (k, v) in type_map.items())
     m_str = join_str.join(rules)
     return m_str
-

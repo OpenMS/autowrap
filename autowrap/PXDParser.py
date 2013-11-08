@@ -9,9 +9,8 @@ from Cython.Compiler.ExprNodes import *
 from Types import CppType
 
 import os
-import re
 
-import logging as L
+# import logging as L
 
 from collections import defaultdict
 
@@ -109,8 +108,7 @@ def _extract_template_args(node):
     elif isinstance(node.index, NameNode):
         args = [CppType(node.index.name)]
     else:
-        raise Exception("can not handle node %s in template arg decl" %
-                node.index)
+        raise Exception("can not handle node %s in template arg decl" % node.index)
     return CppType(name, args)
 
 
@@ -125,13 +123,11 @@ def _extract_type(base_type, decl):
                 arg_decl = arg_node.declarator
                 is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
                 is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
-                is_unsigned = hasattr(arg_node.base_type, "signed") \
-                              and not arg_node.base_type.signed
-                is_long = hasattr(arg_node.base_type, "longness") \
-                              and arg_node.base_type.longness
+                is_unsigned = hasattr(arg_node.base_type, "signed")\
+                    and not arg_node.base_type.signed
+                is_long = hasattr(arg_node.base_type, "longness") and arg_node.base_type.longness
                 name = arg_node.base_type.name
-                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned,
-                        is_long)
+                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned, is_long)
                 template_parameters.append(ttype)
             elif isinstance(arg_node, NameNode):
                 name = arg_node.name
@@ -140,8 +136,7 @@ def _extract_type(base_type, decl):
                 tt = _extract_template_args(arg_node)
                 template_parameters.append(tt)
             else:
-                raise Exception("can not handle template arg_node %r" %
-                        arg_node)
+                raise Exception("can not handle template arg_node %r" % arg_node)
 
         base_type = base_type.base_type_node
 
@@ -149,8 +144,7 @@ def _extract_type(base_type, decl):
     is_ref = isinstance(decl, CReferenceDeclaratorNode)
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
     is_long = hasattr(base_type, "longness") and base_type.longness
-    return CppType(base_type.name, template_parameters, is_ptr, is_ref,
-                   is_unsigned, is_long)
+    return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long)
 
 
 class BaseDecl(object):
@@ -270,15 +264,14 @@ class CppAttributeDecl(BaseDecl):
 
     def __init__(self, name, type_, annotations, pxd_path):
         super(CppAttributeDecl, self).__init__(name, annotations,
-                                                      pxd_path)
+                                               pxd_path)
         self.type_ = type_
 
 
 class CppMethodOrFunctionDecl(BaseDecl):
 
     def __init__(self, result_type, name, arguments, annotations, pxd_path):
-        super(CppMethodOrFunctionDecl, self).__init__(name, annotations,
-                                                      pxd_path)
+        super(CppMethodOrFunctionDecl, self).__init__(name, annotations, pxd_path)
         self.result_type = result_type
         self.arguments = arguments
 
@@ -299,7 +292,7 @@ class CppMethodOrFunctionDecl(BaseDecl):
 
     def __str__(self):
         return "CppMethodOrFunctionDecl: %s %s (%s)" % (self.result_type,
-                self.name, ["%s %s" % (str(t), n) for n, t in self.arguments])
+                                                        self.name, ["%s %s" % (str(t), n) for n, t in self.arguments])
 
 
 class MethodOrAttributeDecl(object):
@@ -314,8 +307,7 @@ class MethodOrAttributeDecl(object):
         result_type = _extract_type(node.base_type, decl)
 
         if isinstance(decl, CNameDeclaratorNode):
-            return CppAttributeDecl(decl.name, result_type, annotations,
-                                                                      pxd_path)
+            return CppAttributeDecl(decl.name, result_type, annotations, pxd_path)
 
         if isinstance(decl.base, CFuncDeclaratorNode):
             decl = decl.base
@@ -339,8 +331,7 @@ class MethodOrAttributeDecl(object):
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname, tt))
 
-        return CppMethodOrFunctionDecl(result_type, name, args, annotations,
-                                       pxd_path)
+        return CppMethodOrFunctionDecl(result_type, name, args, annotations, pxd_path)
 
     def __str__(self):
         rv = str(self.result_type)
@@ -410,11 +401,11 @@ def parse_pxd_file(path):
         print "cimport", b.module_name, "as", b.as_name
 
     handlers = {CEnumDefNode: EnumDecl.parseTree,
-                 CppClassNode: CppClassDecl.parseTree,
-                 CTypeDefNode: CTypeDefDecl.parseTree,
-                 CVarDefNode: MethodOrAttributeDecl.parseTree,
-                 CImportStatNode: cimport,
-                 }
+                CppClassNode: CppClassDecl.parseTree,
+                CTypeDefNode: CTypeDefDecl.parseTree,
+                CVarDefNode: MethodOrAttributeDecl.parseTree,
+                CImportStatNode: cimport,
+                }
 
     result = []
     for body in iter_bodies(root):
@@ -427,7 +418,7 @@ def parse_pxd_file(path):
                 handler = handlers.get(type(node))
                 if handler is not None:
                     # L.info("parsed %s, handler=%s" % (node.__class__,
-                                                      #handler.im_self))
+                                                      # handler.im_self))
                     result.append(handler(node, lines, path))
     return result
 

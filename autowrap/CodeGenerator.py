@@ -61,9 +61,7 @@ class CodeGenerator(object):
 
         self.classes = [d for d in resolved if isinstance(d, ResolvedClass)]
         self.enums = [d for d in resolved if isinstance(d, ResolvedEnum)]
-        self.functions = [d for d in resolved if isinstance(d,
-                                                            ResolvedFunction)]
-
+        self.functions = [d for d in resolved if isinstance(d, ResolvedFunction)]
         self.typedefs = [d for d in resolved if isinstance(d, ResolvedTypeDef)]
 
         self.resolved = []
@@ -74,12 +72,7 @@ class CodeGenerator(object):
 
         self.instance_mapping = instance_mapping
 
-        class_names = [c.name for c in self.classes]
-        enum_names = [c.name for c in self.enums]
-
-        self.cr = setup_converter_registry(self.classes,
-                                           self.enums,
-                                           instance_mapping)
+        self.cr = setup_converter_registry(self.classes, self.enums, instance_mapping)
 
         self.top_level_code = []
         self.class_codes = defaultdict(list)
@@ -103,8 +96,7 @@ class CodeGenerator(object):
             pxd_file = os.path.basename(pxd_path)
             inst.pxd_import_path, __ = os.path.splitext(pxd_file)
 
-        assert len(pxd_dirs) <= 1, \
-            "pxd files must be located in same directory"
+        assert len(pxd_dirs) <= 1, "pxd files must be located in same directory"
 
         self.pxd_dir = pxd_dirs.pop() if pxd_dirs else None
 
@@ -183,8 +175,7 @@ class CodeGenerator(object):
         for py_name in common_names:
             __, res_type_begin = begin_iterators[py_name]
             __, res_type_end = end_iterators[py_name]
-            assert res_type_begin == res_type_end, \
-                "iter value types do not match"
+            assert res_type_begin == res_type_end, "iter value types do not match"
 
         begin_methods = dict((n, m) for n, (m, __) in begin_iterators.items())
         end_methods = dict((n, m) for n, (m, __) in end_iterators.items())
@@ -272,8 +263,6 @@ class CodeGenerator(object):
             code = self.create_special_cmp_method(r_class, has_ops)
             class_code.add(code)
 
-        # assert cons_created, "no constructor for %s created" % cname
-
         codes = self._create_iter_methods(iterators, r_class.instance_map, r_class.local_map)
         for ci in codes:
             class_code.add(ci)
@@ -314,8 +303,7 @@ class CodeGenerator(object):
             codes.append(meth_code)
         return codes
 
-    def _create_overloaded_method_decl(self, py_name,
-                                       dispatched_m_names, methods, use_return):
+    def _create_overloaded_method_decl(self, py_name, dispatched_m_names, methods, use_return):
 
         L.info("   create wrapper decl for overloaded method %s" % py_name)
 
@@ -333,8 +321,7 @@ class CodeGenerator(object):
             else:
                 tns = [(t, "args[%d]" % i) for i, (t, n) in enumerate(args)]
                 checks = ["len(args)==%d" % len(tns)]
-                checks += [self.cr.get(t).type_check_expression(t, n)
-                           for (t, n) in tns]
+                checks += [self.cr.get(t).type_check_expression(t, n) for (t, n) in tns]
                 check_expr = " and ".join("(%s)" % c for c in checks)
             return_ = "return" if use_return else ""
             if_elif = "if" if first_iteration else "elif"
@@ -374,8 +361,7 @@ class CodeGenerator(object):
                 return [code]
 
         if len(methods) == 1:
-            code = self.create_wrapper_for_nonoverloaded_method(cdcl, py_name,
-                                                                methods[0])
+            code = self.create_wrapper_for_nonoverloaded_method(cdcl, py_name, methods[0])
             return [code]
         else:
             # TODO: what happens if two distinct c++ types as float, double
@@ -393,19 +379,11 @@ class CodeGenerator(object):
                                                                     )
                 codes.append(code)
 
-            code = self._create_overloaded_method_decl(
-                py_name,
-                dispatched_m_names,
-                methods,
-                True)
+            code = self._create_overloaded_method_decl(py_name, dispatched_m_names, methods, True)
             codes.append(code)
             return codes
 
-    def _create_fun_decl_and_input_conversion(self,
-                                              code,
-                                              py_name,
-                                              method,
-                                              is_free_fun=False):
+    def _create_fun_decl_and_input_conversion(self, code, py_name, method, is_free_fun=False):
         """ Creates the function declarations and the input conversion to C++
         and the output conversion back to Python.
 
@@ -428,8 +406,7 @@ class CodeGenerator(object):
             converter = self.cr.get(t)
             converter.cr = self.cr
             py_type = converter.matching_python_type(t)
-            conv_code, call_as, cleanup =\
-                converter.input_conversion(t, n, arg_num)
+            conv_code, call_as, cleanup = converter.input_conversion(t, n, arg_num)
             py_signature_parts.append("%s %s " % (py_type, n))
             input_conversion_codes.append(conv_code)
             cleanups.append(cleanup)
@@ -514,10 +491,9 @@ class CodeGenerator(object):
         L.info("   create wrapper for %s ('%s')" % (py_name, method))
         meth_code = Code.Code()
 
-        call_args, cleanups, in_types =\
-            self._create_fun_decl_and_input_conversion(meth_code,
-                                                       py_name,
-                                                       method)
+        call_args, cleanups, in_types = self._create_fun_decl_and_input_conversion(meth_code,
+                                                                                   py_name,
+                                                                                   method)
 
         # call wrapped method and convert result value back to python
         cpp_name = method.cpp_decl.name
@@ -575,10 +551,7 @@ class CodeGenerator(object):
         fun_code = Code.Code()
 
         call_args, cleanups, in_types =\
-            self._create_fun_decl_and_input_conversion(fun_code,
-                                                       name,
-                                                       decl,
-                                                       is_free_fun=True)
+            self._create_fun_decl_and_input_conversion(fun_code, name, decl, is_free_fun=True)
 
         call_args_str = ", ".join(call_args)
         mangled_name = "_" + decl.name + "_" + decl.pxd_import_path
@@ -628,7 +601,8 @@ class CodeGenerator(object):
 
         if len(real_constructors) == 1:
             code = self.create_wrapper_for_nonoverloaded_constructor(class_decl,
-                                                                     "__init__", real_constructors[0])
+                                                                     "__init__",
+                                                                     real_constructors[0])
             codes.append(code)
         else:
             dispatched_cons_names = []
@@ -636,14 +610,11 @@ class CodeGenerator(object):
                 dispatched_cons_name = "_init_%d" % i
                 dispatched_cons_names.append(dispatched_cons_name)
                 code = self.create_wrapper_for_nonoverloaded_constructor(class_decl,
-                                                                         dispatched_cons_name, constructor,
-                                                                         )
+                                                                         dispatched_cons_name,
+                                                                         constructor)
                 codes.append(code)
-            code = self._create_overloaded_method_decl(
-                "__init__",
-                dispatched_cons_names,
-                constructors,
-                False)
+            code = self._create_overloaded_method_decl("__init__", dispatched_cons_names,
+                                                       constructors, False)
             codes.append(code)
         return codes
 
@@ -659,9 +630,7 @@ class CodeGenerator(object):
         cons_code = Code.Code()
 
         call_args, cleanups, in_types =\
-            self._create_fun_decl_and_input_conversion(cons_code,
-                                                       py_name,
-                                                       cons_decl)
+            self._create_fun_decl_and_input_conversion(cons_code, py_name, cons_decl)
 
         # create instance of wrapped class
         call_args_str = ", ".join(call_args)
@@ -732,10 +701,8 @@ class CodeGenerator(object):
         L.info("   create wrapper for operator[]")
         meth_code = Code.Code()
 
-        (call_arg,) , cleanups, in_types =\
-            self._create_fun_decl_and_input_conversion(meth_code,
-                                                       "__getitem__",
-                                                       mdcl)
+        (call_arg,), cleanups, in_types =\
+            self._create_fun_decl_and_input_conversion(meth_code, "__getitem__", mdcl)
 
         meth_code.add("""
                      |    if $call_arg < 0:
@@ -832,9 +799,7 @@ class CodeGenerator(object):
                        '>=': 5, }
         inv_op_code_map = dict((v, k) for (k, v) in op_code_map.items())
 
-        implemented_op_codes = tuple(op_code_map[k] for (k, v)
-                                     in ops.items()
-                                     if v)
+        implemented_op_codes = tuple(op_code_map[k] for (k, v) in ops.items() if v)
         meth_code.add("""
            |
            |def __richcmp__(self, other, op):

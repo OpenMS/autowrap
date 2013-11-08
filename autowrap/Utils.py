@@ -24,6 +24,7 @@ setup(cmdclass = {'build_ext' : build_ext},
 
 """
 
+
 def compile_and_import(name, source_files, include_dirs=None, **kws):
 
     if include_dirs is None:
@@ -54,9 +55,9 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     setup_code = template % locals()
     if debug:
         print
-        print "-"*70
+        print "-" * 70
         print setup_code
-        print "-"*70
+        print "-" * 70
         print
 
     now = os.getcwd()
@@ -64,19 +65,17 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     with open("setup.py", "w") as fp:
         fp.write(setup_code)
 
-
     import sys
     sys.path.insert(0, tempdir)
     if debug:
         print
-        print "-"*70
+        print "-" * 70
         import pprint
         pprint.pprint(sys.path)
-        print "-"*70
+        print "-" * 70
         print
 
-    assert subprocess.Popen("python setup.py build_ext --force --inplace",
-            shell=True).wait() == 0
+    assert subprocess.Popen("python setup.py build_ext --force --inplace", shell=True).wait() == 0
     print "BUILT"
     result = __import__(name)
     print "imported"
@@ -133,6 +132,7 @@ def _check_for_cycles_in_mapping(mapping):
     if cycle is not None:
         info = " -> ".join(map(str, cycle))
         raise Exception("mapping contains cycle: " + info)
+
 
 def print_map(mapping):
     for k, v in mapping.items():

@@ -1,4 +1,6 @@
-import string, re
+import string
+import re
+
 
 class Code(object):
 
@@ -9,14 +11,14 @@ class Code(object):
         # keeps identation
         self.content.extend(other.content)
 
-    def add(self,  what, *a, **kw):
+    def add(self, what, *a, **kw):
         # may increase indent !
         if a:  # if dict given
             kw.update(a[0])
         if "self" in kw:
-            del kw["self"] # self causes problems in substitude call below
+            del kw["self"]  # self causes problems in substitude call below
         if isinstance(what, basestring):
-            #print repr(what)
+            # print repr(what)
             try:
                 res = string.Template(what).substitute(**kw)
             except:
@@ -37,7 +39,7 @@ class Code(object):
             if isinstance(content, basestring):
                 result.append(_indent + content)
             else:
-                for line in content._render(_indent = _indent + "    "):
+                for line in content._render(_indent=_indent + "    "):
                     result.append(line)
         return result
 
