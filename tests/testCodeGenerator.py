@@ -243,6 +243,24 @@ def test_libcpp():
     assert t.process32([[1,2,3],[1]]) == 7
     assert t.process32([[1,2,3],[1], [1, 2]]) == 10
 
+    i1 = libcpp.Int(1)
+    assert t.process33(i1) == 2
+    i2 = libcpp.Int(10)
+    assert t.process33(i2) == 11
+
+    # process34 modifies the shared ptr and returns it as well, there exists
+    # only 1 C++ object of libcpp.Int but multiple Python objects point to it
+    # using their shared_ptr.
+    i1 = libcpp.Int(10)
+    i2 = t.process34(i1)
+    assert isinstance(i2, libcpp.Int)
+    assert i1.i_ == 11
+    assert i2.i_ == 11
+    i3 = t.process34(i2)
+    assert i1.i_ == 12
+    assert i2.i_ == 12
+    assert i3.i_ == 12
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,

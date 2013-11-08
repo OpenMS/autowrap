@@ -3,6 +3,7 @@ from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
 from libcpp.pair  cimport pair  as libcpp_pair 
 from libcpp.map  cimport map  as libcpp_map 
+from smart_ptr cimport shared_ptr
 
 cdef extern from "libcpp_test.hpp":
 
@@ -67,3 +68,8 @@ cdef extern from "libcpp_test.hpp":
 
         int   process31(libcpp_vector[int] in_)
         int   process32(libcpp_vector[libcpp_vector[int]] in_)
+
+        int   process33(shared_ptr[Int] in_)
+        shared_ptr[Int] process34(shared_ptr[Int] in_)
+
+
