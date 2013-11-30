@@ -1206,6 +1206,15 @@ class SharedPtrConverter(TypeConverterBase):
         tt, = cpp_type.template_args
         return "isinstance(%s, %s)" % (argument_var, tt)
 
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        tt, = cpp_type.template_args
+        code = Code().add("""
+            |cdef $tt py_result
+            |$output_py_var = $tt.__new__($tt)
+            |$output_py_var.inst = $input_cpp_var""", locals() )
+        return code
+
 special_converters = []
 
 def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):

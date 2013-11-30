@@ -2,6 +2,8 @@
 #include <string>
 #include <utility>
 #include <map>
+#include <boost/shared_ptr.hpp>
+
 
 enum EEE {
     A, B
@@ -252,6 +254,19 @@ class LibCppTest {
             for (std::vector<std::vector<int> >::const_iterator i = in.begin(); i != in.end(); ++i)
                 sum += process31(*i);
             return sum;
+        }
+
+        int process33(boost::shared_ptr<Int> in)
+        {
+            in->i_++;
+            return in->i_;
+        }
+
+
+        boost::shared_ptr<Int> process34(boost::shared_ptr<Int> in)
+        {
+            in->i_++;
+            return in;
         }
            
 };
