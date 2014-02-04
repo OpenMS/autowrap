@@ -307,8 +307,13 @@ class MethodOrAttributeDecl(object):
         result_type = _extract_type(node.base_type, decl)
 
         if isinstance(decl, CNameDeclaratorNode):
+            # Handle regular declarations
             return CppAttributeDecl(decl.name, result_type, annotations, pxd_path)
 
+        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(decl.base, CFuncDeclaratorNode):
+            # Handle raw pointer declarations (call with base name)
+            return CppAttributeDecl(decl.base.name, result_type, annotations,
+                                                                      pxd_path)
         if isinstance(decl.base, CFuncDeclaratorNode):
             decl = decl.base
 

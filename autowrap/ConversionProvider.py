@@ -359,14 +359,19 @@ class TypeToWrapConverter(TypeConverterBase):
         #t = res_type.base_type
         t = self.converters.cython_type(res_type)
 
-        return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
+        if t.is_ptr:
+            # If t is a pointer, we would like to call on the base type
+            t = t.base_type 
+            cy_call_str = "deref(%s)" % cy_call_str
 
+        return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
-        assert not cpp_type.is_ptr
-
         cy_clz = self.converters.cython_type(cpp_type)
+        if cpp_type.is_ptr:
+            cy_clz = cy_clz.base_type
+
         t = cpp_type.base_type
         return Code().add("""
                       |cdef $t $output_py_var = $t.__new__($t)
@@ -834,7 +839,10 @@ class StdVectorConverter(TypeConverterBase):
                 """ + btm_add, *a, **kw)
         else:
             if recursion_cnt == 0:
-                cleanup_code = Code().add("del %s" % temp_var)
+                if cpp_type.is_ptr:
+                    cleanup_code = Code()
+                else:
+                    cleanup_code = Code().add("del %s" % temp_var)
             else:
                 cleanup_code = Code()
                 bottommost_code.add("del %s" % temp_var)
@@ -1048,7 +1056,12 @@ class StdVectorConverter(TypeConverterBase):
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
 
-            return code, "deref(%s)" % temp_var, cleanup_code
+            if cpp_type.is_ptr:
+                call_fragment = temp_var
+            else:
+                call_fragment = "deref(%s)" % temp_var
+
+            return code, call_fragment, cleanup_code
         elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
             len( set(self.converters.names_of_wrapper_classes).intersection(
                 set(tt.all_occuring_base_types()) )) > 0:
@@ -1058,7 +1071,6 @@ class StdVectorConverter(TypeConverterBase):
             # Case 3: We wrap a std::vector<> with a base type that is
             # std::vector<> => recursion
             item = "%s_rec" % argument_var
-
 
             # A) Prepare the pre-call
             code = Code()
@@ -1096,15 +1108,19 @@ class StdVectorConverter(TypeConverterBase):
             return code, "%s" % temp_var, cleanup_code
 
     def call_method(self, res_type, cy_call_str):
+
+        t = self.converters.cython_type(res_type)
+        if t.is_ptr:
+            return "_r = deref(%s)" % (cy_call_str)
+
         return "_r = %s" % (cy_call_str)
 
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
-        assert not cpp_type.is_ptr
-
         tt, = cpp_type.template_args
         inner = self.converters.cython_type(tt)
+
         if inner.is_enum:
             it = mangle("it_" + input_cpp_var)
             code = Code().add("""

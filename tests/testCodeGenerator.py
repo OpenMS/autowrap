@@ -261,6 +261,32 @@ def test_libcpp():
     assert i2.i_ == 12
     assert i3.i_ == 12
 
+    try:
+        assert t.integer_ptr is None 
+        assert False
+    except Exception:
+        # Should throw an exception
+        assert True
+
+    i1 = libcpp.Int(1)
+    i2 = libcpp.Int(2)
+    i3 = libcpp.Int(3)
+    t.integer_ptr = i1
+    assert t.integer_ptr.i_ == 1
+    t.integer_ptr = i2
+    assert t.integer_ptr.i_ == 2
+
+    try:
+        t.integer_vector_ptr
+        assert False
+    except Exception:
+        # Should throw an exception
+        assert True
+
+    t.integer_vector_ptr = [i1,i2,i3]
+    assert len(t.integer_vector_ptr) == 3
+
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,
