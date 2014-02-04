@@ -21,7 +21,7 @@ class LibCppTest {
     private:
         int i;
     public:
-        LibCppTest(): i(0) { };
+        LibCppTest(): i(0), integer_ptr(0), integer_vector_ptr(0) { };
         LibCppTest(int ii): i(ii) { };
 
         LibCppTest(const LibCppTest &o): i(o.i)  {
