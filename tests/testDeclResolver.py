@@ -134,14 +134,14 @@ def test_singular():
     res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
     print (res0_names)
     print (res1_names)
-    assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
+    assert list(res0_names) ==  ["TemplatesInt", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
 
     res0_restypes = map(str, (m.result_type for m in
         res0.get_flattened_methods()))
 
-    assert res0_restypes == ['void', 'int', 'int', 'int', 'int', 'void',
+    assert list(res0_restypes) == ['void', 'int', 'int', 'int', 'int', 'void',
                              'TemplatesInt',
                              'TemplatesMixed', 'Templates[double,float]',
                              'TemplatesInt'], res0_restypes
@@ -150,61 +150,61 @@ def test_singular():
     res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
     print (res0_names)
     print (res1_names)
-    assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
+    assert list(res0_names) ==  ["TemplatesInt", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
     first_arg_names= map(lambda m: None if len(m.arguments) == 0 else
             str(m.arguments[0][0]), res0.get_flattened_methods())
-    assert first_arg_names == ["a", None, None, None, None, "arg0", "",
+    assert list(first_arg_names) == ["a", None, None, None, None, "arg0", "",
                                "", None, ""], first_arg_names
 
     second_arg_names= map(lambda m: None if len(m.arguments) < 2 else
             str(m.arguments[1][0]), res0.get_flattened_methods())
-    assert second_arg_names == ["b", None, None, None, None, "arg1", None,
+    assert list(second_arg_names) == ["b", None, None, None, None, "arg1", None,
                                None, None, ""], second_arg_names
 
     first_arg_types= map(lambda m: None if len(m.arguments) == 0 else
             str(m.arguments[0][1]), res0.get_flattened_methods())
 
-    assert first_arg_types == ["int", None, None, None, None, "list[int]",
+    assert list(first_arg_types) == ["int", None, None, None, None, "list[int]",
             "TemplatesMixed"  , "TemplatesInt", None , "int"], first_arg_types
 
     second_arg_types= map(lambda m: None if len(m.arguments) < 2 else
             str(m.arguments[1][1]), res0.get_flattened_methods())
-    assert second_arg_types == ["int", None, None, None, None, "list[int] &",
+    assert list(second_arg_types) == ["int", None, None, None, None, "list[int] &",
                                     None, None, None , "int"], second_arg_types
 
 
     res1_restypes = map(lambda m: str(m.result_type),
             res1.get_flattened_methods())
-    assert res1_restypes == ['void', 'int', 'float', 'int', 'float', 'void',
+    assert list(res1_restypes) == ['void', 'int', 'float', 'int', 'float', 'void',
                              'TemplatesInt',
                              'TemplatesMixed', 'Templates[double,float]',
                              'TemplatesMixed'], res1_restypes
 
     res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
-    assert res1_names ==  ["TemplatesMixed", "getA", "getB", "toA",
+    assert list(res1_names) ==  ["TemplatesMixed", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res1_names
 
     first_arg_names= map(lambda m: None if len(m.arguments) == 0 else
             str(m.arguments[0][0]), res1.get_flattened_methods())
-    assert first_arg_names == ["a", None, None, None, None, "arg0", "",
+    assert list(first_arg_names) == ["a", None, None, None, None, "arg0", "",
                                "", None, ""], first_arg_names
 
     second_arg_names= map(lambda m: None if len(m.arguments) < 2 else
             str(m.arguments[1][0]), res1.get_flattened_methods())
-    assert second_arg_names == ["b", None, None, None, None, "arg1", None,
+    assert list(second_arg_names) == ["b", None, None, None, None, "arg1", None,
                                None, None, ""], second_arg_names
 
     first_arg_types= map(lambda m: None if len(m.arguments) == 0 else
             str(m.arguments[0][1]), res1.get_flattened_methods())
 
-    assert first_arg_types == ["int", None, None, None, None, "list[int]",
+    assert list(first_arg_types) == ["int", None, None, None, None, "list[int]",
             "TemplatesMixed"   , "TemplatesInt", None , "int"], first_arg_types
 
     second_arg_types= map(lambda m: None if len(m.arguments) < 2 else
             str(m.arguments[1][1]), res1.get_flattened_methods())
-    assert second_arg_types == ["float", None, None, None, None,
+    assert list(second_arg_types) == ["float", None, None, None, None,
                                 "list[float] &", None, None, None,
                                 "float"], second_arg_types
 

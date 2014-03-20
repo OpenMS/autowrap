@@ -52,7 +52,7 @@ def test_shared_ptr():
                                                 include_dirs)
     assert m.__name__ == "m"
 
-    h1 = m.Holder("uwe")
+    h1 = m.Holder(b"uwe")
     assert h1.count() == 1
     assert h1.size() == 3
     h2 = h1.getRef()
@@ -94,7 +94,7 @@ def test_libcpp():
     print(dir(libcpp))
 
     t = libcpp.LibCppTest()
-    assert t.twist(["hi", 2]) == [2, "hi"]
+    assert t.twist([b"hi", 2]) == [2, b"hi"]
     li = [ 1]
     li2 = t.process(li)
     assert li == li2 == [ 1, 42]
@@ -156,13 +156,16 @@ def test_libcpp():
     assert sorted(x.gett() for x in out) == [ 12, 42]
 
     out = t.process12(1, 2.0)
-    assert out.items() == [ (1, 2.0)]
+    assert list(out.items()) == [ (1, 2.0)]
 
     out = t.process13(libcpp.EEE.A, 2)
-    assert out.items() == [ (libcpp.EEE.A, 2)]
+    print (list(out.items())) 
+    print ([ (libcpp.EEE.A, 2)])
+    print (list(out.items()) == [ (libcpp.EEE.A, 2)])
+    assert list(out.items()) == [ (libcpp.EEE.A, 2)]
 
     out = t.process14(libcpp.EEE.A, 3)
-    assert out.items() == [ (3, libcpp.EEE.A)]
+    assert list(out.items()) == [ (3, libcpp.EEE.A)]
 
     out = t.process15(12)
     (k, v),  = out.items()
@@ -178,17 +181,16 @@ def test_libcpp():
     dd = dict()
     t.process19(dd)
     assert len(dd) == 1
-    assert dd.keys() == [23]
-    assert dd.values()[0].gett() == 12
+    assert list(dd.keys()) == [23]
+    assert list(dd.values())[0].gett() == 12
 
     dd = dict()
     t.process20(dd)
-    assert dd.items() == [ (23, 42.0) ]
-
+    assert list(dd.items()) == [ (23, 42.0) ]
 
     d1 = dict()
     t.process21(d1, { 42: 11})
-    assert d1.get(1) == 11;
+    assert d1.get(1) == 11
 
     d1 = set((42,))
     d2 = set()
@@ -339,10 +341,10 @@ def test_minimal():
 
     assert minimal.compute(1, 2) == 3
     assert minimal.compute_int(4) == 5
-    assert minimal.compute("uwe") == "ewu"
-    assert minimal.compute_str("emzed") == "dezme"
-    assert minimal.pass_charptr("emzed") == "emzed"
-    assert minimal.pass_const_charptr("emzed") == "emzed"
+    assert minimal.compute(b"uwe") == b'ewu'
+    assert minimal.compute_str(b"emzed") == b"dezme"
+    assert minimal.pass_charptr(b"emzed") == b"emzed"
+    assert minimal.pass_const_charptr(b"emzed") == b"emzed"
 
     assert minimal.compute_int() == 42
 
@@ -352,7 +354,7 @@ def test_minimal():
 
     expect_exception(lambda: minimal.compute(None))()
 
-    assert minimal.compute_charp("uwe") == 3
+    assert minimal.compute_charp(b"uwe") == 3
 
     assert minimal.run(minimal) == 4
     assert minimal.run2(minimal) == 5
@@ -379,12 +381,12 @@ def test_minimal():
     m3 = wrapped.Minimal([1,2,3])
     assert m3.compute(0) == 4
 
-    in_ = ["a", "bc"]
+    in_ = [b"a", b"bc"]
     assert  m3.call2(in_) == 3
-    assert in_ == ["a", "bc", "hi"]
+    assert in_ == [b"a", b"bc", b"hi"]
 
     msg, = m3.message()
-    assert msg == "hello"
+    assert msg == b"hello"
 
     m1, m2 = m3.create_two()
     assert m1.compute(42) == 42
