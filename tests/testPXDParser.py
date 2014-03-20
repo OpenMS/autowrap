@@ -1,10 +1,12 @@
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import pdb
 import autowrap.PXDParser
 import os
 
-from  autowrap.Types import CppType as CppType
-
-from utils import expect_exception
+from autowrap.Types import CppType as CppType
+from .utils import expect_exception
 
 def _parse(pxdFileName):
     test_file = os.path.join(os.path.dirname(__file__),
@@ -92,7 +94,7 @@ cdef extern from "Minimal.hpp":
         assert meth.name == "overloaded"
         assert meth.result_type == CppType("void")
         arguments.append(meth.arguments)
-    assert arguments == [[ (u"inp", CppType("int"))], [(u"inp", CppType("float"))]]
+    assert arguments == [[ ("inp", CppType("int"))], [("inp", CppType("float"))]]
 
     run_meth = cld.methods["run2"][0]
     name, arg_type = run_meth.arguments[0]
@@ -234,11 +236,11 @@ cdef extern from "A.h":
         pass
 
     """)
-    assert inst1.name == u"A"
-    assert inst1.template_parameters == [ u"B", u"C" ]
+    assert inst1.name == "A"
+    assert inst1.template_parameters == [ "B", "C" ]
     assert inst1.methods.keys() == ["run"]
-    assert inst2.name == u"C"
-    assert inst2.template_parameters == [ u"E", ]
+    assert inst2.name == "C"
+    assert inst2.template_parameters == [ "E", ]
     assert len(inst2.methods) == 0
 
 def test_typedef():

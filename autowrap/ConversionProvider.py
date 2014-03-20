@@ -1,9 +1,24 @@
 from collections import defaultdict
 
-from Types import CppType # , printable
-from Code import Code
+from autowrap.Types import CppType # , printable
+from autowrap.Code import Code
 
 import logging as L
+
+try:
+    unicode = unicode
+except NameError:
+    # 'unicode' is undefined, must be Python 3
+    str = str
+    unicode = str
+    bytes = bytes
+    basestring = (str,bytes)
+else:
+    # 'unicode' exists, must be Python 2
+    str = str
+    unicode = unicode
+    bytes = str
+    basestring = basestring
 
 def mangle(s):
     s = s.replace("(", "_l_")

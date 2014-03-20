@@ -134,7 +134,7 @@ class CppType(object):
     def check_for_recursion(self):
         try:
             self._check_for_recursion(set())
-        except Exception, e:
+        except Exception as e:
             if str(e) != "recursion check failed":
                 raise e
             raise Exception("re check for '%s' failed" % self)

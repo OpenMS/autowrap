@@ -1,11 +1,11 @@
+from __future__ import print_function
 import autowrap.DeclResolver as DeclResolver
 import autowrap.PXDParser
 import os
 from autowrap.Types import CppType
 from autowrap.Utils import print_map
 
-
-from utils import expect_exception
+from .utils import expect_exception
 
 #TODO: use parse_str so that the pxd code is next to the testing code
 
@@ -132,8 +132,8 @@ def test_singular():
 
     res0_names =  map(lambda m: m.name, res0.get_flattened_methods())
     res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
-    print res0_names
-    print res1_names
+    print (res0_names)
+    print (res1_names)
     assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
@@ -148,8 +148,8 @@ def test_singular():
 
     res0_names =  map(lambda m: m.name, res0.get_flattened_methods())
     res1_names =  map(lambda m: m.name, res1.get_flattened_methods())
-    print res0_names
-    print res1_names
+    print (res0_names)
+    print (res1_names)
     assert res0_names ==  ["TemplatesInt", "getA", "getB", "toA",
             "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
@@ -251,14 +251,14 @@ cdef extern from "D.h":
             mdata.append(li)
         data[class_instance.name] = mdata
 
-    assert data == {'D1': [['void', u'Afun', 'int', 'int'],
-                            ['void', u'Afun', 'float', 'int'],
-                            ['int', u'BIdentity', 'int'],
-                            ['void', u'Cint', 'int', 'float']],
-                    'D2': [['void', u'Afun', 'float', 'int'],
-                            ['void', u'Afun', 'int', 'int'],
-                            ['float', u'BIdentity', 'float'],
-                            ['void', u'Cint', 'int', 'int']]}
+    assert data == {'D1': [['void', 'Afun', 'int', 'int'],
+                            ['void', 'Afun', 'float', 'int'],
+                            ['int', 'BIdentity', 'int'],
+                            ['void', 'Cint', 'int', 'float']],
+                    'D2': [['void', 'Afun', 'float', 'int'],
+                            ['void', 'Afun', 'int', 'int'],
+                            ['float', 'BIdentity', 'float'],
+                            ['void', 'Cint', 'int', 'int']]}
 
 
 @expect_exception
@@ -568,4 +568,4 @@ cdef extern from "":
 
     assert A.name == "A"
     m, = A.methods["A"]
-    print m
+    print (m)

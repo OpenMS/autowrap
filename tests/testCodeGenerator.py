@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
@@ -9,7 +11,7 @@ import os
 import math
 import copy
 
-from utils import expect_exception
+from .utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
@@ -89,7 +91,7 @@ def test_libcpp():
     libcpp = autowrap.Utils.compile_and_import("libcpp", [target, ],
                                                 include_dirs)
     assert libcpp.__name__ == "libcpp"
-    print dir(libcpp)
+    print(dir(libcpp))
 
     t = libcpp.LibCppTest()
     assert t.twist(["hi", 2]) == [2, "hi"]
