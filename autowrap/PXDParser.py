@@ -38,7 +38,7 @@ def _parse_multiline_annotations(lines):
     result = defaultdict(list)
     while it:
         try:
-            line = it.next().strip()
+            line = next(it).strip()
         except StopIteration:
             break
         if not line:
@@ -47,11 +47,11 @@ def _parse_multiline_annotations(lines):
             line = line[1:].strip()
             if line.endswith(":"):
                 key = line.rstrip(":")
-                line = it.next().strip()
+                line = next(it).strip()
                 while line.startswith("#  "):
                     value = line[1:].strip()
                     result[key].append(value)
-                    line = it.next().strip()
+                    line = next(it).strip()
             else:
                 key = line
                 result[key] = True
@@ -351,7 +351,7 @@ def parse_str(what):
 
     # delete=False keeps file after closing it !
     with tempfile.NamedTemporaryFile(delete=False) as fp:
-        fp.write(what)
+        fp.write(what.encode("utf-8"))
         fp.flush()
         fp.close()  # needed for reading it on win
         result = parse_pxd_file(fp.name)
