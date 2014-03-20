@@ -118,6 +118,7 @@ def register_converters(converters):
         except ImportError as e:
             print( "tried import from ", sys.path[0])
             print( "module I tried to import: ", tail)
+            # TODO import error does not have message in Python3!! 
             raise ImportError(e.message +
                               ", maybe __init__.py files are missing")
 
