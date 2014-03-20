@@ -1181,7 +1181,7 @@ class StdStringConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type):
-        return "str"
+        return "bytes"
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
@@ -1190,7 +1190,7 @@ class StdStringConverter(TypeConverterBase):
         return code, call_as, cleanup
 
     def type_check_expression(self, cpp_type, argument_var):
-        return "isinstance(%s, str)" % argument_var
+        return "isinstance(%s, bytes)" % argument_var
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
