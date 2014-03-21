@@ -1,6 +1,6 @@
 # encoding:latin-1
 from __future__ import print_function
-
+import sys
 
 template = """
 
@@ -77,10 +77,7 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("-" * 70)
         print("\n")
     
-    # TODO 
-    # here we just use the systems python but we should provide a mechanism to
-    # select the python executable to use (e.g. python 2 or 3)
-    assert subprocess.Popen("python setup.py build_ext --force --inplace", shell=True).wait() == 0
+    assert subprocess.Popen("%s setup.py build_ext --force --inplace" % sys.executable, shell=True).wait() == 0
     print("BUILT")
     result = __import__(name)
     print("imported")
