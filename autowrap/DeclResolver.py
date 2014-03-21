@@ -1,10 +1,10 @@
 # encoding: utf-8
-import PXDParser
-import Types
-import Utils
+import autowrap.PXDParser as PXDParser
+import autowrap.Types as Types
+import autowrap.Utils as Utils
 import os
 from collections import defaultdict
-from tools import OrderKeepingDictionary
+from autowrap.tools import OrderKeepingDictionary
 
 
 __doc__ = """

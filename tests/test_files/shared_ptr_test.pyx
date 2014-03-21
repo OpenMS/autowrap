@@ -7,7 +7,7 @@ cdef class Holder:
 
     cdef shared_ptr[std_string] inst
 
-    def __init__(self, str what):
+    def __init__(self, bytes what):
         cdef std_string p = <std_string> what
         self.inst = shared_ptr[std_string](new std_string(p))
 

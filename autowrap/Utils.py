@@ -1,5 +1,6 @@
 # encoding:latin-1
-
+from __future__ import print_function
+import sys
 
 template = """
 
@@ -39,9 +40,9 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
 
     tempdir = tempfile.mkdtemp()
     if debug:
-        print
-        print "tempdir=", tempdir
-        print
+        print("\n")
+        print("tempdir=", tempdir)
+        print("\n")
     for source_file in source_files:
         shutil.copy(source_file, tempdir)
 
@@ -54,11 +55,12 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     source_files = [os.path.basename(f) for f in source_files]
     setup_code = template % locals()
     if debug:
-        print
-        print "-" * 70
-        print setup_code
-        print "-" * 70
-        print
+        print("\n")
+        print("-" * 70)
+        print(setup_code)
+        print("-" * 70)
+        print("\n")
+
 
     now = os.getcwd()
     os.chdir(tempdir)
@@ -68,23 +70,23 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     import sys
     sys.path.insert(0, tempdir)
     if debug:
-        print
-        print "-" * 70
+        print("\n")
+        print("-" * 70)
         import pprint
         pprint.pprint(sys.path)
-        print "-" * 70
-        print
-
-    assert subprocess.Popen("python setup.py build_ext --force --inplace", shell=True).wait() == 0
-    print "BUILT"
+        print("-" * 70)
+        print("\n")
+    
+    assert subprocess.Popen("%s setup.py build_ext --force --inplace" % sys.executable, shell=True).wait() == 0
+    print("BUILT")
     result = __import__(name)
-    print "imported"
+    print("imported")
     if debug:
-        print "imported", result
+        print("imported", result)
 
     sys.path = sys.path[1:]
     os.chdir(now)
-    print result
+    print(result)
     return result
 
 
@@ -99,7 +101,7 @@ def find_cycle(graph_as_dict):
     http://neopythonic.blogspot.de/2009/01/detecting-cycles-in-directed-graph.html
     """
 
-    nodes = graph_as_dict.keys()
+    nodes = list(graph_as_dict.keys())
     for n in graph_as_dict.values():
         nodes.extend(n)
     todo = list(set(nodes))
@@ -136,7 +138,7 @@ def _check_for_cycles_in_mapping(mapping):
 
 def print_map(mapping):
     for k, v in mapping.items():
-        print "%8s -> %s" % (k, v)
+        print("%8s -> %s" % (k, v))
 
 
 def flatten(mapping):

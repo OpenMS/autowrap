@@ -36,4 +36,3 @@ def pass_full_precision_vec(list in_0 ):
     in_0[:] = v0
     cdef list py_result = _r
     return py_result 
-

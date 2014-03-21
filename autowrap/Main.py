@@ -1,8 +1,10 @@
+from __future__ import print_function
 import os
 import sys
 import glob
 import autowrap.version
 import autowrap.Code
+import autowrap
 import optparse
 
 """
@@ -33,7 +35,7 @@ def main():
 
 
 def _main(argv):
-    parser = optparse.OptionParser(version="%d.%d.%d" % autowrap.version)
+    parser = optparse.OptionParser(version=("%d.%d.%d" % autowrap.version))
     parser.add_option("--addons", action="append", metavar="addon")
     parser.add_option("--converters", action="append", metavar="converter")
     parser.add_option("--out", action="store", nargs=1, metavar="pyx file")
@@ -60,13 +62,13 @@ def _main(argv):
                 if found:
                     collected.extend(found)
                 else:
-                    print "WARNING!  '%s' did not match any file" % item
+                    print( "WARNING!  '%s' did not match any file" % item)
         collected = sorted(set(collected))
         result = []
         for item in collected:
             __, ext = os.path.splitext(item)
             if ext != extension:
-                print "WARNING: ignore %s" % item
+                print( "WARNING: ignore %s" % item)
             else:
                 result.append(item)
         return result
@@ -76,12 +78,12 @@ def _main(argv):
         parser.exit(1, "\nno pxd input files specified\n")
     addons = collect(options.addons, ".pyx")
     converters = options.converters or []
-    print
-    print "STATUS:"
-    print "   %5d pxd input files to parse" % len(pxds)
-    print "   %5d add on files to process" % len(addons)
-    print "   %5d type converter files to consider" % len(converters)
-    print
+    print("\n")
+    print( "STATUS:")
+    print( "   %5d pxd input files to parse" % len(pxds))
+    print( "   %5d add on files to process" % len(addons))
+    print( "   %5d type converter files to consider" % len(converters))
+    print("\n")
 
     run(pxds, addons, converters, out)
 
@@ -113,22 +115,22 @@ def register_converters(converters):
         sys.path.insert(0, head)
         try:
             mod = __import__(tail)
-        except ImportError, e:
-            print "tried import from ", sys.path[0]
-            print "module I tried to import: ", tail
-            raise ImportError(e.message +
+        except ImportError as e:
+            print( "tried import from ", sys.path[0])
+            print( "module I tried to import: ", tail)
+            raise ImportError(str(e) +
                               ", maybe __init__.py files are missing")
 
         if not hasattr(mod, "register_converters"):
-            print
-            print "sys.path     = ", sys.path
-            print
-            print "dir(mod)     = ", dir(mod)
-            print
-            print "mod          = ", mod
-            print "mod.__path__ = ", mod.__path__
-            print "mod.__file__ = ", mod.__file__
-            print
+            print("\n")
+            print( "sys.path     = ", sys.path)
+            print("\n")
+            print( "dir(mod)     = ", dir(mod))
+            print("\n")
+            print( "mod          = ", mod)
+            print( "mod.__path__ = ", mod.__path__)
+            print( "mod.__file__ = ", mod.__file__)
+            print("\n")
             raise ImportError("no register_converters in %s" % mod_path)
 
         mod.register_converters()

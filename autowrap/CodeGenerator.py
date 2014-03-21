@@ -1,18 +1,32 @@
+from __future__ import print_function
 from contextlib import contextmanager
 import os.path
 import sys
 import re
 from collections import defaultdict
 
-from ConversionProvider import setup_converter_registry
-from DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
+from autowrap.ConversionProvider import setup_converter_registry
+from autowrap.DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
                           ResolvedFunction)
-
-from Types import CppType  # , printable
-
-import Code
+from autowrap.Types import CppType  # , printable
+import autowrap.Code as Code
 
 import logging as L
+
+try:
+    unicode = unicode
+except NameError:
+    # 'unicode' is undefined, must be Python 3
+    str = str
+    unicode = str
+    bytes = bytes
+    basestring = (str,bytes)
+else:
+    # 'unicode' exists, must be Python 2
+    str = str
+    unicode = unicode
+    bytes = str
+    basestring = basestring
 
 
 @contextmanager
@@ -139,9 +153,9 @@ class CodeGenerator(object):
             code += " \n"
 
         if debug:
-            print code
+            print(code)
         with open(self.target_path, "w") as fp:
-            print >> fp, code
+            fp.write(code)
 
     def filterout_iterators(self, methods):
         def parse(anno):

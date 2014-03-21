@@ -1,4 +1,6 @@
 # encoding: utf-8
+from __future__ import print_function
+from __future__ import absolute_import
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource
 from Cython.Compiler import Pipeline
@@ -6,15 +8,14 @@ from Cython.Compiler.Scanning import FileSourceDescriptor
 from Cython.Compiler.Nodes import *
 from Cython.Compiler.ExprNodes import *
 
-from Types import CppType
+from autowrap.Types import CppType
 
 import os
 
 # import logging as L
 
 from collections import defaultdict
-
-from tools import OrderKeepingDictionary
+from .tools import OrderKeepingDictionary
 
 """
 Methods in this module use Cythons Parser to build an Cython syntax tree
@@ -37,7 +38,7 @@ def _parse_multiline_annotations(lines):
     result = defaultdict(list)
     while it:
         try:
-            line = it.next().strip()
+            line = next(it).strip()
         except StopIteration:
             break
         if not line:
@@ -46,11 +47,11 @@ def _parse_multiline_annotations(lines):
             line = line[1:].strip()
             if line.endswith(":"):
                 key = line.rstrip(":")
-                line = it.next().strip()
+                line = next(it).strip()
                 while line.startswith("#  "):
                     value = line[1:].strip()
                     result[key].append(value)
-                    line = it.next().strip()
+                    line = next(it).strip()
             else:
                 key = line
                 result[key] = True
@@ -350,7 +351,7 @@ def parse_str(what):
 
     # delete=False keeps file after closing it !
     with tempfile.NamedTemporaryFile(delete=False) as fp:
-        fp.write(what)
+        fp.write(what.encode("utf-8"))
         fp.flush()
         fp.close()  # needed for reading it on win
         result = parse_pxd_file(fp.name)
@@ -403,7 +404,7 @@ def parse_pxd_file(path):
     lines = open(path).readlines()
 
     def cimport(b, _, __):
-        print "cimport", b.module_name, "as", b.as_name
+        print("cimport", b.module_name, "as", b.as_name)
 
     handlers = {CEnumDefNode: EnumDecl.parseTree,
                 CppClassNode: CppClassDecl.parseTree,
@@ -430,4 +431,4 @@ def parse_pxd_file(path):
 if __name__ == "__main__":
 
     import sys
-    print parse_pxd_file(sys.argv[1])
+    print(parse_pxd_file(sys.argv[1]))

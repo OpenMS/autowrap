@@ -1,5 +1,7 @@
+from __future__ import print_function
+
 from autowrap.Types import CppType
-from utils import expect_exception
+from .utils import expect_exception
 
 def testTypeParse():
     _testType("unsigned int")
@@ -79,7 +81,7 @@ def _test_check_for_recursion_2():
 def _assert_exeception_when_testing(str_):
     try:
         CppType.from_string(str_).check_for_recursion()
-    except Exception, e:
+    except Exception as e:
         estr = str(e)
         if not estr.startswith("recursion check for "):
             if not estr.endswith(" failed"):

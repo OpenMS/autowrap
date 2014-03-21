@@ -1,6 +1,21 @@
+from __future__ import print_function
 import string
 import re
 
+try:
+    unicode = unicode
+except NameError:
+    # 'unicode' is undefined, must be Python 3
+    str = str
+    unicode = str
+    bytes = bytes
+    basestring = (str,bytes)
+else:
+    # 'unicode' exists, must be Python 2
+    str = str
+    unicode = unicode
+    bytes = str
+    basestring = basestring
 
 class Code(object):
 
@@ -22,8 +37,8 @@ class Code(object):
             try:
                 res = string.Template(what).substitute(**kw)
             except:
-                print what
-                print kw
+                print(what)
+                print(kw)
                 raise
             res = re.sub("^[ ]*\n[ ]*\|", "", res)     # ltrim first line
             res = re.sub("\n+ *\+", "", res)
