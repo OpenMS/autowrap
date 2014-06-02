@@ -1,6 +1,37 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
+__license__ = """
+
+Copyright (c) 2012-2014, Uwe Schmitt, ETH Zurich, all rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this
+list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+Neither the name of the mineway GmbH nor the names of its contributors may be
+used to endorse or promote products derived from this software without specific
+prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+
+
 import pdb
 import autowrap.PXDParser
 import os
@@ -8,12 +39,12 @@ import os
 from autowrap.Types import CppType as CppType
 from .utils import expect_exception
 
+
 def _parse(pxdFileName):
     test_file = os.path.join(os.path.dirname(__file__),
                              'test_files',
                              pxdFileName)
     return autowrap.PXDParser.parse_pxd_file(test_file)
-
 
 
 def test_long():
@@ -28,6 +59,7 @@ cdef extern from "*":
     """)
     assert str(gund.result_type) == "long int"
     assert str(fund.result_type) == "T[long int,int]"
+
 
 def test_multiline_annotations():
     cdcl, = autowrap.PXDParser.parse_str("""
@@ -63,7 +95,7 @@ cdef extern from "Minimal.hpp":
     """)
 
     assert cld.name == "Minimal"
-    assert cld.template_parameters  == None
+    assert cld.template_parameters is None
 
     assert len(cld.methods["Minimal"]) == 1
     assert len(cld.methods["getA"]) == 1
@@ -94,7 +126,7 @@ cdef extern from "Minimal.hpp":
         assert meth.name == "overloaded"
         assert meth.result_type == CppType("void")
         arguments.append(meth.arguments)
-    assert arguments == [[ ("inp", CppType("int"))], [("inp", CppType("float"))]]
+    assert arguments == [[("inp", CppType("int"))], [("inp", CppType("float"))]]
 
     run_meth = cld.methods["run2"][0]
     name, arg_type = run_meth.arguments[0]
@@ -109,6 +141,7 @@ def test_int_container_pxd_parsing():
     assert cld1.name == "X"
     assert cld2.name == "XContainer"
 
+
 def test_ref():
     gun, = autowrap.PXDParser.parse_str("""
 cdef extern from "":
@@ -117,6 +150,7 @@ cdef extern from "":
     assert gun.result_type == CppType.from_string("unsigned int &")
     (n, t), = gun.arguments
     assert t == CppType.from_string("vector[double &] &")
+
 
 def test_ptr():
     gun, = autowrap.PXDParser.parse_str("""
@@ -141,6 +175,7 @@ cdef extern from "":
     assert B == ("B", 1)
     assert C == ("C", 2)
 
+
 def test_class_and_enum():
     A, E = autowrap.PXDParser.parse_str("""
 cdef extern from "":
@@ -162,6 +197,7 @@ cdef extern from "":
     assert A == ("A", 0)
     assert B == ("B", 1)
     assert C == ("C", 2)
+
 
 def test_multi_enum():
     E, F = autowrap.PXDParser.parse_str("""
@@ -237,11 +273,12 @@ cdef extern from "A.h":
 
     """)
     assert inst1.name == "A"
-    assert inst1.template_parameters == [ "B", "C" ]
+    assert inst1.template_parameters == ["B", "C"]
     assert inst1.methods.keys() == ["run"]
     assert inst2.name == "C"
-    assert inst2.template_parameters == [ "E", ]
+    assert inst2.template_parameters == ["E", ]
     assert len(inst2.methods) == 0
+
 
 def test_typedef():
     decl1, decl2 = autowrap.PXDParser.parse_str("""
@@ -254,6 +291,7 @@ cdef extern from "A.h":
     assert str(decl1.type_) == "unsigned int"
     assert str(decl2.type_) == "long int *", str(decl2.type_)
 
+
 def test_typedef2():
 
     decl1, = autowrap.PXDParser.parse_str("""
@@ -263,6 +301,7 @@ cdef extern from "A.h":
     assert decl1.name == 'x', decl1.name
     assert str(decl1.type_) == "size_t", str(decl1.type_)
 
+
 @expect_exception
 def test_doubleptr():
 
@@ -270,6 +309,7 @@ def test_doubleptr():
 cdef extern from "A.h":
     void fun(int **)
         """)
+
 
 def test_aliased_ptr():
     d1, d2 = autowrap.PXDParser.parse_str("""
@@ -281,6 +321,7 @@ cdef extern from "A.h":
     assert d2.name == "iptr"
     assert str(d1.type_) == "int"
     assert str(d2.type_) == "integer *", str(d2.type_)
+
 
 def test_multi_alias():
     d1, d2, d3, d4 = autowrap.PXDParser.parse_str("""
@@ -298,6 +339,7 @@ cdef extern from "A.h":
     assert str(d3.type_) == "X"
     assert d4.name == "iptr2"
     assert str(d4.type_) == "Y *"
+
 
 def test_function():
     decl1, decl2 = autowrap.PXDParser.parse_str("""
@@ -334,6 +376,7 @@ cdef extern from "A.h":
     fun,  = decl2.methods.get("fun")
     (__, arg_t), = fun.arguments
     assert str(arg_t) == "A[unsigned int]"
+
 
 def test_static():
     decl, = autowrap.PXDParser.parse_str("""
@@ -405,6 +448,7 @@ cdef extern from "*":
         void fun() # wrap-as:xyz
         """)
 
+
 def test_annotations():
     cld, = autowrap.PXDParser.parse_str("""
 cdef extern from "*":
@@ -427,21 +471,21 @@ cdef extern from "*":
 """)
 
     assert len(cld.annotations) == 2
-    assert cld.annotations["wrap-as"] == [ 'Z']
+    assert cld.annotations["wrap-as"] == ['Z']
     assert cld.annotations["wrap-ignore"] is True
 
     for mdcl in cld.methods["fun"]:
         # Also test if multiple annotations are correctly represented
-        assert mdcl.annotations == {'wrap-as' : 'gun', 'wrap-test' : 'test'}
+        assert mdcl.annotations == {'wrap-as': 'gun', 'wrap-test': 'test'}
 
     for mdcl in cld.methods["gun"]:
-        assert mdcl.annotations == {'wrap-as' : 'hun'}
+        assert mdcl.annotations == {'wrap-as': 'hun'}
 
     for mdcl in cld.methods["iun"]:
         assert mdcl.annotations == {}
 
     for mdcl in cld.methods["hun"]:
-        assert mdcl.annotations == {'wrap-as' : 'jun'}
+        assert mdcl.annotations == {'wrap-as': 'jun'}
 
 
 def test_parsing_of_nested_template_args():
@@ -458,6 +502,3 @@ cdef extern from "*":
     assert str(td1.type_) == "A[B[C]]"
     assert str(td2.type_) == "A[C,D[E[F]]]"
     assert str(td3.type_) == "A[Y,B[C[Y],C[Y,D[E]]]]", str(td.type_)
-
-
-

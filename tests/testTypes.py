@@ -1,7 +1,39 @@
 from __future__ import print_function
 
+__license__ = """
+
+Copyright (c) 2012-2014, Uwe Schmitt, ETH Zurich, all rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this
+list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+Neither the name of the mineway GmbH nor the names of its contributors may be
+used to endorse or promote products derived from this software without specific
+prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+
+
 from autowrap.Types import CppType
 from .utils import expect_exception
+
 
 def testTypeParse():
     _testType("unsigned int")
@@ -9,7 +41,7 @@ def testTypeParse():
     T = CppType("T")
     assert str(T) == "T"
 
-    Tlist = str(CppType("list",[T]))
+    Tlist = str(CppType("list", [T]))
     _testType(Tlist)
 
     _testType("list[T]")
@@ -47,16 +79,20 @@ def testTypeParse():
 
     _testErr("unsigned unsigned int")
 
+
 def _testType(t):
-    assert t == str(CppType.from_string(t)) ==  t, str(CppType.from_string(t))
+    assert t == str(CppType.from_string(t)) == t, str(CppType.from_string(t))
+
 
 @expect_exception
 def _testErr(s):
     CppType.from_string(s)
 
+
 def test_check_for_recursion():
     _test_check_for_recursion_1()
     _test_check_for_recursion_2()
+
 
 def _test_check_for_recursion_1():
     CppType.from_string("A").check_for_recursion()
@@ -69,6 +105,7 @@ def _test_check_for_recursion_1():
     CppType.from_string("A[B[C],D[E],D]").check_for_recursion()
     CppType.from_string("A[B[C],D[E],B]").check_for_recursion()
 
+
 def _test_check_for_recursion_2():
     _assert_exeception_when_testing("A[A]")
     _assert_exeception_when_testing("A[B[A]]")
@@ -77,6 +114,7 @@ def _test_check_for_recursion_2():
     _assert_exeception_when_testing("A[B[C[A]]]")
     _assert_exeception_when_testing("A[B[D,C[A]]]")
     _assert_exeception_when_testing("A[B[D,C[A],D]]")
+
 
 def _assert_exeception_when_testing(str_):
     try:
@@ -88,6 +126,7 @@ def _assert_exeception_when_testing(str_):
                 raise e
     else:
         assert False, "invalid type '%s' passed test" % str_
+
 
 def _check(type_, trans, expected_str_repres):
     out = str(type_.transformed(trans))
@@ -147,7 +186,7 @@ def test_inv_transform():
     ABX = CppType.from_string("A[B[X]]")
     ABXX = CppType.from_string("A[B[X],X]")
 
-    T=CppType.from_string("T")
+    T = CppType.from_string("T")
 
     def check(t, map_, expected):
         is_ = str(t.inv_transformed(map_))
@@ -169,5 +208,3 @@ def test_inv_transform():
     ABXXp.template_args[0].is_ptr = True
 
     check(ABXXp, map2, "A[Z *,X]")
-
-

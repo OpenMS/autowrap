@@ -1,4 +1,33 @@
-import pdb
+__license__ = """
+
+Copyright (c) 2012-2014, Uwe Schmitt, ETH Zurich, all rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this
+list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+Neither the name of the mineway GmbH nor the names of its contributors may be
+used to endorse or promote products derived from this software without specific
+prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+
 template = """
 
 from distutils.core import setup, Extension
@@ -22,18 +51,20 @@ setup(cmdclass = {'build_ext' : build_ext},
 
 """
 
+
 def test_from_command_line():
     import os
     old_dir = os.path.abspath(os.getcwd())
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(os.path.join(script_dir, "test_files") )
-    args =  ["pxds/*.pxd", "--out", "out.pyx", "--addons=/addons",
-                                                    "--converters=converters"]
+    os.chdir(os.path.join(script_dir, "test_files"))
+    args = ["pxds/*.pxd", "--out", "out.pyx", "--addons=/addons",
+            "--converters=converters"]
     from autowrap.Main import _main
     try:
         _main(args)
     finally:
         os.chdir(old_dir)
+
 
 def test_run():
 
@@ -55,7 +86,7 @@ def test_run():
 
     extra_includes = [script_dir + "/test_files/includes"]
     includes = run(pxds, addons, converters, script_dir + "/test_files/out.pyx",
-            extra_includes)
+                   extra_includes)
 
     mod = compile_and_import("out", [script_dir + "/test_files/out.cpp"], includes)
 
@@ -76,7 +107,7 @@ def test_run():
     assert b.super_get(3) == 4
 
     # uses extra cimport for M_PI
-    assert abs(b.get_pi()-3.141) < 0.001
+    assert abs(b.get_pi() - 3.141) < 0.001
 
     # type without automatic conversion:
     c = mod.C()
@@ -94,6 +125,3 @@ def test_run():
 
     mod.SharedPtrTestFloat().set_inner_value(fh, 12.0)
     assert fh.get() == 12.0
-
-
-

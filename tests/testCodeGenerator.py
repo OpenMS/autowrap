@@ -1,5 +1,36 @@
 from __future__ import print_function
 from __future__ import absolute_import
+
+__license__ = """
+
+Copyright (c) 2012-2014, Uwe Schmitt, ETH Zurich, all rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this
+list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+Neither the name of the mineway GmbH nor the names of its contributors may be
+used to endorse or promote products derived from this software without specific
+prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+
 import autowrap.DeclResolver
 import autowrap.CodeGenerator
 import autowrap.PXDParser
@@ -15,41 +46,38 @@ from .utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
+
 def test_number_conv():
 
     target = os.path.join(test_files, "number_conv.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(["number_conv.pxd"],
-                                root=test_files, target=target,  debug=True)
+                                                    root=test_files, target=target,  debug=True)
 
-    mod = autowrap.Utils.compile_and_import("number_conv", [target, ],
-                                                include_dirs)
+    mod = autowrap.Utils.compile_and_import("number_conv", [target, ], include_dirs)
 
-    mf =  mod.add_max_float(0)
-    mf2 =  mod.add_max_float(mf)
+    mf = mod.add_max_float(0)
+    mf2 = mod.add_max_float(mf)
     assert not math.isinf(mf2), "somehow overflow happened"
 
     repr_ = "%.13e" % mod.pass_full_precision(0.05)
-    assert repr_.startswith("5.0000000000000"),\
-            "loss of precision during conversion: %s" % repr_
+    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
 
-    inl = [ 0.05]
+    inl = [0.05]
     outl = mod.pass_full_precision_vec(inl)
 
     repr_ = "%.13e" % inl[0]
-    assert repr_.startswith("5.0000000000000"),\
-            "loss of precision during conversion: %s" % repr_
+    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
 
     repr_ = "%.13e" % outl[0]
-    assert repr_.startswith("5.0000000000000"),\
-            "loss of precision during conversion: %s" % repr_
+    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
+
 
 def test_shared_ptr():
 
     target = os.path.join(test_files, "shared_ptr_test.pyx")
     include_dirs = autowrap.CodeGenerator.fixed_include_dirs() + [test_files]
-    m = autowrap.Utils.compile_and_import("m", [target, ],
-                                                include_dirs)
+    m = autowrap.Utils.compile_and_import("m", [target, ], include_dirs)
     assert m.__name__ == "m"
 
     h1 = m.Holder(b"uwe")
@@ -81,27 +109,27 @@ def test_shared_ptr():
     assert h1.count() == 1
     assert h1.size() == 4
 
+
 def test_libcpp():
 
     target = os.path.join(test_files, "libcpp_test.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(["libcpp_test.pxd"],
-                                root=test_files, target=target,  debug=True)
+                                                    root=test_files, target=target,  debug=True)
 
-    libcpp = autowrap.Utils.compile_and_import("libcpp", [target, ],
-                                                include_dirs)
+    libcpp = autowrap.Utils.compile_and_import("libcpp", [target, ], include_dirs)
     assert libcpp.__name__ == "libcpp"
     print(dir(libcpp))
 
     t = libcpp.LibCppTest()
     assert t.twist([b"hi", 2]) == [2, b"hi"]
-    li = [ 1]
+    li = [1]
     li2 = t.process(li)
-    assert li == li2 == [ 1, 42]
+    assert li == li2 == [1, 42]
 
     in1 = [1, 2]
     out = t.process2(in1)
-    assert out == in1 == [ 42, 11]
+    assert out == in1 == [42, 11]
 
     in1 = [t, 1]
     out = t.process3(in1)
@@ -119,7 +147,6 @@ def test_libcpp():
     assert out[0] == 42
     assert out[1].gett() == 0
 
-
     t2 = libcpp.LibCppTest(12)
     in1 = [t, t2]
     out = t.process5(in1)
@@ -128,22 +155,22 @@ def test_libcpp():
     assert out[0].gett() == 12
     assert out[1].gett() == 43
 
-    in1 = [ [1,2.0], [2,3.0]]
+    in1 = [[1, 2.0], [2, 3.0]]
     out = t.process6(in1)
-    assert in1 == [ (1,2.0), (2,3.0), (7, 11.0)]
-    assert out[::-1] == [ (1,2.0), (2,3.0), (7, 11.0)]
+    assert in1 == [(1, 2.0), (2, 3.0), (7, 11.0)]
+    assert out[::-1] == [(1, 2.0), (2, 3.0), (7, 11.0)]
 
-    out = t.process7([0,1])
+    out = t.process7([0, 1])
     assert out == [1, 0]
 
     in_ = [0, 1, 0]
     out = t.process8(in_)
     assert in_ == out[::-1]
 
-    in_ = set((1,2))
+    in_ = set((1, 2))
     out = t.process9(in_)
-    assert sorted(out) == [1,2, 42]
-    assert sorted(in_) == [1,2, 42]
+    assert sorted(out) == [1, 2, 42]
+    assert sorted(in_) == [1, 2, 42]
 
     in_ = set((libcpp.EEE.A, libcpp.EEE.B))
     out = t.process10(in_)
@@ -152,31 +179,31 @@ def test_libcpp():
 
     in_ = set((t2,))
     out = t.process11(in_)
-    assert sorted(x.gett() for x in in_) == [ 12, 42]
-    assert sorted(x.gett() for x in out) == [ 12, 42]
+    assert sorted(x.gett() for x in in_) == [12, 42]
+    assert sorted(x.gett() for x in out) == [12, 42]
 
     out = t.process12(1, 2.0)
-    assert list(out.items()) == [ (1, 2.0)]
+    assert list(out.items()) == [(1, 2.0)]
 
     out = t.process13(libcpp.EEE.A, 2)
-    print (list(out.items())) 
-    print ([ (libcpp.EEE.A, 2)])
-    print (list(out.items()) == [ (libcpp.EEE.A, 2)])
-    assert list(out.items()) == [ (libcpp.EEE.A, 2)]
+    print (list(out.items()))
+    print ([(libcpp.EEE.A, 2)])
+    print (list(out.items()) == [(libcpp.EEE.A, 2)])
+    assert list(out.items()) == [(libcpp.EEE.A, 2)]
 
     out = t.process14(libcpp.EEE.A, 3)
-    assert list(out.items()) == [ (3, libcpp.EEE.A)]
+    assert list(out.items()) == [(3, libcpp.EEE.A)]
 
     out = t.process15(12)
     (k, v),  = out.items()
     assert k == 12
     assert v.gett() == 12
 
-    assert t.process16({42:2.0, 12: 1.0}) == 2.0
+    assert t.process16({42: 2.0, 12: 1.0}) == 2.0
 
-    assert t.process17({libcpp.EEE.A :2.0, libcpp.EEE.B: 1.0}) == 2.0
+    assert t.process17({libcpp.EEE.A: 2.0, libcpp.EEE.B: 1.0}) == 2.0
 
-    assert t.process18({23: t, 12:t2}) == t.gett()
+    assert t.process18({23: t, 12: t2}) == t.gett()
 
     dd = dict()
     t.process19(dd)
@@ -186,10 +213,10 @@ def test_libcpp():
 
     dd = dict()
     t.process20(dd)
-    assert list(dd.items()) == [ (23, 42.0) ]
+    assert list(dd.items()) == [(23, 42.0)]
 
     d1 = dict()
-    t.process21(d1, { 42: 11})
+    t.process21(d1, {42: 11})
     assert d1.get(1) == 11
 
     d1 = set((42,))
@@ -198,7 +225,7 @@ def test_libcpp():
     assert d1 == set()
     assert d2 == set((42,))
 
-    l1 = [1,2]
+    l1 = [1, 2]
     l2 = []
 
     t.process23(l1, l2)
@@ -215,15 +242,15 @@ def test_libcpp():
     i2 = libcpp.Int(2)
     i3 = libcpp.Int(3)
 
-    assert t.process25([i1,i2,i3]) == 6
+    assert t.process25([i1, i2, i3]) == 6
     assert t.process25([]) == 0
 
-    assert t.process26([[i1,i2,i3]]) == 6
-    assert t.process26([[i1,i2,i3],[i1]]) == 7
-    assert t.process26([[i1,i2,i3],[i1], [i1, i2]]) == 10
+    assert t.process26([[i1, i2, i3]]) == 6
+    assert t.process26([[i1, i2, i3], [i1]]) == 7
+    assert t.process26([[i1, i2, i3], [i1], [i1, i2]]) == 10
 
-    empty_list = [ [] ]
-    empty_list = [ [], [], [] ]
+    empty_list = [[]]
+    empty_list = [[], [], []]
     t.process29(empty_list)
     assert len(empty_list) == 3
     assert len(empty_list[0]) == 1
@@ -231,7 +258,7 @@ def test_libcpp():
     assert len(empty_list[2]) == 1
     assert empty_list[0][0].i_ == 42
 
-    empty_list = [ [ [ [ ] ] ],   [ [ [ ] ] ] ]
+    empty_list = [[[[]]],   [[[]]]]
     t.process30(empty_list)
 
     assert len(empty_list) == 2
@@ -240,12 +267,12 @@ def test_libcpp():
     assert empty_list[0][1][0][0].i_ == 42
     assert empty_list[1][1][0][0].i_ == 42
 
-    assert t.process31([1,2,3]) == 6
+    assert t.process31([1, 2, 3]) == 6
     assert t.process31([]) == 0
 
-    assert t.process32([[1,2,3]]) == 6
-    assert t.process32([[1,2,3],[1]]) == 7
-    assert t.process32([[1,2,3],[1], [1, 2]]) == 10
+    assert t.process32([[1, 2, 3]]) == 6
+    assert t.process32([[1, 2, 3], [1]]) == 7
+    assert t.process32([[1, 2, 3], [1], [1, 2]]) == 10
 
     i1 = libcpp.Int(1)
     assert t.process33(i1) == 2
@@ -266,7 +293,7 @@ def test_libcpp():
     assert i3.i_ == 12
 
     try:
-        assert t.integer_ptr is None 
+        assert t.integer_ptr is None
         assert False
     except Exception:
         # Should throw an exception
@@ -287,7 +314,7 @@ def test_libcpp():
         # Should throw an exception
         assert True
 
-    t.integer_vector_ptr = [i1,i2,i3]
+    t.integer_vector_ptr = [i1, i2, i3]
     assert len(t.integer_vector_ptr) == 3
 
 
@@ -302,7 +329,7 @@ def test_minimal():
             return "int",
 
         def matches(self, cpp_type):
-            return  cpp_type.is_unsigned
+            return cpp_type.is_unsigned
 
         def matching_python_type(self, cpp_type):
             return "int"
@@ -326,14 +353,14 @@ def test_minimal():
     target = os.path.join(test_files, "minimal_wrapper.pyx")
     include_dirs = autowrap.parse_and_generate_code(["minimal.pxd",
                                                      "minimal_td.pxd"],
-                                root=test_files, target=target,  debug=True)
+                                                    root=test_files, target=target,  debug=True)
     cpp_source = os.path.join(test_files, "minimal.cpp")
     wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source],
                                                 include_dirs)
     os.remove(target)
     assert wrapped.__name__ == "wrapped"
 
-    minimal=wrapped.Minimal()
+    minimal = wrapped.Minimal()
 
     assert minimal.compute(3) == 4
     # overloaded for float:
@@ -361,8 +388,7 @@ def test_minimal():
 
     assert minimal.create().compute(3) == 4
 
-    assert minimal.sumup([1,2,3]) == 6
-
+    assert minimal.sumup([1, 2, 3]) == 6
 
     m2 = wrapped.Minimal(-1)
     assert m2.compute(3) == 3
@@ -372,17 +398,16 @@ def test_minimal():
     assert wrapped.Minimal.ABCorD.C == 3
     assert wrapped.Minimal.ABCorD.D == 4
 
-
     in_ = [m2, minimal]
 
     m3 = copy.copy(m2)
     assert m3 == m2
 
-    m3 = wrapped.Minimal([1,2,3])
+    m3 = wrapped.Minimal([1, 2, 3])
     assert m3.compute(0) == 4
 
     in_ = [b"a", b"bc"]
-    assert  m3.call2(in_) == 3
+    assert m3.call2(in_) == 3
     assert in_ == [b"a", b"bc", b"hi"]
 
     msg, = m3.message()
@@ -396,34 +421,30 @@ def test_minimal():
 
     expect_exception(lambda: m2.enumTest(1))()
 
-    m2.setVector([m2,m1,m3])
+    m2.setVector([m2, m1, m3])
     a, b, c = m2.getVector()
     assert a == m2
     assert b == m1
     assert c == m3
 
-    a, b, c = list(m2) # call __iter__
+    a, b, c = list(m2)  # call __iter__
     assert a == m2
     assert b == m1
     assert c == m3
 
-    assert m2.test2Lists([m1], [1,2]) == 3
-    assert m1==m1
+    assert m2.test2Lists([m1], [1, 2]) == 3
+    assert m1 == m1
 
     # tests operator[] + size:
-    assert  list(m1) == []
-    assert list(m2) == [ m2, m1, m3]
-
-
-
-    #assert m1[7] == 8
+    assert list(m1) == []
+    assert list(m2) == [m2, m1, m3]
 
     assert wrapped.top_function(42) == 84
-    assert wrapped.sumup([1,2,3]) == 6
+    assert wrapped.sumup([1, 2, 3]) == 6
     assert wrapped.Minimal.run_static(1) == 4
 
     # != not declared, so:
-    expect_exception(lambda m1, m2: m1!=m2)(m1, m2)
+    expect_exception(lambda m1, m2: m1 != m2)(m1, m2)
 
     assert m1.toInt() == 4711
 
@@ -432,8 +453,6 @@ def test_minimal():
     m1 = wrapped.Minimal(1)
     m1 += m1
     assert m1 == wrapped.Minimal(2)
-
-
 
 
 def test_templated():
@@ -446,7 +465,7 @@ def test_templated():
     co.add("""def special(self):
              |    return "hi" """)
 
-    methods = dict(T = co)
+    methods = dict(T=co)
 
     include_dirs = autowrap.generate_code(decls, instance_map, target=target,
                                           debug=True, manual_code=methods)
@@ -455,11 +474,10 @@ def test_templated():
     cpp_sources = []
 
     twrapped = autowrap.Utils.compile_and_import("twrapped",
-                                                [target] + cpp_sources,
-                                                include_dirs)
+                                                 [target] + cpp_sources,
+                                                 include_dirs)
     os.remove(target)
     assert twrapped.__name__ == "twrapped"
-
 
     t = twrapped.T(42)
     assert t.special() == "hi"
@@ -469,7 +487,7 @@ def test_templated():
     assert templated.passs(templated) == templated
 
     in_ = [templated, templated]
-    assert templated.summup(in_) == 42+42
+    assert templated.summup(in_) == 42 + 42
     __, __, tn = in_
     assert tn.get().get() == 11
 
@@ -502,19 +520,9 @@ def test_templated():
     assert templated.xi[1].get() == 13
 
 
-
-
-
 # todo: wrapped tempaltes as input of free functions and mehtods of other
-# # classes
+# classes
 #
 #
-
-
 if __name__ == "__main__":
     test_libcpp()
-
-
-
-
-
