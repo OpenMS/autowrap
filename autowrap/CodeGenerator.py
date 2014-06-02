@@ -10,15 +10,15 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.  
+list of conditions and the following disclaimer.
 
 Redistributions in binary form must reproduce the above copyright notice, this
 list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution. 
+other materials provided with the distribution.
 
 Neither the name of the ETH Zurich nor the names of its contributors may be
 used to endorse or promote products derived from this software without specific
-prior written permission. 
+prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -40,7 +40,7 @@ from collections import defaultdict
 
 from autowrap.ConversionProvider import setup_converter_registry
 from autowrap.DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
-                          ResolvedFunction)
+                                   ResolvedFunction)
 from autowrap.Types import CppType  # , printable
 import autowrap.Code as Code
 
@@ -53,7 +53,7 @@ except NameError:
     str = str
     unicode = str
     bytes = bytes
-    basestring = (str,bytes)
+    basestring = (str, bytes)
 else:
     # 'unicode' exists, must be Python 2
     str = str
@@ -94,6 +94,7 @@ class CodeGenerator(object):
     The actual conversion of input/output arguments is done in the
     ConversionProviders for each argument type.
     """
+
     def __init__(self, resolved, instance_mapping, target_path=None,
                  manual_code=None, extra_cimports=None):
 
@@ -677,7 +678,6 @@ class CodeGenerator(object):
 
     def create_wrapper_for_nonoverloaded_constructor(self, class_decl, py_name,
                                                      cons_decl):
-
         """ py_name ist name for constructor, as we dispatch overloaded
             constructors in __init__() the name of the method calling the
             c++ constructor is variable and given by `py_name`.

@@ -8,15 +8,15 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.  
+list of conditions and the following disclaimer.
 
 Redistributions in binary form must reproduce the above copyright notice, this
 list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution. 
+other materials provided with the distribution.
 
 Neither the name of the ETH Zurich nor the names of its contributors may be
 used to endorse or promote products derived from this software without specific
-prior written permission. 
+prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -32,7 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from collections import defaultdict
 
-from autowrap.Types import CppType # , printable
+from autowrap.Types import CppType  # , printable
 from autowrap.Code import Code
 
 import logging as L
@@ -44,13 +44,14 @@ except NameError:
     str = str
     unicode = str
     bytes = bytes
-    basestring = (str,bytes)
+    basestring = (str, bytes)
 else:
     # 'unicode' exists, must be Python 2
     str = str
     unicode = unicode
     bytes = str
     basestring = basestring
+
 
 def mangle(s):
     s = s.replace("(", "_l_")
@@ -62,7 +63,9 @@ def mangle(s):
     s = s.replace(".", "_dot_")
     return s
 
+
 class ConverterRegistry(object):
+
     """
     Works with two level lookup: first find converters which support base_type,
     then call .matches on them to find the finally matching converters
@@ -71,7 +74,7 @@ class ConverterRegistry(object):
     """
 
     def __init__(self, instance_mapping, names_of_classes_to_wrap,
-            names_of_enums_to_wrap):
+                 names_of_enums_to_wrap):
 
         self.lookup = defaultdict(list)
 
@@ -85,8 +88,8 @@ class ConverterRegistry(object):
         # as original c++ class decls are decorated with a beginning "_"
         # we have to process  the instance mapping:
 
-        map_ = dict((name, CppType("_"+name)) for name in
-                self.names_of_classes_to_wrap+self.names_of_enums_to_wrap)
+        map_ = dict((name, CppType("_" + name)) for name in
+                    self.names_of_classes_to_wrap + self.names_of_enums_to_wrap)
         self.instance_mapping = dict()
         for alias, type_ in instance_mapping.items():
             self.instance_mapping[alias] = type_.transformed(map_)
@@ -106,9 +109,9 @@ class ConverterRegistry(object):
 
     def get(self, cpp_type):
 
-        rv = [conv for conv in self.lookup[cpp_type.base_type]\
-                   if conv.matches(cpp_type)]
-        if len(rv)<1:
+        rv = [conv for conv in self.lookup[cpp_type.base_type]
+              if conv.matches(cpp_type)]
+        if len(rv) < 1:
             raise Exception("no converter for %s" % cpp_type)
 
         # allways take the latest converter which allows overwriting existing
@@ -187,15 +190,17 @@ class VoidConverter(TypeConverterBase):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return None
 
+
 class IntegerConverter(TypeConverterBase):
 
     """
     wraps long and int. "long" base_type is converted to "int" by the
     cython parser !
     """
+
     def get_base_types(self):
         return ("int", "bool", "long", "int32_t", "ptrdiff_t", "int64_t",
-               "uint32_t", "uint64_t", "size_t")
+                "uint32_t", "uint64_t", "size_t")
 
     def matches(self, cpp_type):
         return not cpp_type.is_ptr
@@ -240,6 +245,7 @@ class DoubleConverter(TypeConverterBase):
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
+
 
 class FloatConverter(TypeConverterBase):
 
@@ -403,12 +409,11 @@ class TypeToWrapConverter(TypeConverterBase):
         return code, call_as, cleanup
 
     def call_method(self, res_type, cy_call_str):
-        #t = res_type.base_type
         t = self.converters.cython_type(res_type)
 
         if t.is_ptr:
             # If t is a pointer, we would like to call on the base type
-            t = t.base_type 
+            t = t.base_type
             cy_call_str = "deref(%s)" % cy_call_str
 
         return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
@@ -547,7 +552,6 @@ class StdPairConverter(TypeConverterBase):
         code.add("""cdef list $output_py_var = [$out1, $out2]
             """, locals())
         return code
-
 
 
 class StdMapConverter(TypeConverterBase):
@@ -692,6 +696,7 @@ class StdMapConverter(TypeConverterBase):
                 """, locals())
             return code
 
+
 class StdSetConverter(TypeConverterBase):
 
     def get_base_types(self):
@@ -786,7 +791,6 @@ class StdSetConverter(TypeConverterBase):
     def call_method(self, res_type, cy_call_str):
         return "_r = %s" % (cy_call_str)
 
-
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
         assert not cpp_type.is_ptr
@@ -826,7 +830,6 @@ class StdSetConverter(TypeConverterBase):
                 |cdef set $output_py_var = $input_cpp_var
                 """, locals())
             return code
-
 
 
 class StdVectorConverter(TypeConverterBase):
@@ -903,12 +906,12 @@ class StdVectorConverter(TypeConverterBase):
             if recursion_cnt > 0:
                 # If we are inside a recursion, we have to dereference the
                 # _previous_ iterator.
-                a[0]["temp_var_used"] =  "deref(%s)" % it_prev
+                a[0]["temp_var_used"] = "deref(%s)" % it_prev
                 tp_add = "$it = $temp_var_used.begin()"
             else:
                 tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
                 a[0]["temp_var_used"] = temp_var
-            cleanup_code = Code().add( tp_add + """
+            cleanup_code = Code().add(tp_add + """
                 |replace_$recursion_cnt = []
                 |while $it != $temp_var_used.end():
                 """, *a, **kw)
@@ -922,18 +925,19 @@ class StdVectorConverter(TypeConverterBase):
 
     def _prepare_nonrecursive_precall(self, topmost_code, cpp_type, code_top, *a, **kw):
             # A) Prepare the pre-call
-            if topmost_code is not None:
-                if cpp_type.topmost_is_ref:
-                    # add cdef statements for the iterators (part of B, post-call but needs to be on top)
-                    code_top += "|cdef libcpp_vector[$inner].iterator $it"
-                topmost_code.add(code_top, *a, **kw)
-                code_top = ""
-            # Now prepare the loop itself
-            code = Code().add(code_top + """
+        if topmost_code is not None:
+            if cpp_type.topmost_is_ref:
+                    # add cdef statements for the iterators (part of B, post-call but needs to
+                    # be on top)
+                code_top += "|cdef libcpp_vector[$inner].iterator $it"
+            topmost_code.add(code_top, *a, **kw)
+            code_top = ""
+        # Now prepare the loop itself
+        code = Code().add(code_top + """
                 |for $item in $argument_var:
                 |    $temp_var.push_back(deref($item.inst.get()))
                 """, *a, **kw)
-            return code
+        return code
 
     def _perform_recursion(self, cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, *a, **kw):
         converter = self.cr.get(tt)
@@ -947,7 +951,7 @@ class StdVectorConverter(TypeConverterBase):
         # Perform the recursive call
         #
         conv_code, call_as, cleanup =\
-                                   converter.input_conversion(tt, rec_argument_var, rec_arg_num,
+            converter.input_conversion(tt, rec_argument_var, rec_arg_num,
                                        topmost_code_callback, bottommost_code_callback, recursion_cnt + 1)
         # undo the "deref" if it was added ...
         new_item = call_as
@@ -996,9 +1000,9 @@ class StdVectorConverter(TypeConverterBase):
         # add the inner loop (may contain more inner loops ... )
         #
         if hasattr(cleanup, "content"):
-          cleanup_code.add(cleanup)
+            cleanup_code.add(cleanup)
         else:
-          cleanup_code.content.append(cleanup)
+            cleanup_code.content.append(cleanup)
 
         #
         # B) Prepare the post-call, Step 2
@@ -1026,7 +1030,7 @@ class StdVectorConverter(TypeConverterBase):
         else:
             bottommost_code.content.extend(bottommost_code_callback.content)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num, topmost_code = None, bottommost_code = None, recursion_cnt = 0):
+    def input_conversion(self, cpp_type, argument_var, arg_num, topmost_code=None, bottommost_code=None, recursion_cnt=0):
         """Do the input conversion for a std::vector<T>
 
         In this case, the template argument is tt (or "inner").
@@ -1042,7 +1046,7 @@ class StdVectorConverter(TypeConverterBase):
         tt, = cpp_type.template_args
         temp_var = "v%s" % arg_num
         inner = self.converters.cython_type(tt)
-        it = mangle("it_" + argument_var) # + "_%s" % recursion_cnt
+        it = mangle("it_" + argument_var)  # + "_%s" % recursion_cnt
         recursion_cnt_next = recursion_cnt + 1
         it_prev = ""
         if recursion_cnt > 0:
@@ -1062,8 +1066,8 @@ class StdVectorConverter(TypeConverterBase):
         """
 
         contains_classes_to_wrap = tt.template_args is not None and \
-            len( set(self.converters.names_of_wrapper_classes).intersection(
-                set(tt.all_occuring_base_types()) )) > 0
+            len(set(self.converters.names_of_wrapper_classes).intersection(
+                set(tt.all_occuring_base_types()))) > 0
 
         if self.converters.cython_type(tt).is_enum:
             item = "item%s" % arg_num
@@ -1101,7 +1105,8 @@ class StdVectorConverter(TypeConverterBase):
             """
 
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, locals())
-            cleanup_code = self._prepare_nonrecursive_cleanup(cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
+            cleanup_code = self._prepare_nonrecursive_cleanup(
+                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
 
             if cpp_type.is_ptr:
                 call_fragment = temp_var
@@ -1110,10 +1115,12 @@ class StdVectorConverter(TypeConverterBase):
 
             return code, call_fragment, cleanup_code
         elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
-            len( set(self.converters.names_of_wrapper_classes).intersection(
-                set(tt.all_occuring_base_types()) )) > 0:
-                # Only if the std::vector contains a class that we need to wrap somewhere, we cannot do it ...
-                raise Exception("Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
+            len(set(self.converters.names_of_wrapper_classes).intersection(
+                set(tt.all_occuring_base_types()))) > 0:
+                # Only if the std::vector contains a class that we need to wrap somewhere,
+                # we cannot do it ...
+            raise Exception(
+                "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
         elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
             # Case 3: We wrap a std::vector<> with a base type that is
             # std::vector<> => recursion
@@ -1123,19 +1130,24 @@ class StdVectorConverter(TypeConverterBase):
             code = Code()
             if topmost_code is not None:
                 if cpp_type.topmost_is_ref:
-                    # add cdef statements for the iterators (part of B, post-call but needs to be on top)
+                    # add cdef statements for the iterators (part of B, post-call but needs to
+                    # be on top)
                     code_top += "|cdef libcpp_vector[$inner].iterator $it"
                 topmost_code.add(code_top, locals())
                 code_top = ""
-            if code_top != "": code.add(code_top, locals())
+            if code_top != "":
+                code.add(code_top, locals())
 
-            cleanup_code = self._prepare_recursive_cleanup(cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
+            cleanup_code = self._prepare_recursive_cleanup(
+                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
 
             # Go into recursion (if possible)
             if hasattr(self, "cr"):
-                self._perform_recursion(cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, locals() )
+                self._perform_recursion(
+                    cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, locals())
             else:
-                raise Exception("Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr")
+                raise Exception(
+                    "Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr")
 
             return code, "deref(%s)" % temp_var, cleanup_code
         else:
@@ -1161,7 +1173,6 @@ class StdVectorConverter(TypeConverterBase):
             return "_r = deref(%s)" % (cy_call_str)
 
         return "_r = %s" % (cy_call_str)
-
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
@@ -1203,7 +1214,6 @@ class StdVectorConverter(TypeConverterBase):
             return code
 
 
-
 class StdStringConverter(TypeConverterBase):
 
     def get_base_types(self):
@@ -1228,8 +1238,8 @@ class StdStringConverter(TypeConverterBase):
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
 
 
-
 class SharedPtrConverter(TypeConverterBase):
+
     """
     This converter deals with functions that expect a shared_ptr[BaseClass] as
     an argument. For this to work, BaseClass needs to have a Python type and
@@ -1269,21 +1279,21 @@ class SharedPtrConverter(TypeConverterBase):
         tt, = cpp_type.template_args
         return "isinstance(%s, %s)" % (argument_var, tt)
 
-
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         tt, = cpp_type.template_args
         code = Code().add("""
             |cdef $tt py_result
             |$output_py_var = $tt.__new__($tt)
-            |$output_py_var.inst = $input_cpp_var""", locals() )
+            |$output_py_var.inst = $input_cpp_var""", locals())
         return code
 
 special_converters = []
 
+
 def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
 
     names_of_classes_to_wrap = list(set(c.cpp_decl.name for c in
-        classes_to_wrap))
+                                        classes_to_wrap))
     names_of_enums_to_wrap = list(set(c.cpp_decl.name for c in enums_to_wrap))
 
     converters = ConverterRegistry(instance_map,
@@ -1326,5 +1336,3 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
 #
 # special_converters.append(MyConverter())
 #
-
-

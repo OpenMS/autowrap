@@ -11,15 +11,15 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 Redistributions of source code must retain the above copyright notice, this
-list of conditions and the following disclaimer.  
+list of conditions and the following disclaimer.
 
 Redistributions in binary form must reproduce the above copyright notice, this
 list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution. 
+other materials provided with the distribution.
 
 Neither the name of the ETH Zurich nor the names of its contributors may be
 used to endorse or promote products derived from this software without specific
-prior written permission. 
+prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -45,12 +45,14 @@ The autowrap process consists of two steps:
     ii) generating the code (CodeGenerator)
 """
 
+
 def parse(files, root):
     import autowrap.DeclResolver
     return DeclResolver.resolve_decls_from_files(files, root)
 
+
 def generate_code(decls, instance_map, target, debug, manual_code=None,
-        extra_cimports=None):
+                  extra_cimports=None):
 
     import autowrap.CodeGenerator
     gen = CodeGenerator.CodeGenerator(decls,
@@ -66,15 +68,13 @@ def generate_code(decls, instance_map, target, debug, manual_code=None,
         gen.wrapped_enums_cnt))
     return includes
 
-def parse_and_generate_code(files, root, target, debug, manual_code=None,
-        extra_cimports=None):
 
-    print("Autowrap will start to parse and generate code. "\
-              "Will parse %s files" % len(files))
+def parse_and_generate_code(files, root, target, debug, manual_code=None,
+                            extra_cimports=None):
+
+    print("Autowrap will start to parse and generate code. "
+          "Will parse %s files" % len(files))
     decls, instance_map = parse(files, root)
     print("Done parsing the files, will generate the code...")
     return generate_code(decls, instance_map, target, debug, manual_code,
-            extra_cimports)
-
-
-
+                         extra_cimports)
