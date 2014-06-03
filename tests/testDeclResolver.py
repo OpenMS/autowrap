@@ -159,13 +159,13 @@ def test_singular():
 
     assert len(resolved) == 2, len(resolved)
     res0, res1 = resolved
+    if res0.name > res1.name:
+        res0, res1 = res1, res0
     assert res0.name == "TemplatesInt", res0.name
     assert res1.name == "TemplatesMixed", res1.name
 
     res0_names = map(lambda m: m.name, res0.get_flattened_methods())
     res1_names = map(lambda m: m.name, res1.get_flattened_methods())
-    print (res0_names)
-    print (res1_names)
     assert list(res0_names) == ["TemplatesInt", "getA", "getB", "toA",
                                 "toB", "convert", "r0", "r1", "r2", "r3"], res0_names
 
@@ -279,16 +279,16 @@ cdef extern from "D.h":
             li = [str(m.result_type), m.name]
             li += [str(t) for n, t in m.arguments]
             mdata.append(li)
-        data[class_instance.name] = mdata
+        data[class_instance.name] = sorted(mdata)
 
-    assert data == {'D1': [['void', 'Afun', 'int', 'int'],
-                           ['void', 'Afun', 'float', 'int'],
-                           ['int', 'BIdentity', 'int'],
-                           ['void', 'Cint', 'int', 'float']],
-                    'D2': [['void', 'Afun', 'float', 'int'],
-                           ['void', 'Afun', 'int', 'int'],
-                           ['float', 'BIdentity', 'float'],
-                           ['void', 'Cint', 'int', 'int']]}
+    assert data == {'D1': sorted([['void', 'Afun', 'int', 'int'],
+                                  ['void', 'Afun', 'float', 'int'],
+                                  ['int', 'BIdentity', 'int'],
+                                  ['void', 'Cint', 'int', 'float']]),
+                    'D2': sorted([['void', 'Afun', 'float', 'int'],
+                                  ['void', 'Afun', 'int', 'int'],
+                                  ['float', 'BIdentity', 'float'],
+                                  ['void', 'Cint', 'int', 'int']])}
 
 
 @expect_exception
