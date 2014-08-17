@@ -79,6 +79,7 @@ class ConverterRegistry(object):
         self.lookup = defaultdict(list)
 
         self.names_of_wrapper_classes = instance_mapping.keys()
+        self.names_of_wrapper_classes += ["const %s" % k for k in instance_mapping.keys()]
         self.names_of_classes_to_wrap = names_of_classes_to_wrap
         self.names_of_enums_to_wrap = names_of_enums_to_wrap
 
@@ -1280,11 +1281,24 @@ class SharedPtrConverter(TypeConverterBase):
         return "isinstance(%s, %s)" % (argument_var, tt)
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        # L.info("Output conversion for %s" % (cpp_type))
         tt, = cpp_type.template_args
-        code = Code().add("""
-            |cdef $tt py_result
-            |$output_py_var = $tt.__new__($tt)
-            |$output_py_var.inst = $input_cpp_var""", locals())
+        code = Code()
+        if tt.is_const:
+            # If the template argument is constant, we need to have non-const base-types for our code
+            inner = self.converters.cython_type(tt).toString(False)
+            tt = tt.toString(withConst=False)
+            code.add("""
+                     |# Const shared_ptr detected, we need to produce a non-const copy to stick into Python object
+                     |cdef $inner * raw_$input_cpp_var = new $inner((deref(<$inner * const>$input_cpp_var.get())))
+                     |cdef $tt py_result
+                     |$output_py_var = $tt.__new__($tt)
+                     |$output_py_var.inst = shared_ptr[$inner](raw_$input_cpp_var) """, locals())
+        else:
+            code.add("""
+                |cdef $tt py_result
+                |$output_py_var = $tt.__new__($tt)
+                |$output_py_var.inst = $input_cpp_var""", locals())
         return code
 
 special_converters = []
