@@ -158,8 +158,16 @@ def _extract_type(base_type, decl):
                 is_unsigned = hasattr(arg_node.base_type, "signed")\
                     and not arg_node.base_type.signed
                 is_long = hasattr(arg_node.base_type, "longness") and arg_node.base_type.longness
-                name = arg_node.base_type.name
-                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned, is_long)
+
+                # Handle const template arguments which do not have a name
+                # themselves, only their base types havea name attribute
+                is_const = isinstance(arg_node.base_type, Nodes.CConstTypeNode)
+                if is_const:
+                    name = arg_node.base_type.base_type.name
+                else:
+                    name = arg_node.base_type.name
+
+                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned, is_long, is_const=is_const)
                 template_parameters.append(ttype)
             elif isinstance(arg_node, NameNode):
                 name = arg_node.name
@@ -176,7 +184,8 @@ def _extract_type(base_type, decl):
     is_ref = isinstance(decl, CReferenceDeclaratorNode)
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
     is_long = hasattr(base_type, "longness") and base_type.longness
-    return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long)
+    is_const = isinstance(base_type, Nodes.CConstTypeNode)
+    return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long, is_const=is_const)
 
 
 class BaseDecl(object):
