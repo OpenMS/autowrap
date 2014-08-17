@@ -270,5 +270,11 @@ class LibCppTest {
             in->i_++;
             return in;
         }
+
+        boost::shared_ptr<const Int> process35(boost::shared_ptr<Int> in)
+        {
+            in->i_++;
+            return boost::static_pointer_cast<const Int>(in);
+        }
            
 };

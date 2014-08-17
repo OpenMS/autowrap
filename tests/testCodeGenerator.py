@@ -317,6 +317,18 @@ def test_libcpp():
     t.integer_vector_ptr = [i1, i2, i3]
     assert len(t.integer_vector_ptr) == 3
 
+    # process35 uses a const shared_ptr of which it makes a copy
+    # This means that i1, i2 and i3 are three distinct objects that will not
+    # affect each other when manipulated
+    i1 = libcpp.Int(20)
+    i2 = t.process35(i1)
+    assert isinstance(i2, libcpp.Int)
+    assert i1.i_ == 21
+    assert i2.i_ == 21
+    i3 = t.process35(i2)
+    assert i1.i_ == 21
+    assert i2.i_ == 22
+    assert i3.i_ == 22
 
 def test_minimal():
 
