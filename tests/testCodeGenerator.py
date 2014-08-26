@@ -109,6 +109,47 @@ def test_shared_ptr():
     assert h1.count() == 1
     assert h1.size() == 4
 
+def sub_libcpp_copy_constructors(libcpp):
+    """ Test copy constructors
+    """
+    import copy
+
+    # Create new Int, make Python copy (shallow copy)
+    int_wrp = libcpp.Int(1)
+    assert int_wrp.i_ == 1
+    int_wrpcpy = int_wrp
+    assert int_wrpcpy.i_ == 1
+
+    # changing one should change the other
+    int_wrpcpy.i_ = 2
+    assert int_wrp.i_ == 2
+    assert int_wrpcpy.i_ == 2
+
+    # Make real copy using copy()
+    int_wrp2 = copy.copy(int_wrp)
+    int_wrp2.i_ = 3
+    assert int_wrp2.i_ == 3
+    assert int_wrp.i_ == 2
+    assert int_wrpcpy.i_ == 2
+
+    # Make real copy using deepcopy()
+    int_wrp3 = copy.deepcopy(int_wrp)
+    int_wrp3.i_ = 4
+    assert int_wrp3.i_ == 4
+    assert int_wrp.i_ == 2
+    assert int_wrpcpy.i_ == 2
+
+    # Make real copy using copy constructor
+    int_wrp4 = libcpp.Int(int_wrp)
+    int_wrp4.i_ = 5
+    assert int_wrp4.i_ == 5
+    assert int_wrp.i_ == 2
+    assert int_wrpcpy.i_ == 2
+
+    # changing one should change the other
+    int_wrpcpy.i_ = 1
+    assert int_wrp.i_ == 1
+    assert int_wrpcpy.i_ == 1
 
 def test_libcpp():
 
@@ -120,6 +161,8 @@ def test_libcpp():
     libcpp = autowrap.Utils.compile_and_import("libcpp", [target, ], include_dirs)
     assert libcpp.__name__ == "libcpp"
     print(dir(libcpp))
+
+    sub_libcpp_copy_constructors(libcpp)
 
     t = libcpp.LibCppTest()
     assert t.twist([b"hi", 2]) == [2, b"hi"]
