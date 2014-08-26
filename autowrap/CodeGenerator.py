@@ -654,7 +654,6 @@ class CodeGenerator(object):
                 if t.base_type == class_decl.name and t.is_ref:
                     code = self.create_special_copy_method(class_decl)
                     codes.append(code)
-                    continue
             real_constructors.append(cons)
 
         if len(real_constructors) == 1:
@@ -885,6 +884,13 @@ class CodeGenerator(object):
         meth_code.add("""
                         |
                         |def __copy__(self):
+                        |   cdef $name rv = $name.__new__($name)
+                        |   rv.inst = shared_ptr[$cy_type](new $cy_type(deref(self.inst.get())))
+                        |   return rv
+                        """, locals())
+        meth_code.add("""
+                        |
+                        |def __deepcopy__(self, memo):
                         |   cdef $name rv = $name.__new__($name)
                         |   rv.inst = shared_ptr[$cy_type](new $cy_type(deref(self.inst.get())))
                         |   return rv
