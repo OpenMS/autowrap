@@ -62,13 +62,6 @@ else:
     basestring = basestring
 
 
-@contextmanager
-def stdout_redirect(stream):
-    sys.stdout = stream
-    yield
-    sys.stdout = sys.__stdout__
-
-
 def augment_arg_names(method):
     """ replaces missing arg_names with "in_%d" % i, where i is the position
         number of the arg """
