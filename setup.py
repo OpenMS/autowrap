@@ -1,3 +1,4 @@
+# encoding: utf-8
 # the following  import fixes/avoids some nostests issue
 # see
 
@@ -6,16 +7,13 @@ try:
 except ImportError:
     pass
 
-# the follwing is standard setup.py for a single package 'autowrap'
-
 from setuptools import setup, find_packages
 
-import autowrap
+VERSION = (0, 5, 1)
 
-version = '%s.%s.%s' % autowrap.version
 
 setup(name="autowrap",
-      version=version,
+      version="%d.%d.%d" % VERSION,
       maintainer="Uwe Schmitt",
       maintainer_email="uschmitt@mineway.de",
       license="http://opensource.org/licenses/BSD-3-Clause",

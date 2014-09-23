@@ -30,4 +30,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-version = (0, 5, 1)
+import pkg_resources
+__version__ = tuple(map(int, pkg_resources.require(__package__)[0].version.split(".")))
+
+# for compatibility to older version:
+version = __version__
