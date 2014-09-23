@@ -1,5 +1,9 @@
-To run the tests run nose as follows
+Activate the project in "development mode" first:
 
-   $ nosetests -w tests
+   $ python setup.py develop
 
-from the projects directory
+For testing run
+
+   $ py.test tests
+
+from the projects directory.
