@@ -76,4 +76,7 @@ cdef extern from "libcpp_test.hpp":
         shared_ptr[Int] process34(shared_ptr[Int] in_)
         shared_ptr[const Int] process35(shared_ptr[Int] in_)
 
+        int   process36(Int* in_)
+        Int*   process37(Int* in_)
+
 
