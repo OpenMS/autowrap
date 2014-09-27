@@ -390,6 +390,34 @@ def test_libcpp():
     assert t.process37(i2).i_ == 11
 
 
+def test_stl_libcpp():
+
+    target = os.path.join(test_files, "libcpp_stl_test.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code(["libcpp_stl_test.pxd"],
+                                                    root=test_files, target=target,  debug=True)
+
+    libcpp_stl = autowrap.Utils.compile_and_import("libcpp_stl", [target, ], include_dirs)
+    assert libcpp_stl.__name__ == "libcpp_stl"
+    print(dir(libcpp_stl))
+
+    t = libcpp_stl.LibCppSTLTest()
+
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+
+    set_inp = set([i1])
+    assert t.process_1_set(set_inp) == 1 + 10
+    assert list(set_inp)[0].i_ == 1 + 10
+    set_inp = set([i2])
+    assert t.process_1_set(set_inp) == 2 + 10
+    assert list(set_inp)[0].i_ == 2 + 10
+
+    expected = set([i1])
+    res = t.process_2_set(i1) 
+    assert len(res) == len(expected)
+    assert list(res)[0].i_ == list(expected)[0].i_
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,
