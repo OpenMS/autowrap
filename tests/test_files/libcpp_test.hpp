@@ -213,6 +213,7 @@ class LibCppTest {
             
         }
         int process28(std::vector<std::vector<std::vector<std::vector<Int> > > > in)
+
         {
             int sum = 0;
             for (std::vector<std::vector<std::vector<std::vector<Int> > > >::const_iterator i = in.begin(); i != in.end(); ++i)
@@ -277,4 +278,16 @@ class LibCppTest {
             return boost::static_pointer_cast<const Int>(in);
         }
            
+        int process36(Int* in)
+        {
+            in->i_++;
+            return in->i_;
+        }
+
+        Int* process37(Int* in)
+        {
+            in->i_++;
+            return in;
+        }
+
 };

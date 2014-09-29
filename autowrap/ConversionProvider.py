@@ -36,6 +36,7 @@ from autowrap.Types import CppType  # , printable
 from autowrap.Code import Code
 
 import logging as L
+import string
 
 try:
     unicode = unicode
@@ -161,6 +162,25 @@ class TypeConverterBase(object):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         raise NotImplementedError()
 
+
+    def _codeFor_instantiate_object_from_iter(self, cpp_type, it):
+        """
+        Code for new object instantation from iterator (double deref for iterator-ptr)
+
+        Note that if cpp_type is a pointer and the iterator therefore refers to
+        a STL object of std::vector< _FooObject* >, then we need the base type
+        to instantate a new object and dereference twice.
+
+        Example output:
+            shared_ptr[ _FooObject ] (new _FooObject (*foo_iter)  )
+            shared_ptr[ _FooObject ] (new _FooObject (**foo_iter_ptr)  )
+        """
+
+        if cpp_type.is_ptr:
+            cpp_type_base = cpp_type.base_type
+            return string.Template("shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))").substitute(locals())
+        else:
+            return string.Template("shared_ptr[$cpp_type](new $cpp_type(deref($it)))").substitute(locals())
 
 class VoidConverter(TypeConverterBase):
 
@@ -750,27 +770,36 @@ class StdSetConverter(TypeConverterBase):
         elif tt.base_type in self.converters.names_of_wrapper_classes:
             base_type = tt.base_type
             inner = self.converters.cython_type(tt)
+
+            # Only dereference for non-ptr types
+            do_deref = "deref"
+            if inner.is_ptr:
+                do_deref = ""
+
             cy_tt = tt.base_type
             item = "item%d" % arg_num
             code = Code().add("""
                 |cdef libcpp_set[$inner] * $temp_var = new libcpp_set[$inner]()
                 |cdef $base_type $item
                 |for $item in $argument_var:
-                |   $temp_var.insert(deref($item.inst.get()))
+                |   $temp_var.insert($do_deref($item.inst.get()))
                 """, locals())
             if cpp_type.is_ref:
+
+                instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
                 cleanup_code = Code().add("""
                     |replace = set()
                     |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
                     |while $it != $temp_var.end():
                     |   $item = $cy_tt.__new__($cy_tt)
-                    |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                    |   $item.inst = $instantiation
                     |   replace.add($item)
                     |   inc($it)
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
                     """, locals())
+
             else:
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
@@ -814,13 +843,15 @@ class StdSetConverter(TypeConverterBase):
             inner = self.converters.cython_type(tt)
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
+
+            instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
             code = Code().add("""
                 |$output_py_var = set()
                 |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
                 |cdef $cy_tt $item
                 |while $it != $input_cpp_var.end():
                 |   $item = $cy_tt.__new__($cy_tt)
-                |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                |   $item.inst = $instantiation
                 |   $output_py_var.add($item)
                 |   inc($it)
                 """, locals())
