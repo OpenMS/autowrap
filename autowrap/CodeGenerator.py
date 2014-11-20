@@ -750,19 +750,24 @@ class CodeGenerator(object):
         L.info("   create wrapper for operator[]")
         meth_code = Code.Code()
 
-        (call_arg,), cleanups, in_types =\
+        (call_arg,), cleanups, (in_type,) =\
             self._create_fun_decl_and_input_conversion(meth_code, "__getitem__", mdcl)
 
         meth_code.add("""
-                     |    if $call_arg < 0:
-                     |        raise IndexError("invalid index %d" % $call_arg)
+                     |    cdef long _idx = in_0
                      """, locals())
+
+        if in_type.is_unsigned:
+            meth_code.add("""
+                        |    if _idx < 0:
+                        |        raise IndexError("invalid index %d" % _idx)
+                        """, locals())
 
         size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
         if size_guard:
             meth_code.add("""
-                     |    if $call_arg >= self.inst.get().$size_guard:
-                     |        raise IndexError("invalid index %d" % $call_arg)
+                     |    if _idx >= self.inst.get().$size_guard:
+                     |        raise IndexError("invalid index %d" % _idx)
                      """, locals())
 
         # call wrapped method and convert result value back to python

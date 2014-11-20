@@ -1,6 +1,8 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
+import pytest
+
 __license__ = """
 
 Copyright (c) 2012-2014, Uwe Schmitt, ETH Zurich, all rights reserved.
@@ -502,6 +504,16 @@ def test_minimal():
     expect_exception(lambda m1, m2: m1 != m2)(m1, m2)
 
     assert m1.toInt() == 4711
+
+    assert m2[0] == 1
+    assert m2[1] == 2
+    assert m2[2] == 3
+
+    with pytest.raises(IndexError):
+        m2[-1]
+
+    with pytest.raises(IndexError):
+        m2[3]
 
     assert wrapped.Minimal(1) + wrapped.Minimal(2) == wrapped.Minimal(3)
 
