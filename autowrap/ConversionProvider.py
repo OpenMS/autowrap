@@ -1284,6 +1284,29 @@ class StdVectorConverter(TypeConverterBase):
                 |   inc($it)
                 """, locals())
             return code
+
+        elif tt.base_type == "shared_ptr" \
+                and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
+
+            inner = self.converters.cython_type(tt)
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
+
+            base_type, = tt.template_args
+            cpp_tt, = inner.template_args
+
+            code = Code().add("""
+                |$output_py_var = []
+                |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
+                |cdef $base_type $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $base_type.__new__($base_type)
+                |   $item.inst = deref($it)
+                |   $output_py_var.append($item)
+                |   inc($it)
+                """, locals())
+            return code
+
         else:
             # cython cares for conversion of stl containers with std types:
             code = Code().add("""
