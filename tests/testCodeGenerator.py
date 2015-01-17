@@ -442,6 +442,23 @@ def test_stl_libcpp():
     assert i1.i_ == 1 + 20
     assert out_vec[0].i_ == 1 + 20
 
+    # Part 3
+    # Test std::vector< Widget* >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    vec_inp = [i1]
+    assert t.process_5_vector(vec_inp) == 1 + 10
+    assert vec_inp[0].i_ == 1 + 10
+    vec_inp = [i2]
+    assert t.process_5_vector(vec_inp) == 2 + 10
+    assert vec_inp[0].i_ == 2 + 10
+
+    expected = [i1]
+    res = t.process_6_vector(i1) 
+    assert len(res) == len(expected)
+    # they should be the same object
+    assert res[0].i_ == expected[0].i_
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,

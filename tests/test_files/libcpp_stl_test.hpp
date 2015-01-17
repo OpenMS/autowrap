@@ -54,4 +54,22 @@ class LibCppSTLTest {
             res.push_back(in);
             return res;
         }
+
+        int process_5_vector(std::vector<IntWrapper*> & in)
+        {
+            if (!in.empty() )
+            {
+                (*in.begin())->i_ += 10;
+                return (*in.begin())->i_;
+            }
+
+            return -1;
+        }
+
+        std::vector<IntWrapper*> process_6_vector(IntWrapper* in)
+        {
+            std::vector<IntWrapper*> res;
+            res.push_back(in);
+            return res;
+        }
 };
