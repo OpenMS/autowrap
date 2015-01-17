@@ -163,7 +163,7 @@ class TypeConverterBase(object):
         raise NotImplementedError()
 
 
-    def _codeFor_instantiate_object_from_iter(self, cpp_type, it):
+    def _codeForInstantiateObjectFromIter(self, cpp_type, it):
         """
         Code for new object instantation from iterator (double deref for iterator-ptr)
 
@@ -786,7 +786,7 @@ class StdSetConverter(TypeConverterBase):
                 """, locals())
             if cpp_type.is_ref:
 
-                instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
+                instantiation = self._codeForInstantiateObjectFromIter(inner, it)
                 cleanup_code = Code().add("""
                     |replace = set()
                     |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
@@ -844,7 +844,7 @@ class StdSetConverter(TypeConverterBase):
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
 
-            instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
+            instantiation = self._codeForInstantiateObjectFromIter(inner, it)
             code = Code().add("""
                 |$output_py_var = set()
                 |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
@@ -1145,7 +1145,7 @@ class StdVectorConverter(TypeConverterBase):
             if inner.is_ptr:
                 do_deref = ""
 
-            instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
+            instantiation = self._codeForInstantiateObjectFromIter(inner, it)
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(
                 cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
@@ -1177,7 +1177,7 @@ class StdVectorConverter(TypeConverterBase):
 
             if cpp_type.topmost_is_ref:
                 item2 = "%s_rec_b" % argument_var
-                instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
+                instantiation = self._codeForInstantiateObjectFromIter(inner, it)
                 cleanup_code = Code().add("""
                     |# gather results
                     |replace = list()
@@ -1280,7 +1280,7 @@ class StdVectorConverter(TypeConverterBase):
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
 
-            instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
+            instantiation = self._codeForInstantiateObjectFromIter(inner, it)
             code = Code().add("""
                 |$output_py_var = []
                 |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
