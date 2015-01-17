@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 from __future__ import print_function
+import pdb
 
 __license__ = """
 
@@ -754,7 +755,7 @@ class CodeGenerator(object):
             self._create_fun_decl_and_input_conversion(meth_code, "__getitem__", mdcl)
 
         meth_code.add("""
-                     |    cdef long _idx = in_0
+                     |    cdef long _idx = $call_arg
                      """, locals())
 
         if in_type.is_unsigned:

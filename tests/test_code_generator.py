@@ -509,7 +509,7 @@ def test_minimal():
     assert m2[1] == 2
     assert m2[2] == 3
 
-    with pytest.raises(IndexError):
+    with pytest.raises(OverflowError):
         m2[-1]
 
     with pytest.raises(IndexError):
