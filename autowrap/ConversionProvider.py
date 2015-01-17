@@ -971,7 +971,10 @@ class StdVectorConverter(TypeConverterBase):
                 """, *a, **kw)
         return code
 
-    def _perform_recursion(self, cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, *a, **kw):
+    def _perform_recursion(self, cpp_type, tt, arg_num, item, topmost_code,
+                           bottommost_code, code, cleanup_code, recursion_cnt,
+                           *a, **kw):
+
         converter = self.cr.get(tt)
         py_type = converter.matching_python_type(tt)
         rec_arg_num = "%s_rec" % arg_num
@@ -1102,6 +1105,7 @@ class StdVectorConverter(TypeConverterBase):
                 set(tt.all_occuring_base_types()))) > 0
 
         if self.converters.cython_type(tt).is_enum:
+            # Case 1: We wrap a std::vector<> with an enum base type
             item = "item%s" % arg_num
             if topmost_code is not None:
                 raise Exception("Recursion in std::vector<T> not yet implemented for enum")
@@ -1146,6 +1150,45 @@ class StdVectorConverter(TypeConverterBase):
                 call_fragment = "deref(%s)" % temp_var
 
             return code, call_fragment, cleanup_code
+
+        elif tt.template_args is not None and tt.base_type == "shared_ptr" \
+                and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
+            # Case 3: We wrap a std::vector< shared_ptr<X> > where X needs to be a type that is easy to wrap
+
+            base_type, = tt.template_args
+            cpp_tt, = inner.template_args
+
+            item = "%s_rec" % argument_var
+            code = Code().add("""
+                |cdef libcpp_vector[$inner] $temp_var 
+                |cdef $base_type $item
+                |for $item in $argument_var:
+                |    $temp_var.push_back($item.inst)
+                |# call
+                """, locals())
+
+            cleanup_code = Code().add("")
+
+            if cpp_type.topmost_is_ref:
+                item2 = "%s_rec_b" % argument_var
+                instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
+                cleanup_code = Code().add("""
+                    |# gather results
+                    |replace = list()
+                    |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   $item = $base_type.__new__($base_type)
+                    |   $item.inst = deref($it)
+                    |   replace.append($item)
+                    |   inc($it)
+                    |# replace old vector with new contents
+                    |$argument_var[:] = []
+                    |for $item2 in replace:
+                    |    $argument_var.append($item2)
+                    """, locals())
+
+            return code, "%s" % temp_var, cleanup_code
+
         elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
             len(set(self.converters.names_of_wrapper_classes).intersection(
                 set(tt.all_occuring_base_types()))) > 0:
@@ -1153,9 +1196,11 @@ class StdVectorConverter(TypeConverterBase):
                 # we cannot do it ...
             raise Exception(
                 "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
+
         elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
-            # Case 3: We wrap a std::vector<> with a base type that is
-            # std::vector<> => recursion
+            # Case 4: We wrap a std::vector<> with a base type that contains
+            #         further nested std::vector<> inside
+            #         -> deal with recursion
             item = "%s_rec" % argument_var
 
             # A) Prepare the pre-call
@@ -1182,8 +1227,9 @@ class StdVectorConverter(TypeConverterBase):
                     "Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr")
 
             return code, "deref(%s)" % temp_var, cleanup_code
+
         else:
-            # Case 4: We wrap a regular type
+            # Case 5: We wrap a regular type
             inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
             code = Code().add("""
