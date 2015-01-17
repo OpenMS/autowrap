@@ -18,4 +18,6 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_1_set(libcpp_set[IntWrapper*] & in_)
         libcpp_set[IntWrapper*] process_2_set(IntWrapper* in_)
 
+        int process_3_vector(libcpp_vector[ shared_ptr[IntWrapper] ] & in_)
+        libcpp_vector[ shared_ptr[IntWrapper] ] process_4_vector(shared_ptr[IntWrapper] & in_)
 
