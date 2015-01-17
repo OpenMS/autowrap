@@ -915,7 +915,7 @@ class StdVectorConverter(TypeConverterBase):
                 |replace_$recursion_cnt = []
                 |while $it != $temp_var_used.end():
                 |    $item = $cy_tt.__new__($cy_tt)
-                |    $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                |    $item.inst = $instantiation
                 |    replace_$recursion_cnt.append($item)
                 |    inc($it)
                 """ + btm_add, *a, **kw)
@@ -955,7 +955,7 @@ class StdVectorConverter(TypeConverterBase):
                 bottommost_code.add("del %s" % temp_var)
         return cleanup_code
 
-    def _prepare_nonrecursive_precall(self, topmost_code, cpp_type, code_top, *a, **kw):
+    def _prepare_nonrecursive_precall(self, topmost_code, cpp_type, code_top, do_deref, *a, **kw):
             # A) Prepare the pre-call
         if topmost_code is not None:
             if cpp_type.topmost_is_ref:
@@ -967,7 +967,7 @@ class StdVectorConverter(TypeConverterBase):
         # Now prepare the loop itself
         code = Code().add(code_top + """
                 |for $item in $argument_var:
-                |    $temp_var.push_back(deref($item.inst.get()))
+                |    $temp_var.push_back($do_deref($item.inst.get()))
                 """, *a, **kw)
         return code
 
@@ -1140,7 +1140,13 @@ class StdVectorConverter(TypeConverterBase):
                 |cdef $base_type $item
             """
 
-            code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, locals())
+            # Only dereference for non-ptr types
+            do_deref = "deref"
+            if inner.is_ptr:
+                do_deref = ""
+
+            instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
+            code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(
                 cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
 
@@ -1273,13 +1279,15 @@ class StdVectorConverter(TypeConverterBase):
             inner = self.converters.cython_type(tt)
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
+
+            instantiation = self._codeFor_instantiate_object_from_iter(inner, it)
             code = Code().add("""
                 |$output_py_var = []
                 |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
                 |cdef $cy_tt $item
                 |while $it != $input_cpp_var.end():
                 |   $item = $cy_tt.__new__($cy_tt)
-                |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                |   $item.inst = $instantiation
                 |   $output_py_var.append($item)
                 |   inc($it)
                 """, locals())
