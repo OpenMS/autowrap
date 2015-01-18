@@ -290,4 +290,13 @@ class LibCppTest {
             return in;
         }
 
+        std::vector<std::vector<unsigned int> > process38(int x) 
+        {
+            std::vector<std::vector<unsigned int> > res;
+            std::vector<unsigned int> res_inner;
+            res_inner.push_back(x);
+            res.push_back(res_inner);
+            res.push_back(res_inner);
+            return res;
+        }
 };

@@ -391,6 +391,15 @@ def test_libcpp():
     i2 = libcpp.Int(10)
     assert t.process37(i2).i_ == 11
 
+    # 
+    # Unsigned Int 
+    #
+    res = t.process38(5)
+    assert len(res) == 2
+    assert len(res[0]) == 1
+    assert res[0][0] == 5
+    assert res[1][0] == 5
+
 def test_stl_libcpp():
 
     target = os.path.join(test_files, "libcpp_stl_test.pyx")
