@@ -609,12 +609,7 @@ class StdMapConverter(TypeConverterBase):
         cy_tt_key = self.converters.cython_type(tt_key)
         cy_tt_value = self.converters.cython_type(tt_value)
 
-        if cy_tt_key.is_enum:
-            key_conv = "<%s> key" % cy_tt_key
-        elif tt_key.base_type in self.converters.names_of_wrapper_classes:
-            raise Exception("can not handle wrapped classes as keys in map")
-        else:
-            key_conv = "<%s> key" % cy_tt_key
+        py_tt_key = tt_key
 
         if cy_tt_value.is_enum:
             value_conv = "<%s> value" % cy_tt_value
@@ -623,25 +618,57 @@ class StdMapConverter(TypeConverterBase):
         else:
             value_conv = "<%s> value" % cy_tt_value
 
+        if cy_tt_key.is_enum:
+            key_conv = "<%s> key" % cy_tt_key
+        elif tt_key.base_type in self.converters.names_of_wrapper_classes:
+            #raise Exception("can not handle wrapped classes as keys in map")
+            key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
+
+            code = Code().add("""
+                |cdef libcpp_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
+                + libcpp_map[$cy_tt_key, $cy_tt_value]()
+
+                |for key, value in $argument_var.items():
+                |   deref($temp_var)[ $key_conv ] = $value_conv
+                """, locals())
+
+        else:
+            key_conv = "<%s> key" % cy_tt_key
+
         code = Code().add("""
             |cdef libcpp_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
             + libcpp_map[$cy_tt_key, $cy_tt_value]()
 
             |for key, value in $argument_var.items():
-            |   deref($temp_var)[$key_conv] = $value_conv
+            |   deref($temp_var)[ $key_conv ] = $value_conv
             """, locals())
 
         if cpp_type.is_ref:
             it = mangle("it_" + argument_var)
 
-            if cy_tt_key.is_enum:
-                key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
-            elif tt_key.base_type in self.converters.names_of_wrapper_classes:
-                raise Exception("can not handle wrapped classes as keys in map")
-            else:
-                key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
+            key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
 
-            if not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes:
+            if tt_key.base_type in self.converters.names_of_wrapper_classes \
+              and not tt_value.base_type in self.converters.names_of_wrapper_classes:
+                value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
+                cy_tt = tt_value.base_type
+                item = mangle("item_" + argument_var)
+                item_key = mangle("itemk_" + argument_var)
+                cleanup_code = Code().add("""
+                    |replace = dict()
+                    |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
+                    |cdef $py_tt_key $item_key
+                    |while $it != $temp_var.end():
+                    |   $item_key = $py_tt_key.__new__($py_tt_key)
+                    |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                    |   replace[$item_key] = $value_conv
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """, locals())
+            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes\
+                    and not tt_key.base_type in self.converters.names_of_wrapper_classes:
                 cy_tt = tt_value.base_type
                 item = mangle("item_" + argument_var)
                 cleanup_code = Code().add("""
