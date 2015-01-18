@@ -18,17 +18,31 @@ class Int {
 };
 
 class LibCppTest {
+
     private:
         int i;
+
     public:
-        LibCppTest(): i(0), integer_ptr(0), integer_vector_ptr(0) { };
-        LibCppTest(int ii): i(ii) { };
+        LibCppTest(): 
+            i(0),
+            integer_ptr(0),
+            integer_vector_ptr(0) 
+        {};
 
-        LibCppTest(const LibCppTest &o): i(o.i)  {
-        };
+        LibCppTest(int ii): 
+            i(ii),
+            integer_ptr(0),
+            integer_vector_ptr(0) 
+        {}
 
-        std::vector<Int> * integer_vector_ptr;
+        LibCppTest(const LibCppTest &o): 
+            i(o.i),
+            integer_ptr(0),
+            integer_vector_ptr(0) 
+        {}
+
         Int * integer_ptr;
+        std::vector<Int> * integer_vector_ptr;
 
         bool operator<(const LibCppTest & other) const
         {
