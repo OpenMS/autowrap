@@ -621,7 +621,6 @@ class StdMapConverter(TypeConverterBase):
         if cy_tt_key.is_enum:
             key_conv = "<%s> key" % cy_tt_key
         elif tt_key.base_type in self.converters.names_of_wrapper_classes:
-            #raise Exception("can not handle wrapped classes as keys in map")
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
 
             code = Code().add("""
@@ -711,11 +710,12 @@ class StdMapConverter(TypeConverterBase):
         tt_key, tt_value = cpp_type.template_args
         cy_tt_key = self.converters.cython_type(tt_key)
         cy_tt_value = self.converters.cython_type(tt_value)
+        py_tt_key = tt_key
 
         it = mangle("it_" + input_cpp_var)
 
         if not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
-            raise Exception("can not handle wrapped classes as keys in map")
+            key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
         else:
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
 
@@ -730,6 +730,22 @@ class StdMapConverter(TypeConverterBase):
                 |   $item = $cy_tt.__new__($cy_tt)
                 |   $item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
                 |   $output_py_var[$key_conv] = $item
+                |   inc($it)
+                """, locals())
+            return code
+        elif not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
+            value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
+            item_key = mangle("itemk_" + output_py_var)
+            code = Code().add("""
+                |$output_py_var = dict()
+                |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                |cdef $py_tt_key $item_key
+                |while $it != $input_cpp_var.end():
+                |   #$output_py_var[$key_conv] = $value_conv
+                |   $item_key = $py_tt_key.__new__($py_tt_key)
+                |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                |   # $output_py_var[$key_conv] = $value_conv
+                |   $output_py_var[$item_key] = $value_conv
                 |   inc($it)
                 """, locals())
             return code
