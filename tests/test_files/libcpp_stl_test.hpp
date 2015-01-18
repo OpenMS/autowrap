@@ -97,6 +97,14 @@ class LibCppSTLTest {
             return -1;
         }
 
+        std::map<IntWrapper, int> process_8_map(int in_)
+        {
+            std::map<IntWrapper, int> res;
+            IntWrapper wr(in_);
+            res[wr] = in_ + 10;
+            return res;
+        }
+
         int process_9_map(std::map<int, IntWrapper>& in)
         {
             if (!in.empty() )

@@ -479,6 +479,11 @@ def test_stl_libcpp():
     assert len(map_inp) == 1
     assert map_inp.values()[0] == 5 + 10
 
+    res = t.process_8_map(5)
+    assert len(res) == 1
+    assert res.keys()[0].i_ == 5
+    assert res.values()[0] == 5 + 10
+
     # Part 5
     # Test std::map< int, Widget >
     i1 = libcpp_stl.IntWrapper(1)
@@ -488,7 +493,6 @@ def test_stl_libcpp():
     assert len(map_inp) == 1
     assert map_inp.values()[0].i_ == 2 + 10
 
-    map_inp = { 5: i2 }
     res = t.process_10_map(5)
     assert len(res) == 1
     assert res.values()[0].i_ == 5
