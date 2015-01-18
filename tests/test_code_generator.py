@@ -470,6 +470,17 @@ def test_stl_libcpp():
     # they should be the same object
     assert res[0].i_ == expected[0].i_
 
+    # Part 4
+    # Test std::map< Widget, OtherWidget >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    map_inp = {i2 : 5}
+    assert t.process_7_map(map_inp) == 2
+    assert len(map_inp) == 1
+    print (map_inp.values()[0])
+    print ("=====================================")
+    assert map_inp.values()[0] == 5 + 10
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,

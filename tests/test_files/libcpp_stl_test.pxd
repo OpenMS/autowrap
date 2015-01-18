@@ -24,3 +24,5 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_5_vector(libcpp_vector[IntWrapper*] & in_)
         libcpp_vector[IntWrapper*] process_6_vector(IntWrapper* in_)
 
+        int process_7_map(libcpp_map[IntWrapper, int] & in_)
+

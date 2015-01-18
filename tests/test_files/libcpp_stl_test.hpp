@@ -5,9 +5,23 @@
 #include <boost/shared_ptr.hpp>
 
 class IntWrapper {
+
     public:
         int i_;
-        IntWrapper(int i): i_(i) { };
+
+        IntWrapper(): 
+          i_(0) 
+        {}
+
+        IntWrapper(const int i): 
+          i_(i) 
+        {}
+
+        // for map
+        bool operator<( const IntWrapper & other ) const 
+        {
+          return this->i_ < other.i_;
+        }
 };
 
 class LibCppSTLTest {
@@ -71,5 +85,15 @@ class LibCppSTLTest {
             std::vector<IntWrapper*> res;
             res.push_back(in);
             return res;
+        }
+
+        int process_7_map(std::map<IntWrapper, int>& in)
+        {
+            if (!in.empty() )
+            {
+                in.begin()->second += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
         }
 };
