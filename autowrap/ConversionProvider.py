@@ -611,6 +611,10 @@ class StdMapConverter(TypeConverterBase):
 
         py_tt_key = tt_key
 
+        if (not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes) \
+           and (not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes):
+            raise Exception("Converter can not handle wrapped classes as keys and values in map")
+
         if cy_tt_value.is_enum:
             value_conv = "<%s> value" % cy_tt_value
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
@@ -714,7 +718,11 @@ class StdMapConverter(TypeConverterBase):
 
         it = mangle("it_" + input_cpp_var)
 
-        if not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
+        if (not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes) \
+           and (not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes):
+            raise Exception("Converter can not handle wrapped classes as keys and values in map")
+
+        elif not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
         else:
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
