@@ -18,17 +18,31 @@ class Int {
 };
 
 class LibCppTest {
+
     private:
         int i;
+
     public:
-        LibCppTest(): i(0), integer_ptr(0), integer_vector_ptr(0) { };
-        LibCppTest(int ii): i(ii) { };
+        LibCppTest(): 
+            i(0),
+            integer_ptr(0),
+            integer_vector_ptr(0) 
+        {};
 
-        LibCppTest(const LibCppTest &o): i(o.i)  {
-        };
+        LibCppTest(int ii): 
+            i(ii),
+            integer_ptr(0),
+            integer_vector_ptr(0) 
+        {}
 
-        std::vector<Int> * integer_vector_ptr;
+        LibCppTest(const LibCppTest &o): 
+            i(o.i),
+            integer_ptr(0),
+            integer_vector_ptr(0) 
+        {}
+
         Int * integer_ptr;
+        std::vector<Int> * integer_vector_ptr;
 
         bool operator<(const LibCppTest & other) const
         {
@@ -213,6 +227,7 @@ class LibCppTest {
             
         }
         int process28(std::vector<std::vector<std::vector<std::vector<Int> > > > in)
+
         {
             int sum = 0;
             for (std::vector<std::vector<std::vector<std::vector<Int> > > >::const_iterator i = in.begin(); i != in.end(); ++i)
@@ -277,4 +292,25 @@ class LibCppTest {
             return boost::static_pointer_cast<const Int>(in);
         }
            
+        int process36(Int* in)
+        {
+            in->i_++;
+            return in->i_;
+        }
+
+        Int* process37(Int* in)
+        {
+            in->i_++;
+            return in;
+        }
+
+        std::vector<std::vector<unsigned int> > process38(int x) 
+        {
+            std::vector<std::vector<unsigned int> > res;
+            std::vector<unsigned int> res_inner;
+            res_inner.push_back(x);
+            res.push_back(res_inner);
+            res.push_back(res_inner);
+            return res;
+        }
 };

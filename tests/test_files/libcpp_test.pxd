@@ -5,6 +5,8 @@ from libcpp.pair  cimport pair  as libcpp_pair
 from libcpp.map  cimport map  as libcpp_map 
 from smart_ptr cimport shared_ptr
 
+ctypedef unsigned int UInt
+
 cdef extern from "libcpp_test.hpp":
 
     cdef enum EEE:
@@ -76,4 +78,8 @@ cdef extern from "libcpp_test.hpp":
         shared_ptr[Int] process34(shared_ptr[Int] in_)
         shared_ptr[const Int] process35(shared_ptr[Int] in_)
 
+        int   process36(Int* in_)
+        Int*   process37(Int* in_)
+
+        libcpp_vector[libcpp_vector[UInt]] process38(int)
 
