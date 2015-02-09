@@ -79,7 +79,7 @@ class ConverterRegistry(object):
 
         self.lookup = defaultdict(list)
 
-        self.names_of_wrapper_classes = instance_mapping.keys()
+        self.names_of_wrapper_classes = list(instance_mapping.keys())
         self.names_of_wrapper_classes += ["const %s" % k for k in instance_mapping.keys()]
         self.names_of_classes_to_wrap = names_of_classes_to_wrap
         self.names_of_enums_to_wrap = names_of_enums_to_wrap
