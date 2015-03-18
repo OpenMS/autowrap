@@ -5,6 +5,6 @@ cdef extern from "boost/smart_ptr/shared_ptr.hpp" namespace "boost":
         shared_ptr()
         shared_ptr(T*)
         void reset()
-        T* get()
+        T* get() nogil
         int unique()
         int use_count()

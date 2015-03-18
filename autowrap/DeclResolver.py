@@ -150,6 +150,7 @@ class ResolvedMethod(object):
         self.arguments = arguments
         self.cpp_decl = decl
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+        self.with_nogil = decl.annotations.get("wrap-with-no-gil", False)
         self.local_map = local_map
         self.instance_amp = instance_map
 

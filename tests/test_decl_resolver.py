@@ -611,3 +611,18 @@ cdef extern from "":
     assert A.name == "A"
     m, = A.methods["A"]
     print (m)
+
+def test_with_no_gil_annotation():
+    (instance,), map_I = DeclResolver.resolve_decls_from_string("""
+cdef extern from "A.h":
+    cdef cppclass A:
+        A()
+        void Expensive() nogil # wrap-with-no-gil
+        void Cheap()
+
+    """)
+    assert instance.name == "A"
+    method, = instance.methods.get("Expensive")
+    assert method.with_nogil
+    method, = instance.methods.get("Cheap")
+    assert not method.with_nogil

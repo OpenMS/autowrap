@@ -556,19 +556,27 @@ class CodeGenerator(object):
         out_converter = self.cr.get(res_t)
         full_call_stmt = out_converter.call_method(res_t, cy_call_str)
 
-        if isinstance(full_call_stmt, basestring):
+        if method.with_nogil:
             meth_code.add("""
+              |    with nogil:
+              """)
+            indented = Code.Code()
+        else:
+            indented = meth_code
+
+        if isinstance(full_call_stmt, basestring):
+            indented.add("""
                 |    $full_call_stmt
                 """, locals())
         else:
-            meth_code.add(full_call_stmt)
+            indented.add(full_call_stmt)
 
         for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
             if isinstance(cleanup, basestring):
                 cleanup = "    %s" % cleanup
-            meth_code.add(cleanup)
+            indented.add(cleanup)
 
         to_py_code = out_converter.output_conversion(res_t, "_r", "py_result")
 
@@ -576,8 +584,11 @@ class CodeGenerator(object):
 
             if isinstance(to_py_code, basestring):
                 to_py_code = "    %s" % to_py_code
-            meth_code.add(to_py_code)
-            meth_code.add("    return py_result")
+            indented.add(to_py_code)
+            indented.add("    return py_result")
+
+        if method.with_nogil:
+            meth_code.add(indented)
 
         return meth_code
 

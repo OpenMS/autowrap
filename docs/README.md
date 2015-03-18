@@ -146,3 +146,14 @@ This will create two Python objects, ClassA and ClassB which are derived from
 TemplatedClass but with different template arguments (note that Cython does
 not handle integer templates).
 
+- `# wrap-with-no-gil`  
+Autowrap will release the GIL (Global interpreter lock) before calling this method,
+so that it does not block other python threads. It is advised to release the GIL for
+long running, expensive calls into native code which does not manipulate python objects. 
+
+Example declaration (pxd):
+
+    void Compile() nogil # wrap-with-no-gil
+    
+In addition you have to declare the function as nogil. For further details see 
+http://docs.cython.org/src/userguide/external_C_code.html
