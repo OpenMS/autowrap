@@ -468,6 +468,7 @@ cdef extern from "*":
             void iun(int x)
             void hun(int x
                     )  # wrap-as:jun
+            void kun(int x) # wrap-with-no-gil
 """)
 
     assert len(cld.annotations) == 2
@@ -486,6 +487,9 @@ cdef extern from "*":
 
     for mdcl in cld.methods["hun"]:
         assert mdcl.annotations == {'wrap-as': 'jun'}
+
+    for mdcl in cld.methods["kun"]:
+        assert mdcl.annotations == {'wrap-with-no-gil': True}
 
 
 def test_parsing_of_nested_template_args():
