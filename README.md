@@ -1,7 +1,6 @@
-autowrap
+autowrap [![Build Status](https://travis-ci.org/uweschmitt/autowrap.svg?branch=master)](https://travis-ci.org/uweschmitt/autowrap)
 ========
 
-Travis says: [![Build Status](https://travis-ci.org/uweschmitt/autowrap.svg?branch=master)](https://travis-ci.org/uweschmitt/autowrap)
 
 
 Generates Python Extension modules from [Cython][] PXD files.
