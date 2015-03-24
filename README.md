@@ -176,6 +176,8 @@ Many thanks go to:
    - The developers of [Cython][] for providing such a powerful and high
      quality tool.
 
+   - Thanks to https://github.com/hendrik-cliqz for implementing the "no-gil" annotation.
+
 
 [Cython]: http://cython.org
 [distutils]: http://docs.python.org/2/distutils/
