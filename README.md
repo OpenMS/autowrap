@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/uweschmitt/autowrap.svg?branch=master)](https://travis-ci.org/uweschmitt/autowrap)
+
 autowrap
 ========
 
