@@ -167,6 +167,7 @@ def test_libcpp():
     sub_libcpp_copy_constructors(libcpp)
 
     t = libcpp.LibCppTest()
+
     assert t.twist([b"hi", 2]) == [2, b"hi"]
     li = [1]
     li2 = t.process(li)
@@ -390,6 +391,16 @@ def test_libcpp():
     assert t.process37(i1).i_ == 3
     i2 = libcpp.Int(10)
     assert t.process37(i2).i_ == 11
+
+    # return of const ptr
+    i1 = libcpp.Int(1)
+    assert t.process39(i1).i_ == 2
+    assert t.process39(i1).i_ == 3
+    i2 = libcpp.Int(10)
+    assert t.process39(i2).i_ == 11
+
+    rval = t.process39(i2)
+    assert rval.i_ == 12
 
     # 
     # Unsigned Int 

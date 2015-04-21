@@ -313,4 +313,10 @@ class LibCppTest {
             res.push_back(res_inner);
             return res;
         }
+
+        const Int* process39(Int* in)
+        {
+            in->i_++;
+            return in;
+        }
 };
