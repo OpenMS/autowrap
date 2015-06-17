@@ -362,8 +362,8 @@ class ConstCharPtrConverter(TypeConverterBase):
         return "isinstance(%s, bytes)" % (argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
-        code = ""
-        call_as = "(<const_char *>%s)" % argument_var
+        code = Code().add("cdef const_char * input_%s = <const_char *> %s" % (argument_var, argument_var))
+        call_as = "input_%s" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
