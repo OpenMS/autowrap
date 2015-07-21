@@ -1,17 +1,28 @@
 // test GIL unlocking
 
 #include <string>
+#include <Python.h>
+#include <stdio.h>
 
-class ClassUsingTheGil{
+extern PyThreadState * _PyThreadState_Current;
+
+class GilTesting{
   public:
 
-    ClassUsingTheGil (const char* name): name_(name), greetings_() {}
+    GilTesting (const char* name): name_(name), greetings_() {}
 
     void do_something (const char* msg) {
-        greetings_ = "hello ";
-        greetings_.append(name_);
-        greetings_.append(", ");
-        greetings_.append(msg);
+        PyThreadState * tstate = _PyThreadState_Current;
+        if (tstate && (tstate == PyGILState_GetThisThreadState())) {
+            greetings_ = "Hello ";
+            greetings_.append(name_);
+            greetings_.append(", Sorry the GIL is locked, test failed.");
+        } else {
+            greetings_ = "Hello ";
+            greetings_.append(name_);
+            greetings_.append(", ");
+            greetings_.append(msg);
+        }
     }
 
     const char* get_greetings() {

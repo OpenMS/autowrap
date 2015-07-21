@@ -722,12 +722,15 @@ def test_templated():
 
 def test_gil_unlock():
 
-    target = os.path.join(test_files, "gil_testing.pyx")
+    target = os.path.join(test_files, "gil_testing_wrapper.pyx")
     include_dirs = autowrap.parse_and_generate_code(["gil_testing.pxd"],
                                                     root=test_files, target=target,  debug=True)
 
-    wrapped = autowrap.Utils.compile_and_import("gil_testing", [target, ],
+    wrapped = autowrap.Utils.compile_and_import("gtwrapped", [target, ],
                                                 include_dirs)
+    g = wrapped.GilTesting("Jack")
+    g.do_something("How are you?")
+    assert g.get_greetings() == "Hello Jack, How are you?"
 
 
 # todo: wrapped tempaltes as input of free functions and mehtods of other
