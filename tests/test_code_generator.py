@@ -720,6 +720,15 @@ def test_templated():
     assert templated.xi[0].get() == 17
     assert templated.xi[1].get() == 13
 
+def test_gil_unlock():
+
+    target = os.path.join(test_files, "gil_testing.pyx")
+    include_dirs = autowrap.parse_and_generate_code(["gil_testing.pxd"],
+                                                    root=test_files, target=target,  debug=True)
+
+    wrapped = autowrap.Utils.compile_and_import("gil_testing", [target, ],
+                                                include_dirs)
+
 
 # todo: wrapped tempaltes as input of free functions and mehtods of other
 # classes
