@@ -147,6 +147,7 @@ TemplatedClass but with different template arguments (note that Cython does
 not handle integer templates).
 
 - `# wrap-with-no-gil`  
+
 Autowrap will release the GIL (Global interpreter lock) before calling this method,
 so that it does not block other python threads. It is advised to release the GIL for
 long running, expensive calls into native code which does not manipulate python objects. 
