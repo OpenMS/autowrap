@@ -728,9 +728,9 @@ def test_gil_unlock():
 
     wrapped = autowrap.Utils.compile_and_import("gtwrapped", [target, ],
                                                 include_dirs)
-    g = wrapped.GilTesting("Jack")
-    g.do_something("How are you?")
-    assert g.get_greetings() == "Hello Jack, How are you?"
+    g = wrapped.GilTesting(b"Jack")
+    g.do_something(b"How are you?")
+    assert g.get_greetings() == b"Hello Jack, How are you?"
 
 
 # todo: wrapped tempaltes as input of free functions and mehtods of other

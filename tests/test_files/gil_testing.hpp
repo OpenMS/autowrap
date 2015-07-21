@@ -4,15 +4,17 @@
 #include <Python.h>
 #include <stdio.h>
 
-extern PyThreadState * _PyThreadState_Current;
-
 class GilTesting{
   public:
 
     GilTesting (const char* name): name_(name), greetings_() {}
 
     void do_something (const char* msg) {
+#if PY_MAJOR_VERSION >= 3
+        PyThreadState * tstate = (PyThreadState*)_Py_atomic_load_relaxed(&_PyThreadState_Current);
+#else
         PyThreadState * tstate = _PyThreadState_Current;
+#endif
         if (tstate && (tstate == PyGILState_GetThisThreadState())) {
             greetings_ = "Hello ";
             greetings_.append(name_);
