@@ -70,11 +70,16 @@ def augment_arg_names(method):
             for i, (n, t) in enumerate(method.arguments)]
 
 
-def fixed_include_dirs():
+def fixed_include_dirs(include_boost):
     import pkg_resources
     boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
     data = pkg_resources.resource_filename("autowrap", "data_files")
-    return [boost, data]
+    autowrap_internal = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
+
+    if not include_boost:
+      return [autowrap_internal]
+    else:
+      return [boost, data, autowrap_internal]
 
 
 class CodeGenerator(object):
@@ -122,11 +127,11 @@ class CodeGenerator(object):
         self.wrapped_classes_cnt = 0
         self.wrapped_methods_cnt = 0
 
-    def get_include_dirs(self):
+    def get_include_dirs(self, include_boost):
         if self.pxd_dir is not None:
-            return fixed_include_dirs() + [self.pxd_dir]
+            return fixed_include_dirs(include_boost) + [self.pxd_dir]
         else:
-            return fixed_include_dirs()
+            return fixed_include_dirs(include_boost)
 
     def setup_cimport_paths(self):
 
