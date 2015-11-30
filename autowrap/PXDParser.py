@@ -403,7 +403,8 @@ def parse_pxd_file(path):
     options, sources = parse_command_line(["--cplus", path])
 
     import pkg_resources
-    data = pkg_resources.resource_filename("autowrap", "data_files")
+    # TODO sync with CodeGenerator.py function fixed_include_dirs
+    data = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
     options.include_path = [data]
 
     path = os.path.abspath(path)
