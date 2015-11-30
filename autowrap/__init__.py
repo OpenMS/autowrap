@@ -52,7 +52,7 @@ def parse(files, root):
 
 
 def generate_code(decls, instance_map, target, debug, manual_code=None,
-                  extra_cimports=None):
+                  extra_cimports=None, include_boost=True):
 
     import autowrap.CodeGenerator
     gen = CodeGenerator.CodeGenerator(decls,
@@ -61,7 +61,7 @@ def generate_code(decls, instance_map, target, debug, manual_code=None,
                                       manual_code,
                                       extra_cimports)
     gen.create_pyx_file(debug)
-    includes = gen.get_include_dirs()
+    includes = gen.get_include_dirs(include_boost)
     print("Autwrap has wrapped %s classes, %s methods and %s enums" % (
         gen.wrapped_classes_cnt,
         gen.wrapped_methods_cnt,
@@ -70,11 +70,11 @@ def generate_code(decls, instance_map, target, debug, manual_code=None,
 
 
 def parse_and_generate_code(files, root, target, debug, manual_code=None,
-                            extra_cimports=None):
+                            extra_cimports=None, include_boost=True):
 
     print("Autowrap will start to parse and generate code. "
           "Will parse %s files" % len(files))
     decls, instance_map = parse(files, root)
     print("Done parsing the files, will generate the code...")
     return generate_code(decls, instance_map, target, debug, manual_code,
-                         extra_cimports)
+                         extra_cimports, include_boost)

@@ -78,7 +78,7 @@ def test_number_conv():
 def test_shared_ptr():
 
     target = os.path.join(test_files, "shared_ptr_test.pyx")
-    include_dirs = autowrap.CodeGenerator.fixed_include_dirs() + [test_files]
+    include_dirs = autowrap.CodeGenerator.fixed_include_dirs(True) + [test_files]
     m = autowrap.Utils.compile_and_import("m", [target, ], include_dirs)
     assert m.__name__ == "m"
 
