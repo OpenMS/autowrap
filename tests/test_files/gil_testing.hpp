@@ -10,12 +10,23 @@ class GilTesting{
     GilTesting (const char* name): name_(name), greetings_() {}
 
     void do_something (const char* msg) {
+
+      bool has_gil;
 #if PY_MAJOR_VERSION >= 3
-        PyThreadState * tstate = (PyThreadState*)_Py_atomic_load_relaxed(&_PyThreadState_Current);
+#if PY_MINOR_VERSION >= 4
+        // Python >= 3.4 is easy
+        has_gil = PyGILState_Check();
 #else
-        PyThreadState * tstate = _PyThreadState_Current;
+        PyThreadState * tstate = (PyThreadState*)_Py_atomic_load_relaxed(&_PyThreadState_Current);
+        has_gil = (tstate && (tstate == PyGILState_GetThisThreadState()));
 #endif
-        if (tstate && (tstate == PyGILState_GetThisThreadState())) {
+
+#else
+        // For Python 2.0
+        PyThreadState * tstate = _PyThreadState_Current;
+        has_gil = (tstate && (tstate == PyGILState_GetThisThreadState()));
+#endif
+        if (has_gil) {
             greetings_ = "Hello ";
             greetings_.append(name_);
             greetings_.append(", Sorry the GIL is locked, test failed.");
