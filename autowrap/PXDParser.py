@@ -231,7 +231,6 @@ class CTypeDefDecl(BaseDecl):
     def parseTree(cls, node, lines, pxd_path):
         decl = node.declarator
         new_name = _traverse_for_name(decl, 'base')
-
         type_ = _extract_type(node.base_type, node.declarator)
         annotations = parse_line_annotations(node, lines)
         return cls(new_name, type_, annotations, pxd_path)
