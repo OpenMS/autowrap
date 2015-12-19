@@ -144,6 +144,29 @@ def _extract_template_args(node):
     return CppType(name, args)
 
 
+def _traverse_for_name(obj, traverse_into_attr, _start=None):
+    """
+    Looks for the name attribute on an object. If it's not found, it recurses
+    into the object by the given traverse_into_attr argument if possible.
+
+    If we can not recurse further, then we give up and raise an AttributeError
+    on the original object.
+    """
+    if not _start:
+        _start = obj
+
+    if hasattr(obj, 'name'):
+        return obj.name
+
+    # Traverse down if we can
+    next_obj = getattr(obj, traverse_into_attr, None)
+    if next_obj:
+        return _traverse_for_name(next_obj, traverse_into_attr, _start)
+
+    # Give up and let it raise the AttributeError on the original object
+    return _start.name
+
+
 def _extract_type(base_type, decl):
     """ extracts type information from node in parse_pxd_file tree """
 
@@ -185,7 +208,9 @@ def _extract_type(base_type, decl):
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
     is_long = hasattr(base_type, "longness") and base_type.longness
     is_const = isinstance(base_type, Nodes.CConstTypeNode)
-    return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long, is_const=is_const)
+
+    name = _traverse_for_name(base_type, 'base_type')
+    return CppType(name, template_parameters, is_ptr, is_ref, is_unsigned, is_long, is_const=is_const)
 
 
 class BaseDecl(object):
@@ -205,10 +230,8 @@ class CTypeDefDecl(BaseDecl):
     @classmethod
     def parseTree(cls, node, lines, pxd_path):
         decl = node.declarator
-        if isinstance(decl, CPtrDeclaratorNode):
-            new_name = decl.base.name
-        else:
-            new_name = decl.name
+        new_name = _traverse_for_name(decl, 'base')
+
         type_ = _extract_type(node.base_type, node.declarator)
         annotations = parse_line_annotations(node, lines)
         return cls(new_name, type_, annotations, pxd_path)
