@@ -720,6 +720,25 @@ def test_templated():
     assert templated.xi[0].get() == 17
     assert templated.xi[1].get() == 13
 
+    # Test second template (it adds 1 to everything)
+    t_o = twrapped.T2(42)
+    templated_o = twrapped.Templated_other(t_o)
+    assert templated_o.get().get() == 43
+    assert templated_o.passs(templated_o) == templated_o
+
+    # Try out the adding 1 thing
+    t11 = twrapped.T2(10)
+    t12 = twrapped.T2(11)
+
+    templated_o.xi = [t11, t12]
+    assert templated_o.xi[0].get() == 11
+    assert templated_o.xi[1].get() == 12
+
+    # Test free functions
+    assert templated.computeSeven() == 7
+    assert templated_o.computeSeven() == 7
+
+
 def test_gil_unlock():
 
     target = os.path.join(test_files, "gil_testing_wrapper.pyx")
