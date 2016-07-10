@@ -34,7 +34,7 @@ C++ libraries based on annotated (commented) cython pxd files. """,
       zip_safe=False,
       test_suite='nose.collector',
       tests_require=['nose'],
-      install_requires=['Cython>=0.18'],
+      install_requires=['Cython==0.21'],
       entry_points={
            'console_scripts':
            [
