@@ -22,6 +22,28 @@ class T
         }
 };
 
+class T2 
+{
+    private:
+        int _j;
+    public:
+        T2(): _j(0) {}
+
+        T2(const T2& t){
+        _j = t._j;
+        };
+
+        T2(int j): _j(j) { };
+        int get() const {
+            return _j + 1;
+        }
+
+        bool operator==(const T2& other)
+        {
+            return this->_j == other._j;
+        }
+};
+
 template <class X>
 class Templated {
 
@@ -75,6 +97,11 @@ class Templated {
         bool operator==(const Templated<X>  & other)
         {
             return this->get() == other.get();
+        }
+
+        static int computeSeven() 
+        {
+            return 7;
         }
 
 };
