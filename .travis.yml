@@ -7,4 +7,4 @@ python:
   - "3.5"
 install:
   - travis_retry python setup.py develop
-script: "nosetests -w tests/"
+script: "py.test tests/"
