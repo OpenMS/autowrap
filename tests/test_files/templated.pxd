@@ -31,7 +31,7 @@ cdef extern from "templated.hpp":
         X get()
         float getF()
         int summup(libcpp_vector[Templated[X]] & v)
-        libcpp_vector[Templated[X]] reverse(libcpp_vector[Templated[X]] v)
+        libcpp_vector[Templated[X]] reverse(libcpp_vector[Templated[X]]& v)
         int getTwice(Templated[X])
         Templated[X] passs(Templated[X] v)
         bool operator==(Templated[X] other)
