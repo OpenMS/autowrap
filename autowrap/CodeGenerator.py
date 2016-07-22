@@ -263,7 +263,7 @@ class CodeGenerator(object):
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
         class_code = Code.Code()
-        if r_class.methods:
+        if r_class.methods and not r_class.wrap_manual_memory:
             class_code.add("""
                             |
                             |cdef class $cname:
