@@ -130,7 +130,7 @@ def collect_manual_code(addons):
         clz_name, __ = os.path.splitext(os.path.basename(name))
         line_iter = open(name, "r")
         for line in line_iter:
-            if line and line[0] not in "\n\r\t ":
+            if line and line.strip() not in "\n\r\t ":
                 cimports.append(line)
             else:
                 break
