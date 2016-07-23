@@ -40,16 +40,16 @@ from autowrap.tools import OrderKeepingDictionary
 
 __doc__ = """
 
-    the methods in this module take the class declarations created by
+    The methods in this module take the class declarations created by
     calling PXDParser.parse and generates a list of resolved class
     declarations.  'resolved' means that all template parameters are
     resolved and inherited methods are resolved from super classes.
 
-    some preliminaries which you should have in mind to understand the
+    Some preliminaries which you should have in mind to understand the
     code below:
 
-    in pxd files inheritance is declared with 'wrap-inherits'
-    annotations.  python class names are declared with 'wrap-instances'
+    In pxd files inheritance is declared with 'wrap-inherits'
+    annotations.  Python class names are declared with 'wrap-instances'
     annotations.
 
     eg
@@ -71,6 +71,41 @@ __doc__ = """
     If you wrap a C++ class without template parameters you can ommit
     the 'wrap-instances' annotation. In this case the name of the Python
     class is the same as the name of the C++ class.
+
+    There are a few additional hints you can give to the wrapper, for classes these are:
+        - wrap-ignore: will not create a wrapper for this class (e.g. abstract
+                       base class that needs to be known to Cython but cannot be wrapped)
+        - wrap-manual-memory: will allow the user to provide manual memory
+                              management of self.inst, therefore the class will
+                              not provide the automated __dealloc__ and inst
+                              attribute (but their presence is still expected). 
+                              This is useful if you cannot use the shared-ptr
+                              approach to store a reference to the C++ class
+                              (as with singletons for example).
+        - wrap_hash: if the produced class should be hashable, give a hint
+                     which method should be used for this. This method will be
+                     called on the C++ object and fed into the Python "hash"
+                     function. This implies the class also provides a
+                     operator== function.
+                     Note that the only requirement for a hash function is that
+                     equal objects produce equal values
+
+    Thus a class could look like this:
+
+        cdef cppclass B[U,V]:
+            # wrap-inherits:
+            #    C[U]
+            #    D
+            #
+            # wrap-instances:
+            #   B_int_float := B[int, float]
+            #   B_pure := B[int, int]
+            #
+            # wrap-manual-memory
+            #
+            # wrap-hash:
+            #   getStringId().c_str()
+
 
 """
 
