@@ -392,6 +392,10 @@ def test_libcpp():
     i2 = libcpp.Int(10)
     assert t.process37(i2).i_ == 11
 
+    # return of NULL
+    i1 = libcpp.Int(18)
+    assert t.process37(i1) == None
+
     # return of const ptr
     i1 = libcpp.Int(1)
     assert t.process39(i1).i_ == 2

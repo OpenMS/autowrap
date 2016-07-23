@@ -300,6 +300,7 @@ class LibCppTest {
 
         Int* process37(Int* in)
         {
+            if (in->i_ == 18) return NULL;
             in->i_++;
             return in;
         }

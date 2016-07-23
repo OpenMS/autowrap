@@ -84,5 +84,5 @@ cdef extern from "libcpp_test.hpp":
         libcpp_vector[libcpp_vector[UInt]] process38(int)
 
         # Wrap a const return value
-        Int*   process39(Int* in_)
+        const Int* process39(Int* in_)
 
