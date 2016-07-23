@@ -531,6 +531,9 @@ class CodeGenerator(object):
         if isinstance(to_py_code, basestring):
             to_py_code = "    %s" % to_py_code
 
+        if isinstance(access_stmt, basestring):
+            access_stmt = "    %s" % access_stmt
+
         if t.is_ptr:
             # For pointer types, we need to guard against unsafe access
             code.add("""
@@ -538,16 +541,16 @@ class CodeGenerator(object):
                 |    def __get__(self):
                 |        if self.inst.get().%s is NULL:
                 |             raise Exception("Cannot access pointer that is NULL")
-                |        $access_stmt
                 """ % name, locals())
         else:
             code.add("""
                 |
                 |    def __get__(self):
-                |        $access_stmt
                 """, locals())
+
         # increase indent:
         indented = Code.Code()
+        indented.add(access_stmt)
         indented.add(to_py_code)
         code.add(indented)
         code.add("        return py_result")

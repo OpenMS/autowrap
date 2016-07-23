@@ -160,7 +160,7 @@ def _extract_type(base_type, decl):
                 is_long = hasattr(arg_node.base_type, "longness") and arg_node.base_type.longness
 
                 # Handle const template arguments which do not have a name
-                # themselves, only their base types havea name attribute
+                # themselves, only their base types have name attribute
                 is_const = isinstance(arg_node.base_type, Nodes.CConstTypeNode)
                 if is_const:
                     name = arg_node.base_type.base_type.name
@@ -185,6 +185,12 @@ def _extract_type(base_type, decl):
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
     is_long = hasattr(base_type, "longness") and base_type.longness
     is_const = isinstance(base_type, Nodes.CConstTypeNode)
+
+    # Complex const values, e.g. "const Int *" need to be reduced to base type
+    # to get the correct name
+    if is_const:
+        base_type = base_type.base_type
+
     return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long, is_const=is_const)
 
 

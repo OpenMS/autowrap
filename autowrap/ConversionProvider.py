@@ -433,9 +433,21 @@ class TypeToWrapConverter(TypeConverterBase):
         t = self.converters.cython_type(res_type)
 
         if t.is_ptr:
+
+            # Special treatment for const raw ptr
+            const = ""
+            if t.is_const:
+                const = "const"
+
             # If t is a pointer, we would like to call on the base type
             t = t.base_type
-            cy_call_str = "deref(%s)" % cy_call_str
+            code = Code().add("""
+                |cdef $const $t * __r = ($cy_call_str)
+                |if __r == NULL:
+                |    return None
+                |cdef $t * _r = new $t(deref(__r))
+                """, locals())
+            return code
 
         return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
 
