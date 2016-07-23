@@ -281,6 +281,16 @@ class CodeGenerator(object):
                             |
                             """, locals())
 
+        if len(r_class.wrap_hash) != 0:
+            class_code.add("""
+                            |
+                            |    def __hash__(self):
+                            |      # The only required property is that objects which compare equal have
+                            |      # the same hash value:
+                            |      return hash(deref(self.inst.get()).%s )
+                            |
+                            """ % r_class.wrap_hash[0], locals())
+
         self.class_codes[cname] = class_code
 
         cons_created = False
