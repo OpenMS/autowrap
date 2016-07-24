@@ -257,6 +257,14 @@ class CppClassDecl(BaseDecl):
     def parseTree(cls, node, lines, pxd_path):
         name = node.name
         template_parameters = node.templates
+        if template_parameters and \
+          isinstance(template_parameters, list) and \
+          isinstance(template_parameters[0], tuple):
+            # Cython 0.24 uses [(string, bool)] to indicate name and whether
+            # template argument is required or optional.
+            # For now, convert to pre-0.24 format
+            template_parameters = [t[0] for t in template_parameters]
+            
         class_annotations = parse_class_annotations(node, lines)
         methods = OrderKeepingDictionary()
         attributes = []
