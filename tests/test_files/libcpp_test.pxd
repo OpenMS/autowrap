@@ -1,6 +1,7 @@
 from libcpp.string cimport string as libcpp_string
 from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
+from libcpp cimport bool
 from libcpp.pair  cimport pair  as libcpp_pair 
 from libcpp.map  cimport map  as libcpp_map 
 from smart_ptr cimport shared_ptr
@@ -38,9 +39,15 @@ cdef extern from "libcpp_test.hpp":
 
 
     cdef cppclass LibCppTest:
+        # wrap-hash:
+        #  get()
+
         LibCppTest()
         LibCppTest(int ii)
         LibCppTest(LibCppTest) # wrap-ignore
+
+        bool operator==(LibCppTest)
+        bool operator!=(LibCppTest)
 
         libcpp_vector[Int] * integer_vector_ptr
         Int * integer_ptr
