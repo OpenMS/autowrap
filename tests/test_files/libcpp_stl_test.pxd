@@ -30,3 +30,5 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_9_map(libcpp_map[int, IntWrapper] & in_)
         libcpp_map[int, IntWrapper] process_10_map(int in_)
 
+        shared_ptr[const IntWrapper] process_11_const()
+

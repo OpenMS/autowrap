@@ -122,4 +122,10 @@ class LibCppSTLTest {
             res[in_ + 10] = wr;
             return res;
         }
+
+        boost::shared_ptr<const IntWrapper> process_11_const()
+        {
+            boost::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
+            return boost::static_pointer_cast<const IntWrapper>(ptr);
+        }
 };

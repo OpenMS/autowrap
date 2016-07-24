@@ -509,6 +509,10 @@ def test_stl_libcpp():
     assert list(res.values())[0].i_ == 5
     assert list(res.keys())[0] == 5 + 10
 
+    # Test shared_ptr < const Widget >
+    const_res = t.process_11_const()
+    const_res.i_ == 42
+
 def test_minimal():
 
     from autowrap.ConversionProvider import (TypeConverterBase,
