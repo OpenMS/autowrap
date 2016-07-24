@@ -263,7 +263,7 @@ class CodeGenerator(object):
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
         class_code = Code.Code()
-        if r_class.methods:
+        if r_class.methods and not r_class.wrap_manual_memory:
             class_code.add("""
                             |
                             |cdef class $cname:
@@ -280,6 +280,16 @@ class CodeGenerator(object):
                             |cdef class $cname:
                             |
                             """, locals())
+
+        if len(r_class.wrap_hash) != 0:
+            class_code.add("""
+                            |
+                            |    def __hash__(self):
+                            |      # The only required property is that objects which compare equal have
+                            |      # the same hash value:
+                            |      return hash(deref(self.inst.get()).%s )
+                            |
+                            """ % r_class.wrap_hash[0], locals())
 
         self.class_codes[cname] = class_code
 
@@ -319,6 +329,9 @@ class CodeGenerator(object):
             class_code.add(extra_methods_code)
 
     def _create_iter_methods(self, iterators, instance_mapping, local_mapping):
+        """
+        Create Iterator methods using the Python yield keyword
+        """
         codes = []
         for name, (begin_decl, end_decl, res_type) in iterators.items():
             L.info("   create wrapper for iter %s" % name)
@@ -326,8 +339,8 @@ class CodeGenerator(object):
             begin_name = begin_decl.name
             end_name = end_decl.name
 
-            # TODO: this step is dupblicated from DeclResolver.py
-            # can we cobine botho maps to one single map ?
+            # TODO: this step is duplicated from DeclResolver.py
+            # can we combine both maps to one single map ?
             res_type = res_type.transformed(local_mapping)
             res_type = res_type.inv_transformed(instance_mapping)
 
@@ -521,6 +534,9 @@ class CodeGenerator(object):
         if isinstance(to_py_code, basestring):
             to_py_code = "    %s" % to_py_code
 
+        if isinstance(access_stmt, basestring):
+            access_stmt = "    %s" % access_stmt
+
         if t.is_ptr:
             # For pointer types, we need to guard against unsafe access
             code.add("""
@@ -528,16 +544,16 @@ class CodeGenerator(object):
                 |    def __get__(self):
                 |        if self.inst.get().%s is NULL:
                 |             raise Exception("Cannot access pointer that is NULL")
-                |        $access_stmt
                 """ % name, locals())
         else:
             code.add("""
                 |
                 |    def __get__(self):
-                |        $access_stmt
                 """, locals())
+
         # increase indent:
         indented = Code.Code()
+        indented.add(access_stmt)
         indented.add(to_py_code)
         code.add(indented)
         code.add("        return py_result")

@@ -17,6 +17,30 @@ class Int {
         Int(const Int & i): i_(i.i_) { };
 };
 
+class AbstractBaseClass {
+    protected:
+        AbstractBaseClass(int i): i_(i) {};
+    public:
+        int i_;
+        virtual ~AbstractBaseClass() {};
+        virtual int get() = 0;
+};
+
+class ABS_Impl1 : public AbstractBaseClass {
+    public:
+        ~ABS_Impl1() {}
+        ABS_Impl1(int i) : AbstractBaseClass(i) {}
+        int get() {return i_;}
+};
+
+class ABS_Impl2 : public AbstractBaseClass {
+    public:
+        ~ABS_Impl2() {}
+        ABS_Impl2(int i) : AbstractBaseClass(i) {}
+        int get() {return i_;}
+};
+
+
 class LibCppTest {
 
     private:
@@ -300,6 +324,7 @@ class LibCppTest {
 
         Int* process37(Int* in)
         {
+            if (in->i_ == 18) return NULL;
             in->i_++;
             return in;
         }
@@ -318,5 +343,10 @@ class LibCppTest {
         {
             in->i_++;
             return in;
+        }
+
+        int process40(AbstractBaseClass* in)
+        {
+            return in->get();
         }
 };

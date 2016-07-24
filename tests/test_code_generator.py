@@ -392,6 +392,10 @@ def test_libcpp():
     i2 = libcpp.Int(10)
     assert t.process37(i2).i_ == 11
 
+    # return of NULL
+    i1 = libcpp.Int(18)
+    assert t.process37(i1) == None
+
     # return of const ptr
     i1 = libcpp.Int(1)
     assert t.process39(i1).i_ == 2
@@ -410,6 +414,15 @@ def test_libcpp():
     assert len(res[0]) == 1
     assert res[0][0] == 5
     assert res[1][0] == 5
+
+
+    # Testing abstract base class
+    i1 = libcpp.ABS_Impl1(1)
+    i2 = libcpp.ABS_Impl2(4)
+    res = t.process40(i1)
+    assert res == 1
+    res = t.process40(i2)
+    assert res == 4
 
 def test_stl_libcpp():
 
