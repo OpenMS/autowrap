@@ -329,6 +329,9 @@ class CodeGenerator(object):
             class_code.add(extra_methods_code)
 
     def _create_iter_methods(self, iterators, instance_mapping, local_mapping):
+        """
+        Create Iterator methods using the Python yield keyword
+        """
         codes = []
         for name, (begin_decl, end_decl, res_type) in iterators.items():
             L.info("   create wrapper for iter %s" % name)
@@ -336,8 +339,8 @@ class CodeGenerator(object):
             begin_name = begin_decl.name
             end_name = end_decl.name
 
-            # TODO: this step is dupblicated from DeclResolver.py
-            # can we cobine botho maps to one single map ?
+            # TODO: this step is duplicated from DeclResolver.py
+            # can we combine both maps to one single map ?
             res_type = res_type.transformed(local_mapping)
             res_type = res_type.inv_transformed(instance_mapping)
 
