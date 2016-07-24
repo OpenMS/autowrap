@@ -17,6 +17,26 @@ cdef extern from "libcpp_test.hpp":
         Int(int i)
         Int(Int & i)
 
+    ## Abstract base class and two implementations 
+    cdef cppclass AbstractBaseClass:
+        # wrap-ignore
+        # ABSTRACT class
+        int i_
+        # AbstractBaseClass(AbstractBaseClass) # wrap-ignore
+
+    cdef cppclass ABS_Impl1(AbstractBaseClass):
+        # wrap-inherits:
+        #  AbstractBaseClass
+        # ABS_Impl1(ABS_Impl1)
+        ABS_Impl1(int i)
+
+    cdef cppclass ABS_Impl2(AbstractBaseClass):
+        # wrap-inherits:
+        #  AbstractBaseClass
+        # ABS_Impl2(ABS_Impl2)
+        ABS_Impl2(int i)
+
+
     cdef cppclass LibCppTest:
         LibCppTest()
         LibCppTest(int ii)
@@ -85,4 +105,9 @@ cdef extern from "libcpp_test.hpp":
 
         # Wrap a const return value
         const Int* process39(Int* in_)
+
+        # Wrap an abstract base class
+        # int process40(AbstractBaseClass* in_)
+        int process40(ABS_Impl1* in_)
+        int process40(ABS_Impl2* in_)
 

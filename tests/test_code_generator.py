@@ -415,6 +415,15 @@ def test_libcpp():
     assert res[0][0] == 5
     assert res[1][0] == 5
 
+
+    # Testing abstract base class
+    i1 = libcpp.ABS_Impl1(1)
+    i2 = libcpp.ABS_Impl2(4)
+    res = t.process40(i1)
+    assert res == 1
+    res = t.process40(i2)
+    assert res == 4
+
 def test_stl_libcpp():
 
     target = os.path.join(test_files, "libcpp_stl_test.pyx")
