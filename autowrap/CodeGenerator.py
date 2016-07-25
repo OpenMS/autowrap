@@ -703,7 +703,7 @@ class CodeGenerator(object):
 
     def create_wrapper_for_nonoverloaded_constructor(self, class_decl, py_name,
                                                      cons_decl):
-        """ py_name ist name for constructor, as we dispatch overloaded
+        """ py_name is the name for constructor, as we dispatch overloaded
             constructors in __init__() the name of the method calling the
             c++ constructor is variable and given by `py_name`.
 
@@ -713,6 +713,11 @@ class CodeGenerator(object):
 
         call_args, cleanups, in_types =\
             self._create_fun_decl_and_input_conversion(cons_code, py_name, cons_decl)
+
+        wrap_pass = cons_decl.cpp_decl.annotations.get("wrap-pass-constructor", False)
+        if wrap_pass:
+            cons_code.add( "    pass")
+            return cons_code
 
         # create instance of wrapped class
         call_args_str = ", ".join(call_args)
