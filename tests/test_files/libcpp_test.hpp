@@ -76,6 +76,10 @@ class LibCppTest {
         {
             return this->i == other.i;
         }
+        bool operator!=(const LibCppTest & other) const
+        {
+            return !operator==(other);
+        }
 
         int get() { return i; }
 
