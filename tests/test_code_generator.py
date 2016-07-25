@@ -424,6 +424,9 @@ def test_libcpp():
     res = t.process40(i2)
     assert res == 4
 
+    assert i1.get() == 1
+    assert i2.get() == 4
+
     # Use in dict/set
     # For this to work, the class needs to have __hash__ and __richcmp__ which
     # are wrapped by "wrap-hash" and operator== and operator!=

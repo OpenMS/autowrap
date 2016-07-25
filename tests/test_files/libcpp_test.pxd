@@ -23,6 +23,7 @@ cdef extern from "libcpp_test.hpp":
         # wrap-ignore
         # ABSTRACT class
         int i_
+        int get()
         # AbstractBaseClass(AbstractBaseClass) # wrap-ignore
 
     cdef cppclass ABS_Impl1(AbstractBaseClass):
