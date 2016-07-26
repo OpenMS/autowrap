@@ -30,13 +30,15 @@ cdef extern from "libcpp_test.hpp":
         # wrap-inherits:
         #  AbstractBaseClass
         # ABS_Impl1(ABS_Impl1)
+        ABS_Impl1() # wrap-pass-constructor
         ABS_Impl1(int i)
 
     cdef cppclass ABS_Impl2(AbstractBaseClass):
         # wrap-inherits:
         #  AbstractBaseClass
         # ABS_Impl2(ABS_Impl2)
-        ABS_Impl2(int i)
+        ABS_Impl2() # wrap-pass-constructor
+        ABS_Impl2(int i) # wrap-ignore
 
 
     cdef cppclass LibCppTest:

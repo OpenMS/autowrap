@@ -418,7 +418,7 @@ def test_libcpp():
 
     # Testing abstract base class
     i1 = libcpp.ABS_Impl1(1)
-    i2 = libcpp.ABS_Impl2(4)
+    i2 = libcpp.ABS_Impl1(4)
     res = t.process40(i1)
     assert res == 1
     res = t.process40(i2)
@@ -426,6 +426,22 @@ def test_libcpp():
 
     assert i1.get() == 1
     assert i2.get() == 4
+
+    # Testing unsafe call
+    i1 = libcpp.ABS_Impl1(__createUnsafeObject__=True)
+    i2 = libcpp.ABS_Impl2(__createUnsafeObject__=True)
+
+    try:
+        i1 = libcpp.ABS_Impl1()
+        raise Exception("Expected Exception not thrown")
+    except Exception:
+        pass
+
+    try:
+        i1 = libcpp.ABS_Impl2()
+        raise Exception("Expected Exception not thrown")
+    except Exception:
+        pass
 
     # Use in dict/set
     # For this to work, the class needs to have __hash__ and __richcmp__ which

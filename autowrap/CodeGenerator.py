@@ -363,14 +363,18 @@ class CodeGenerator(object):
             codes.append(meth_code)
         return codes
 
-    def _create_overloaded_method_decl(self, py_name, dispatched_m_names, methods, use_return):
+    def _create_overloaded_method_decl(self, py_name, dispatched_m_names, methods, use_return, use_kwargs=False):
 
         L.info("   create wrapper decl for overloaded method %s" % py_name)
 
         method_code = Code.Code()
+        kwargs = ""
+        if use_kwargs:
+            kwargs = ", **kwargs"
+
         method_code.add("""
                           |
-                          |def $py_name(self, *args):
+                          |def $py_name(self, *args $kwargs):
                         """, locals())
 
         first_iteration = True
@@ -378,6 +382,12 @@ class CodeGenerator(object):
             args = augment_arg_names(method)
             if not args:
                 check_expr = "not args"
+
+                # Special case for empty constructors with a pass
+                if method.cpp_decl.annotations.get("wrap-pass-constructor", False):
+                    assert use_kwargs, "Cannot use wrap-pass-constructor without setting kwargs (e.g. outside a constructor)"
+                    check_expr = 'kwargs.get("__createUnsafeObject__") is True'
+
             else:
                 tns = [(t, "args[%d]" % i) for i, (t, n) in enumerate(args)]
                 checks = ["len(args)==%d" % len(tns)]
@@ -683,6 +693,20 @@ class CodeGenerator(object):
             real_constructors.append(cons)
 
         if len(real_constructors) == 1:
+
+            if real_constructors[0].cpp_decl.annotations.get("wrap-pass-constructor", False):
+                # We have a single constructor that cannot be called (except
+                # with the magic keyword), simply check the magic word
+                cons_code = Code.Code()
+                cons_code.add("""
+                   |
+                   |def __init__(self, *args, **kwargs):
+                   |    if not kwargs.get("__createUnsafeObject__") is True:
+                   |        raise Exception("Cannot call this constructor")
+                    """, locals())
+                codes.append(cons_code)
+                return codes
+
             code = self.create_wrapper_for_nonoverloaded_constructor(class_decl,
                                                                      "__init__",
                                                                      real_constructors[0])
@@ -697,7 +721,7 @@ class CodeGenerator(object):
                                                                          constructor)
                 codes.append(code)
             code = self._create_overloaded_method_decl("__init__", dispatched_cons_names,
-                                                       constructors, False)
+                                                       constructors, False, True)
             codes.append(code)
         return codes
 
@@ -705,7 +729,7 @@ class CodeGenerator(object):
                                                      cons_decl):
         """ py_name is the name for constructor, as we dispatch overloaded
             constructors in __init__() the name of the method calling the
-            c++ constructor is variable and given by `py_name`.
+            C++ constructor is variable and given by `py_name`.
 
         """
         L.info("   create wrapper for non overloaded constructor %s" % py_name)
