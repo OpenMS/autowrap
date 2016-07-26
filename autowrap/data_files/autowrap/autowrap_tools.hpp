@@ -33,7 +33,58 @@ namespace autowrap {
             {
                 _ref = refneu;
             }
+    };
 
+    template <class X>
+    class AutowrapPtrHolder {
+
+        private:
+
+            X* _ptr;
+
+        public:
+
+            AutowrapPtrHolder() {}
+
+            AutowrapPtrHolder(X *ref): _ptr(ref) 
+            {
+            }
+
+            X* get()
+            {
+                return _ptr;
+            }
+
+            void assign(X * ptr)
+            {
+                _ptr = ptr;
+            }
+    };
+
+    template <class X>
+    class AutowrapConstPtrHolder {
+
+        private:
+
+            const X* _ptr;
+
+        public:
+
+            AutowrapConstPtrHolder() {}
+
+            AutowrapConstPtrHolder(const X *ref): _ptr(ref) 
+            {
+            }
+
+            const X* get()
+            {
+                return _ptr;
+            }
+
+            void assign(const X * ptr)
+            {
+                _ptr = ptr;
+            }
     };
 
 };
