@@ -987,6 +987,8 @@ class CodeGenerator(object):
                    |from  libcpp.map     cimport map  as libcpp_map
                    |from  smart_ptr cimport shared_ptr
                    |from  AutowrapRefHolder cimport AutowrapRefHolder
+                   |from  AutowrapPtrHolder cimport AutowrapPtrHolder
+                   |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
                    |from  libcpp cimport bool
                    |from  libc.string cimport const_char
                    |from cython.operator cimport dereference as deref,

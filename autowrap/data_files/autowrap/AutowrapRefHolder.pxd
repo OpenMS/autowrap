@@ -5,3 +5,4 @@ cdef extern from "autowrap_tools.hpp" namespace "autowrap":
 
         AutowrapRefHolder(T &)
         void assign(T &)
+
