@@ -9,7 +9,11 @@ except ImportError:
 
 from setuptools import setup, find_packages
 
-VERSION = (0, 7, 2)
+
+# DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
+VERSION = (0, 8, 0)
+# DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
+
 
 
 setup(name="autowrap",
