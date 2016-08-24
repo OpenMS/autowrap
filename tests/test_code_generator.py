@@ -803,6 +803,29 @@ def test_gil_unlock():
     assert g.get_greetings() == b"Hello Jack, How are you?"
 
 
+def test_automatic_string_conversion():
+    target = os.path.join(test_files, "libcpp_utf8_string_test.pyx")
+    include_dirs = autowrap.parse_and_generate_code(["libcpp_utf8_string_test.pxd"],
+                                                    root=test_files, target=target,  debug=True)
+
+    wrapped = autowrap.Utils.compile_and_import("libcpp_utf8_string_wrapped", [target, ],
+                                                include_dirs)
+    h = wrapped.Hello()
+
+    input_bytes = b"J\xc3\xbcrgen"
+    input_unicode = b"J\xc3\xbcrgen".decode('utf-8')
+
+    expected = b"Hello J\xc3\xbcrgen"
+
+    msg = h.get(input_bytes)
+    assert isinstance(msg, bytes)
+    assert msg == expected
+
+    msg = h.get(input_unicode)
+    assert isinstance(msg, bytes)
+    assert msg == expected
+
+
 # todo: wrapped tempaltes as input of free functions and mehtods of other
 # classes
 #

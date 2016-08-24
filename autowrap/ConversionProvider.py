@@ -1410,6 +1410,27 @@ class StdStringConverter(TypeConverterBase):
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
 
 
+class StdStringUnicodeConverter(StdStringConverter):
+    def get_base_types(self):
+        return "libcpp_utf8_string",
+
+    def matching_python_type(self, cpp_type):
+        return ""
+
+    def input_conversion(self, cpp_type, argument_var, arg_num):
+        code = Code()
+        code.add("""
+            |if isinstance($argument_var, unicode):
+            |    $argument_var = $argument_var.encode('utf-8')
+            """, locals())
+        call_as = "(<libcpp_string>%s)" % argument_var
+        cleanup = ""
+        return code, call_as, cleanup
+
+    def type_check_expression(self, cpp_type, argument_var):
+        return "isinstance(%s, (bytes, unicode))" % argument_var
+
+
 class SharedPtrConverter(TypeConverterBase):
 
     """
@@ -1492,6 +1513,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(CharPtrConverter())
     converters.register(CharConverter())
     converters.register(StdStringConverter())
+    converters.register(StdStringUnicodeConverter())
     converters.register(StdVectorConverter())
     converters.register(StdSetConverter())
     converters.register(StdMapConverter())
