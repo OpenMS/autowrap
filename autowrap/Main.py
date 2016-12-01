@@ -172,7 +172,16 @@ def register_converters(converters):
 
 def run_cython(inc_dirs, extra_opts, out):
     from Cython.Compiler.Main import compile, CompilationOptions
-    from Cython.Compiler.Options import directive_defaults
+
+    # Try to get directive_defaults (API differs from 0.25 on)
+    try:
+        from Cython.Compiler.Options import directive_defaults
+    except ImportError:
+        # Cython 0.25
+        import Cython.Compiler.Options
+        directive_defaults = Cython.Compiler.Options.get_directive_defaults()
+
+
     directive_defaults["boundscheck"] = False
     directive_defaults["wraparound"] = False
     options = dict(include_path=inc_dirs,
