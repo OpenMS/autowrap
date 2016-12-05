@@ -11,7 +11,7 @@ from setuptools import setup, find_packages
 
 
 # DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
-VERSION = (0, 9, 0)
+VERSION = (0, 9, 1)
 # DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
 
 
@@ -38,7 +38,7 @@ C++ libraries based on annotated (commented) cython pxd files. """,
       zip_safe=False,
       test_suite='nose.collector',
       tests_require=['nose'],
-      install_requires=['Cython==0.21'],
+      install_requires=['Cython>=0.19'],
       entry_points={
            'console_scripts':
            [
