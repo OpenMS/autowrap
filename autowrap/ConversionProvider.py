@@ -120,6 +120,13 @@ class ConverterRegistry(object):
         # standard converters !
         return rv[-1]
 
+    def __contains__(self, cpp_type):
+        try:
+            self.get(cpp_type)
+            return True
+        except:
+            return False
+
     def cython_type(self, type_):
         if isinstance(type_, basestring):
             type_ = CppType(type_)
@@ -618,6 +625,8 @@ class StdMapConverter(TypeConverterBase):
         tt_key, tt_value = cpp_type.template_args
         temp_var = "v%d" % arg_num
 
+        code = Code()
+
         cy_tt_key = self.converters.cython_type(tt_key)
         cy_tt_value = self.converters.cython_type(tt_value)
 
@@ -627,10 +636,20 @@ class StdMapConverter(TypeConverterBase):
            and (not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes):
             raise Exception("Converter can not handle wrapped classes as keys and values in map")
 
+        value_conv_code = ""
+        value_conv_cleanup = ""
+        key_conv_code = ""
+        key_conv_cleanup = ""
+
+        tt_key, tt_value = cpp_type.template_args
+
         if cy_tt_value.is_enum:
             value_conv = "<%s> value" % cy_tt_value
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
             value_conv = "deref((<%s>value).inst.get())" % tt_value.base_type
+        elif tt_value in self.converters:
+            value_conv_code, value_conv, value_conv_cleanup = \
+                self.converters.get(tt_value).input_conversion(tt_value, "value", 0)
         else:
             value_conv = "<%s> value" % cy_tt_value
 
@@ -638,25 +657,25 @@ class StdMapConverter(TypeConverterBase):
             key_conv = "<%s> key" % cy_tt_key
         elif tt_key.base_type in self.converters.names_of_wrapper_classes:
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
-
-            code = Code().add("""
-                |cdef libcpp_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
-                + libcpp_map[$cy_tt_key, $cy_tt_value]()
-
-                |for key, value in $argument_var.items():
-                |   deref($temp_var)[ $key_conv ] = $value_conv
-                """, locals())
-
+        elif tt_key in self.converters:
+            key_conv_code, key_conv, key_conv_cleanup = \
+                self.converters.get(tt_key).input_conversion(tt_key, "key", 0)
         else:
             key_conv = "<%s> key" % cy_tt_key
 
-        code = Code().add("""
+        code.add("""
             |cdef libcpp_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
             + libcpp_map[$cy_tt_key, $cy_tt_value]()
 
             |for key, value in $argument_var.items():
-            |   deref($temp_var)[ $key_conv ] = $value_conv
             """, locals())
+
+        code.add(key_conv_code)
+        code.add(value_conv_code)
+        code.add("""    deref($temp_var)[ $key_conv ] = $value_conv
+            """, locals())
+        code.add(key_conv_cleanup)
+        code.add(value_conv_cleanup)
 
         if cpp_type.is_ref:
             it = mangle("it_" + argument_var)
