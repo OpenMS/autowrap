@@ -641,8 +641,6 @@ class StdMapConverter(TypeConverterBase):
         key_conv_code = ""
         key_conv_cleanup = ""
 
-        tt_key, tt_value = cpp_type.template_args
-
         if cy_tt_value.is_enum:
             value_conv = "<%s> value" % cy_tt_value
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
