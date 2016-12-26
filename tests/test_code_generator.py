@@ -825,6 +825,15 @@ def test_automatic_string_conversion():
     assert isinstance(msg, bytes)
     assert msg == expected
 
+    input_greet_bytes = b"Hall\xc3\xb6chen"
+    input_greet_unicode = input_greet_bytes.decode('utf-8')
+
+    expected = b"Hall\xc3\xb6chen J\xc3\xbcrgen"
+
+    msg = h.get_more({"greet": input_greet_unicode, "name": input_bytes})
+    assert isinstance(msg, bytes)
+    assert msg == expected
+
 
 # todo: wrapped tempaltes as input of free functions and mehtods of other
 # classes
