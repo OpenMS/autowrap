@@ -80,12 +80,19 @@ cdef extern from "int_holder.hpp":
 
 These files are already contained in the `examples/` folder.
 
-To create files `.pyx` and `.cpp` for wrapping the class `IntHolder`
-run
+To create files `.pyx` and `.cpp` for wrapping the class `IntHolder` inside the `examples` folder use one of the followings:
+
+Command `autowrap`:
 
     $ autowrap --out py_int_holder.pyx int_holder.pxd
 
-inside the `examples`folder.  This will generate files `py_int_holder.pyx` and
+Python:
+
+    >>> import autowrap.Main
+    >>> autowrap.Main.run([int_holder.pxd], [], [], py_int_holder.pyx)
+
+
+They will generate files `py_int_holder.pyx` and
 `py_int_holder.cpp` which you can compile using the following file `setup.py`:
 
 
