@@ -16,6 +16,9 @@ class Minimal {
 
     public:
 
+        static const int m_const = -1;
+        int m_accessible;
+
         Minimal();
         Minimal(Int);
         Minimal(std::vector<int> const &);

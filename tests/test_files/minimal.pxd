@@ -19,6 +19,10 @@ cdef extern from "minimal.hpp":
         Minimal(int)
         Minimal(libcpp_vector[int])
         Minimal(Minimal &)
+
+        int m_accessible
+        int m_const # wrap-constant
+
         int get()
         libcpp_string compute(libcpp_string)
         Int compute(int number1, int number2)

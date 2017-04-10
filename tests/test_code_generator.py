@@ -604,6 +604,21 @@ def test_minimal():
 
     minimal = wrapped.Minimal()
 
+    # test members
+    assert minimal.m_accessible == 0
+    assert minimal.m_const == -1
+
+    minimal.m_accessible = 10
+    assert minimal.m_accessible == 10
+
+    try:
+        minimal.m_const = 10
+        assert False
+    except AttributeError:
+        # That is what we expected, cant modify a const member
+        pass
+
+
     assert minimal.compute(3) == 4
     # overloaded for float:
     assert minimal.compute(0.0) == 42.0
