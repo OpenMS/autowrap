@@ -508,6 +508,7 @@ class CodeGenerator(object):
         code = Code.Code()
         name = attribute.name
         wrap_as = attribute.cpp_decl.annotations.get("wrap-as", name)
+        wrap_constant = attribute.cpp_decl.annotations.get("wrap-constant", False)
 
         t = attribute.type_
 
@@ -518,23 +519,34 @@ class CodeGenerator(object):
         code.add("""
             |
             |property $wrap_as:
-            |
-            |    def __set__(self, $py_type $name):
             """, locals())
 
-        # TODO: add mit indent level
-        indented = Code.Code()
-        indented.add(conv_code)
-        code.add(indented)
+        if wrap_constant:
+            code.add("""
+                |    def __set__(self, $py_type $name):
+                |       raise AttributeError("Cannot set constant")
+                """, locals())
 
-        code.add("""
-            |        self.inst.get().$name = $call_as
-            """, locals())
-        indented = Code.Code()
-        if isinstance(cleanup, basestring):
-            cleanup = "    %s" % cleanup
-        indented.add(cleanup)
-        code.add(indented)
+        else:
+            code.add("""
+                |    def __set__(self, $py_type $name):
+                """, locals())
+
+            # TODO: add mit indent level
+            indented = Code.Code()
+            indented.add(conv_code)
+            code.add(indented)
+
+            code.add("""
+                |        self.inst.get().$name = $call_as
+                """, locals())
+            indented = Code.Code()
+
+            if isinstance(cleanup, basestring):
+                cleanup = "    %s" % cleanup
+
+            indented.add(cleanup)
+            code.add(indented)
 
         to_py_code = converter.output_conversion(t, "_r", "py_result")
         access_stmt = converter.call_method(t, "self.inst.get().%s" % name)
