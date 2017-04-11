@@ -206,6 +206,30 @@ class LibCppTest {
             in[1] = (float) arg2[42];
         }
 
+        void  process211(std::map<int, float> & in, std::map<std::string, std::vector<int> > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0];
+        }
+
+        void  process212(std::map<int, float> & in, std::map<std::string, std::vector< std::vector<int> > > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0][0];
+        }
+
+        void  process213(std::map<int, float> & in, std::map<std::string, std::vector< std::vector<Int> > > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0][0].i_;
+        }
+
+        void  process214(std::map<int, float> & in, std::map<std::string, std::vector< std::pair<int, int> > > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0].first;
+        }
+
         void  process22(std::set<int> & in, std::set<float> & arg2)
         {
             std::set<int>::iterator it = in.begin();
