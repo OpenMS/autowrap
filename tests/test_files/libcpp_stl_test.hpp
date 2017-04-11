@@ -24,6 +24,18 @@ class IntWrapper {
         }
 };
 
+class MapWrapper {
+
+    public:
+      std::map<int, double> map_;
+
+      MapWrapper() {}
+      MapWrapper(const MapWrapper& other) 
+      {
+        map_ = other.map_;
+      }
+};
+
 class LibCppSTLTest {
 
     public:

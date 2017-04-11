@@ -474,6 +474,15 @@ def test_stl_libcpp():
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
 
+    m1 = libcpp_stl.MapWrapper()
+    m1.map_ = {3 : 8.0}
+    m2 = libcpp_stl.MapWrapper(m1)
+    m2.map_ = {3 : 8.0, 7 : 9.0}
+
+    assert len(m1.map_) == 1
+    assert len(m2.map_) == 2
+
+
     # Part 1
     # Test std::set< Widget* >
     set_inp = set([i1])
