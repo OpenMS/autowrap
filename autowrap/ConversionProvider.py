@@ -645,6 +645,59 @@ class StdMapConverter(TypeConverterBase):
             value_conv = "<%s> value" % cy_tt_value
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
             value_conv = "deref((<%s>value).inst.get())" % tt_value.base_type
+        elif tt_value.template_args is not None and tt_value.base_type == "libcpp_vector":
+            # Special case: the value type is a std::vector< X >, maybe something we can convert?
+
+            # code_top = """
+            value_var = "value"
+            tt, = tt_value.template_args
+            vtemp_var = "svec%s" % arg_num
+            inner = self.converters.cython_type(tt)
+
+            # Check whether the inner vector has any classes we need to wrap (we cannot do that)
+            contains_classes_to_wrap = tt.template_args is not None and \
+                len(set(self.converters.names_of_wrapper_classes).intersection(
+                    set(tt.all_occuring_base_types()))) > 0
+
+            if self.converters.cython_type(tt).is_enum:
+                # Case 1: We wrap a std::vector<> with an enum base type
+                raise Exception("Not Implemented")
+            elif tt.base_type in self.converters.names_of_wrapper_classes:
+                # Case 2: We wrap a std::vector<> with a base type we need to wrap
+                raise Exception("Not Implemented")
+            elif tt.template_args is not None and tt.base_type == "shared_ptr" \
+                    and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
+                # Case 3: We wrap a std::vector< shared_ptr<X> > where X needs to be a type that is easy to wrap
+                raise Exception("Not Implemented")
+            elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
+                len(set(self.converters.names_of_wrapper_classes).intersection(
+                    set(tt.all_occuring_base_types()))) > 0:
+                    # Only if the std::vector contains a class that we need to wrap somewhere,
+                    # we cannot do it ...
+                raise Exception(
+                    "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
+            elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
+                # Case 4: We wrap a std::vector<> with a base type that contains
+                #         further nested std::vector<> inside
+                #         -> deal with recursion
+                raise Exception("Not Implemented")
+            else:
+                # Case 5: We wrap a regular type
+                inner = self.converters.cython_type(tt)
+                # cython cares for conversion of stl containers with std types,
+                # but we need to add the definition to the top
+                code = Code().add("""
+                    |cdef libcpp_vector[$inner] $vtemp_var
+                    """, locals())
+
+                value_conv_cleanup = Code().add("")
+                value_conv_code = Code().add("$vtemp_var = $value_var", locals())
+                value_conv = "%s" % vtemp_var
+                if cpp_type.topmost_is_ref:
+                    cleanup_code = Code().add("""
+                        |$value_var[:] = $vtemp_var
+                        """, locals())
+
         elif tt_value in self.converters:
             value_conv_code, value_conv, value_conv_cleanup = \
                 self.converters.get(tt_value).input_conversion(tt_value, "value", 0)
