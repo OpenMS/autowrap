@@ -487,10 +487,13 @@ class CodeGenerator(object):
         # Step 1: create method decl statement
         if not is_free_fun:
             py_signature_parts.insert(0, "self")
+
+        docstring = "Cython signature: %s" % method
         py_signature = ", ".join(py_signature_parts)
         code.add("""
                    |
                    |def $py_name($py_signature):
+                   |    \"\"\"$docstring\"\"\"
                    """, locals())
 
         # Step 2a: create code which convert python input args to c++ args of
@@ -990,8 +993,12 @@ class CodeGenerator(object):
 
     def create_std_cimports(self):
         code = Code.Code()
+        # Using embedsignature here does not help much as it is only the Python
+        # signature which does not really specify the argument types. We have
+        # to use a docstring for each method.
         code.add("""
                    |#cython: c_string_encoding=ascii  # for cython>=0.19
+                   |#cython: embedsignature=False
                    |from  libcpp.string  cimport string as libcpp_string
                    |from  libcpp.string  cimport string as libcpp_utf8_string
                    |from  libcpp.set     cimport set as libcpp_set
