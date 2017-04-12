@@ -266,15 +266,15 @@ def test_libcpp():
     assert d1.get(1) == 11
 
     d1 = dict()
-    t.process211(d1, {"42": [11, 6]})
+    t.process211(d1, {b"42": [11, 6]})
     assert d1.get(1) == 11
 
     d2 = dict()
-    t.process212(d2, {"42": [ [11, 6], [2] , [8] ]})
+    t.process212(d2, {b"42": [ [11, 6], [2] , [8] ]})
     assert d2.get(1) == 11
 
     d3 = dict()
-    t.process214(d3, {"42": [ [11, 6], [2, 8] ]})
+    t.process214(d3, {b"42": [ [11, 6], [2, 8] ]})
     assert d3.get(1) == 11
 
     d1 = set((42,))
