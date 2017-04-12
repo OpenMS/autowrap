@@ -57,7 +57,7 @@ cdef extern from "libcpp_test.hpp":
 
         int  get() #wrap-as:gett
 
-        libcpp_pair[int,libcpp_string] twist(libcpp_pair[libcpp_string, int])
+        libcpp_pair[int,libcpp_string] twist(libcpp_pair[libcpp_string, int]) #wrap-doc:Dont forget this stuff here!
         libcpp_vector[int] process(libcpp_vector[int] &)
 
         libcpp_pair[int, int] process2(libcpp_pair[int, int] &)

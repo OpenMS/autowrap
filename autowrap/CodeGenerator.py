@@ -488,7 +488,12 @@ class CodeGenerator(object):
         if not is_free_fun:
             py_signature_parts.insert(0, "self")
 
+        # Prepare docstring
         docstring = "Cython signature: %s" % method
+        extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
+        if len(extra_doc) > 0:
+            docstring += "\n" + extra_doc
+
         py_signature = ", ".join(py_signature_parts)
         code.add("""
                    |
