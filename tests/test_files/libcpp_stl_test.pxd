@@ -12,7 +12,13 @@ cdef extern from "libcpp_stl_test.hpp":
         IntWrapper(IntWrapper&)
         IntWrapper(int i)
 
+    cdef cppclass MapWrapper:
+        libcpp_map[int, double] map_
+        MapWrapper()
+        MapWrapper(MapWrapper&)
+
     cdef cppclass LibCppSTLTest:
+
         LibCppSTLTest()
 
         int process_1_set(libcpp_set[IntWrapper*] & in_)

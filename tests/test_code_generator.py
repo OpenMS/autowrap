@@ -486,6 +486,15 @@ def test_stl_libcpp():
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
 
+    m1 = libcpp_stl.MapWrapper()
+    m1.map_ = {3 : 8.0}
+    m2 = libcpp_stl.MapWrapper(m1)
+    m2.map_ = {3 : 8.0, 7 : 9.0}
+
+    assert len(m1.map_) == 1
+    assert len(m2.map_) == 2
+
+
     # Part 1
     # Test std::set< Widget* >
     set_inp = set([i1])
@@ -615,6 +624,21 @@ def test_minimal():
     assert wrapped.__name__ == "wrapped"
 
     minimal = wrapped.Minimal()
+
+    # test members
+    assert minimal.m_accessible == 0
+    assert minimal.m_const == -1
+
+    minimal.m_accessible = 10
+    assert minimal.m_accessible == 10
+
+    try:
+        minimal.m_const = 10
+        assert False
+    except AttributeError:
+        # That is what we expected, cant modify a const member
+        pass
+
 
     assert minimal.compute(3) == 4
     # overloaded for float:
