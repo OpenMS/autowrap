@@ -68,7 +68,7 @@ __doc__ = """
     In the end we get a Python class B_int_float which wraps B[int,
     float] and a Python class B_pure which wraps B[int,int].
 
-    If you wrap a C++ class without template parameters you can ommit
+    If you wrap a C++ class without template parameters you can omit
     the 'wrap-instances' annotation. In this case the name of the Python
     class is the same as the name of the C++ class.
 
