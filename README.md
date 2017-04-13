@@ -52,7 +52,7 @@ We assume that you installed `autowrap` already, so running
 
 does not fail.
 
-Please see [doc/README.md](doc/README) for further documentation.
+Please see [docs/README.md](docs/README.md) for further documentation.
 
 Features
 --------
