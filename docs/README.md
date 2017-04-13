@@ -218,3 +218,15 @@ class is the same as the name of the C++ class.
 Additionally, TemplatedClass[U,V] gets additional methods from C[U] and from D without having to re-declare them.
 
 Finally, the object is hashable in Python (assuming it has a function `getName()` that returns a string).
+
+Further examples
+----------------
+
+For further examples with full integration into a build process, you could look
+at the OpenMS project and the associated build process, which uses a CMakeLists.txt file
+(https://github.com/OpenMS/OpenMS/blob/develop/src/pyOpenMS/CMakeLists.txt)
+which then calls a script building the cpp files
+(https://github.com/OpenMS/OpenMS/blob/develop/src/pyOpenMS/create_cpp_extension.py)
+using the `autowrap.Main.create_wrapper_code` directly. Next, the package is
+built by calling `setup.py`.
+
