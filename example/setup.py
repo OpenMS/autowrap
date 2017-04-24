@@ -1,15 +1,14 @@
-
+import os, pkg_resources
 from distutils.core import setup, Extension
-
 from Cython.Distutils import build_ext
-import pkg_resources
 
 data_dir = pkg_resources.resource_filename("autowrap", "data_files")
+include_dir = os.path.join(data_dir, "autowrap")
 
 ext = Extension("py_int_holder",
                 sources = ['py_int_holder.cpp'],
                 language="c++",
-                include_dirs = [data_dir],
+                include_dirs = [include_dir, data_dir],
                )
 
 setup(cmdclass={'build_ext':build_ext},
