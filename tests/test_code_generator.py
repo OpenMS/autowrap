@@ -173,6 +173,8 @@ def test_libcpp():
     li2 = t.process(li)
     assert li == li2 == [1, 42]
 
+    assert t.twist.__doc__.find("Dont forget this stuff") != -1
+
     in1 = [1, 2]
     out = t.process2(in1)
     assert out == in1 == [42, 11]
