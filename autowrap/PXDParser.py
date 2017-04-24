@@ -114,16 +114,22 @@ def parse_line_annotations(node, lines):
     for line in lines[start:end]:
         __, __, comment = line.partition("#")
         if comment:
-            for f in comment.split(" "):
-                f = f.strip()
+            key = None
+            for f_ in comment.split(" "):
+                f = f_.strip()
                 if not f:
                     continue
                 if ":" in f:
                     key, value = f.split(":", 1)
                     assert value.strip(), "empty value for key '%s'" % key
-                else:
+                    result[key] = value
+                elif f.find("wrap-") != -1:
                     key, value = f, True
-                result[key] = value
+                    result[key] = value
+                elif key is not None:
+                    # they belong to the previous key
+                    value = " " + f_
+                    result[key] += value
     return result
 
 
