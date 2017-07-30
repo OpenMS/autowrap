@@ -51,15 +51,16 @@ def parse(files, root, num_processes=1):
     return DeclResolver.resolve_decls_from_files(files, root, num_processes)
 
 
-def generate_code(decls, instance_map, target, debug, manual_code=None,
-                  extra_cimports=None, include_boost=True):
+def generate_code(decls, instance_map, target, debug=False, manual_code=None,
+                  extra_cimports=None, include_boost=True, allDecl=[]):
 
     import autowrap.CodeGenerator
     gen = CodeGenerator.CodeGenerator(decls,
                                       instance_map,
-                                      target,
-                                      manual_code,
-                                      extra_cimports)
+                                      pyx_target_path=target,
+                                      manual_code=manual_code,
+                                      extra_cimports=extra_cimports, 
+                                      allDecl=allDecl)
     gen.create_pyx_file(debug)
     includes = gen.get_include_dirs(include_boost)
     print("Autwrap has wrapped %s classes, %s methods and %s enums" % (
