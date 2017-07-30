@@ -162,7 +162,8 @@ class ResolvedClass(object):
         self.cpp_decl = decl
         # self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
-        self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", False)
+        self.no_pxd_import = decl.annotations.get("no-pxd-import", False)
+        self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", [])
         self.wrap_hash = decl.annotations.get("wrap-hash", [])
         self.local_map = local_map
         self.instance_map = instance_map

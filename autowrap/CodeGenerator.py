@@ -148,9 +148,10 @@ class CodeGenerator(object):
             self.all_resolved.extend(sorted(self.all_classes, key=lambda d: d.name))
 
         # Register using all classes so that we know about the complete project
-        self.cr = setup_converter_registry(self.all_classes, self.enums, instance_mapping)
+        self.cr = setup_converter_registry(self.all_classes, self.all_enums, instance_mapping)
 
         self.top_level_code = []
+        self.top_level_pyx_code = []
         self.class_codes = defaultdict(list)
         self.class_pxd_codes = defaultdict(list)
         self.wrapped_enums_cnt = 0
@@ -205,8 +206,10 @@ class CodeGenerator(object):
         # Create code for the pyx file
         if self.write_pxd:
             pyx_code = self.create_default_cimports().render()
+            pyx_code += "\n".join(ci.render() for ci in self.top_level_pyx_code)
         else:
             pyx_code = "\n".join(ci.render() for ci in self.top_level_code)
+            pyx_code += "\n".join(ci.render() for ci in self.top_level_pyx_code)
 
         pyx_code += " \n"
         names = set()
@@ -290,6 +293,12 @@ class CodeGenerator(object):
             name = decl.name
         L.info("create wrapper for enum %s" % name)
         code = Code.Code()
+        enum_pxd_code = Code.Code()
+        enum_pxd_code.add("""
+                   |
+                   |cdef class $name:
+                   |  pass
+                 """, name=name)
         code.add("""
                    |
                    |cdef class $name:
@@ -297,6 +306,7 @@ class CodeGenerator(object):
         for (name, value) in decl.items:
             code.add("    $name = $value", name=name, value=value)
         self.class_codes[decl.name] = code
+        self.class_pxd_codes[decl.name] = enum_pxd_code
 
         for class_name in decl.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
@@ -318,8 +328,10 @@ class CodeGenerator(object):
         cy_type = self.cr.cython_type(cname)
         class_pxd_code = Code.Code()
         class_code = Code.Code()
-        if r_class.methods and not r_class.wrap_manual_memory:
+        if r_class.methods:
             shared_ptr_inst = "cdef shared_ptr[%s] inst" % cy_type
+            if len(r_class.wrap_manual_memory) != 0:
+                shared_ptr_inst = r_class.wrap_manual_memory[0]
             if self.write_pxd:
                 class_pxd_code.add("""
                                 |
@@ -328,19 +340,34 @@ class CodeGenerator(object):
                                 |    $shared_ptr_inst
                                 |
                                 """, locals())
-                shared_ptr_inst = "" # do not implement in pyx file, only in pxd file
+                shared_ptr_inst = "# see .pxd file for cdef of inst ptr" # do not implement in pyx file, only in pxd file
 
-            class_code.add("""
+            if len(r_class.wrap_manual_memory) != 0:
+                class_code.add("""
+                                |
+                                |cdef class $cname:
+                                |
+                                """, locals())
+            else:
+                class_code.add("""
+                                |
+                                |cdef class $cname:
+                                |
+                                |    $shared_ptr_inst
+                                |
+                                |    def __dealloc__(self):
+                                |         self.inst.reset()
+                                |
+                                """, locals())
+        else:
+            # Deal with pure structs (no methods)
+            class_pxd_code.add("""
                             |
                             |cdef class $cname:
                             |
-                            |    $shared_ptr_inst
-                            |
-                            |    def __dealloc__(self):
-                            |         self.inst.reset()
+                            |    pass
                             |
                             """, locals())
-        else:
             class_code.add("""
                             |
                             |cdef class $cname:
@@ -723,7 +750,7 @@ class CodeGenerator(object):
             self.class_codes[static_clz].add(code)
             code = self._create_wrapper_for_free_function(decl, static_name)
 
-        self.top_level_code.append(code)
+        self.top_level_pyx_code.append(code)
 
     def _create_wrapper_for_free_function(self, decl, name=None):
         if name is None:
