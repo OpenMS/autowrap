@@ -46,9 +46,9 @@ The autowrap process consists of two steps:
 """
 
 
-def parse(files, root):
+def parse(files, root, num_processes=1):
     import autowrap.DeclResolver
-    return DeclResolver.resolve_decls_from_files(files, root)
+    return DeclResolver.resolve_decls_from_files(files, root, num_processes)
 
 
 def generate_code(decls, instance_map, target, debug, manual_code=None,

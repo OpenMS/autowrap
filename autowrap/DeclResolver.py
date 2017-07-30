@@ -201,13 +201,46 @@ class ResolvedFunction(ResolvedMethod):
     pass
 
 
-def resolve_decls_from_files(pathes, root):
+def resolve_decls_from_files_single_thread(pathes, root):
     decls = []
     for path in pathes:
         full_path = os.path.join(root, path)
         L.info("parse %s" % full_path)
         decls.extend(PXDParser.parse_pxd_file(full_path))
     return _resolve_decls(decls)
+
+def resolve_decls_from_files(pathes, root, num_processes = 1):
+    if num_processes > 1:
+        return resolve_decls_from_files_multi_thread(pathes, root, num_processes)
+    else:
+        return resolve_decls_from_files_single_thread(pathes, root)
+
+def resolve_decls_from_files_multi_thread(pathes, root, num_processes):
+    """Perform parsing with multiple threads
+
+    This function distributes the work on `num_processes` processes and each
+    process works on 10 files at a time until there are no more files left to
+    work on.
+    """
+    import multiprocessing as mp
+
+    CONCURRENT_FILES_PER_CORE = 10
+    pool = mp.Pool(processes=num_processes)
+    full_pathes = [os.path.join(root, path) for path in pathes]
+
+    decls = []
+    while len(full_pathes) > 0:
+        n_work = len(full_pathes)
+        remaining = max(0, n_work - num_processes * CONCURRENT_FILES_PER_CORE)
+        args = [full_pathes.pop() for k in xrange(n_work - remaining)]
+        for a in args:
+            L.info("parse %s" % a)
+
+        res = pool.map(PXDParser.parse_pxd_file, args)
+        for r in res:
+            decls.extend(r)
+
+    return _resolve_decls(decls)  
 
 
 def resolve_decls_from_string(pxd_in_a_string):
