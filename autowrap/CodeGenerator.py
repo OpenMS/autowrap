@@ -1075,7 +1075,10 @@ class CodeGenerator(object):
         """Iterate over foreign modules and import all relevant classes from them
 
         It is necessary to let Cython know about other autowrap-created classes
-        that may reside in other modules.
+        that may reside in other modules, basically any "cdef" definitions that
+        we may be using in this compilation unit. Since we are passing objects
+        as arguments quite frequently, we need to know about all other wrapped
+        classes and we need to cimport them.
         
         E.g. if we have module1 containing classA, classB and want to access it
         through the pxd header, then we need to add:
@@ -1088,11 +1091,27 @@ class CodeGenerator(object):
             if self.target_path.find(module) == -1:
 
                 for resolved in self.allDecl[module]["decls"]:
-                    # We are only interested to import classes that could be
-                    # used in the Cython code in the current module 
+
+                    # We need to import classes and enums that could be used in
+                    # the Cython code in the current module 
+
+                    # use Cython name, which correctly imports template classes (instead of C name)
+                    name = resolved.name
+
+                    if resolved.__class__ in (ResolvedEnum,):
+                        if resolved.cpp_decl.annotations.get("wrap-attach"):
+                            # No need to import attached classes as they are
+                            # usually in the same pxd file and should not be
+                            # globally exported.
+                            pass
+                        else:
+                            code.add("from $module cimport $name", locals())
                     if resolved.__class__ in (ResolvedClass, ):
-                        name = resolved.cpp_decl.name
-                        code.add("from $module cimport $name", locals())
+
+                        # Skip classes that explicitely should not have a pxd
+                        # import statement (abstract base classes and the like)
+                        if not resolved.no_pxd_import:
+                            code.add("from $module cimport $name", locals())
 
         self.top_level_code.append(code)
 
