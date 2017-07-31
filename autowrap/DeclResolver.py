@@ -205,9 +205,10 @@ class ResolvedFunction(ResolvedMethod):
 
 def resolve_decls_from_files_single_thread(pathes, root):
     decls = []
-    for path in pathes:
+    for k, path in enumerate(pathes):
         full_path = os.path.join(root, path)
-        L.info("parse %s" % full_path)
+        if k % 50 == 0: 
+            L.info("parsing progress %s out of %s" % (k, len(pathes)))
         decls.extend(PXDParser.parse_pxd_file(full_path))
     return _resolve_decls(decls)
 
@@ -234,9 +235,8 @@ def resolve_decls_from_files_multi_thread(pathes, root, num_processes):
     while len(full_pathes) > 0:
         n_work = len(full_pathes)
         remaining = max(0, n_work - num_processes * CONCURRENT_FILES_PER_CORE)
-        args = [full_pathes.pop() for k in xrange(n_work - remaining)]
-        for a in args:
-            L.info("parse %s" % a)
+        args = [full_pathes.pop() for k in range(n_work - remaining)]
+        L.info("parsing progress %s out of %s" % (len(pathes)-remaining, len(pathes)))
 
         res = pool.map(PXDParser.parse_pxd_file, args)
         for r in res:
