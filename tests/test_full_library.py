@@ -183,54 +183,50 @@ def test_full_lib():
 
     mnames = ["moduleA", "moduleB", "moduleCD"]
 
+    # Step 1: parse all header files
     PY_NUM_THREADS = 1
     pxd_files = ["A.pxd", "B.pxd", "C.pxd", "D.pxd"]
     full_pxd_files = [ os.path.join(test_files, f) for f in pxd_files]
     decls, instance_map = autowrap.parse(full_pxd_files, ".", num_processes=int(PY_NUM_THREADS))
 
-    # Perform mapping
+    assert len(decls) == 10, len(decls)
+
+    # Step 2: Perform mapping
     pxd_decl_mapping = {}
     for de in decls:
         tmp = pxd_decl_mapping.get(de.cpp_decl.pxd_path, []) 
         tmp.append(de)
         pxd_decl_mapping[ de.cpp_decl.pxd_path] = tmp 
 
-    # assert len(decls) == 10, len(decls)
+    masterDict = {}
+    masterDict[mnames[0]] = {"decls" : pxd_decl_mapping[ full_pxd_files[0] ], "addons" : [], "files" : [ full_pxd_files[0] ]}
+    masterDict[mnames[1]] = {"decls" : pxd_decl_mapping[ full_pxd_files[1] ], "addons" : [], "files" : [ full_pxd_files[1] ]}
+    masterDict[mnames[2]] = {"decls" : pxd_decl_mapping[ full_pxd_files[2] ] + pxd_decl_mapping[ full_pxd_files[3] ], "addons" : [], "files" : [ full_pxd_files[2] ] + [full_pxd_files[3] ]}
 
-    allDecl_mapping = {}
-    allDecl_mapping[mnames[0]] = {"decls" : pxd_decl_mapping[ full_pxd_files[0] ], "addons" : [], "files" : [ full_pxd_files[0] ]}
-    allDecl_mapping[mnames[1]] = {"decls" : pxd_decl_mapping[ full_pxd_files[1] ], "addons" : [], "files" : [ full_pxd_files[1] ]}
-    allDecl_mapping[mnames[2]] = {"decls" : pxd_decl_mapping[ full_pxd_files[2] ] + pxd_decl_mapping[ full_pxd_files[3] ], "addons" : [], "files" : [ full_pxd_files[2] ] + [full_pxd_files[3] ]}
-    print(allDecl_mapping)
-
+    # Step 3: Generate Cython code
     converters = []
     for modname in mnames:
         m_filename = "%s.pyx" % modname
-        cimports, manual_code = autowrap.Main.collect_manual_code(allDecl_mapping[modname]["addons"])
+        cimports, manual_code = autowrap.Main.collect_manual_code(masterDict[modname]["addons"])
         autowrap.Main.register_converters(converters)
-        autowrap_include_dirs = autowrap.generate_code(allDecl_mapping[modname]["decls"], instance_map,
+        autowrap_include_dirs = autowrap.generate_code(masterDict[modname]["decls"], instance_map,
                                                        target=m_filename, debug=False, manual_code=manual_code,
                                                        extra_cimports=cimports,
-                                                       include_boost=False, allDecl=allDecl_mapping)
-        allDecl_mapping[modname]["inc_dirs"] = autowrap_include_dirs
+                                                       include_boost=False, allDecl=masterDict)
+        masterDict[modname]["inc_dirs"] = autowrap_include_dirs
 
-
-
+    # Step 4: Generate CPP code
     for modname in mnames:
         m_filename = "%s.pyx" % modname
-        autowrap_include_dirs = allDecl_mapping[modname]["inc_dirs"]
+        autowrap_include_dirs = masterDict[modname]["inc_dirs"]
         autowrap.Main.run_cython(inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename)
 
 
+    # Step 5: Compile
     all_pyx_files = ["%s.pyx" % modname  for modname in mnames]
     all_pxd_files = ["%s.pxd" % modname  for modname in mnames]
-    include_dirs = allDecl_mapping[modname]["inc_dirs"]
-    print (include_dirs)
+    include_dirs = masterDict[modname]["inc_dirs"]
     moduleA, moduleB, moduleCD = compile_and_import(mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files)
-
-
-    print (moduleA)
-    print (moduleB)
 
     Bobj = moduleB.Bklass(5)
     Bsecond = moduleB.B_second(8)
