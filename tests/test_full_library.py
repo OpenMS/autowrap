@@ -153,10 +153,33 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
 
 
 def test_full_lib():
+    """
+    Example with multi-file library and multi-file result. 
 
-    target_mA = os.path.join(test_files, "moduleA.pyx")
-    target_mB = os.path.join(test_files, "moduleB.pyx")
-    target_mCD = os.path.join(test_files, "moduleCD.pyx")
+    This shows a full run through of a case where multiple class files (A, B,
+    C, D) with multiple classes in them (Aklass, A_second, etc.) need to be
+    wrapped, a total of 10 different entities over 8 header files (4 hpp and 4
+    pxd files). Autowrap will generate a .pxd and a .pyx file for each module.
+
+    We decided to wrap the library into three modules, A, B and CD to show the
+    capability of autowrap to do that. Note that we have perform multiple steps:
+
+    - Step 1: parse all header files *together* - all pxd files need to be
+              parsed together so that declarations are properly resolved.
+    - Step 2: Map the different parsed entities to the pxd files and the
+              desired modules, we use a master dict here that can be consumed
+              by autowrap and specifies which pxd files and which declarations
+              make up which module.
+    - Step 3: Generate Cython code for each module
+    - Step 4: Generate C++ code for each module (note that Step 3 has to be
+              completed first before we can start to generate C++ code)
+    - Step 5: Compile (run setup.py)
+
+    Note that autowrap gives you full control how many modules you want to
+    produce and which classes go into which modules. It automatically generates
+    correct cimport statements in each so that dependencies between the modules
+    are not an issue.
+    """
 
     mnames = ["moduleA", "moduleB", "moduleCD"]
 
