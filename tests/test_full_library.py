@@ -212,7 +212,7 @@ def test_full_lib():
         autowrap_include_dirs = autowrap.generate_code(masterDict[modname]["decls"], instance_map,
                                                        target=m_filename, debug=False, manual_code=manual_code,
                                                        extra_cimports=cimports,
-                                                       include_boost=False, allDecl=masterDict)
+                                                       include_boost=True, allDecl=masterDict)
         masterDict[modname]["inc_dirs"] = autowrap_include_dirs
 
     # Step 4: Generate CPP code
