@@ -59,17 +59,17 @@ from Cython.Distutils import build_ext
 
 ext = []
 ext.append( Extension("moduleCD", sources = ['moduleCD.pyx'], language="c++",
-        include_dirs = ['/home/hr/projects/autowrap/autowrap/data_files/autowrap', '/home/hr/projects/autowrap/tests/test_files/full_lib'],
+        include_dirs = %(include_dirs)r,
         extra_compile_args = ['-Wno-unused-but-set-variable'],
         extra_link_args = [],
         ))
 ext.append(Extension("moduleA", sources = ['moduleA.pyx'], language="c++",
-        include_dirs = ['/home/hr/projects/autowrap/autowrap/data_files/autowrap', '/home/hr/projects/autowrap/tests/test_files/full_lib'],
+        include_dirs = %(include_dirs)r,
         extra_compile_args = ['-Wno-unused-but-set-variable'],
         extra_link_args = [],
         ))
 ext.append(Extension("moduleB", sources = ['moduleB.pyx'], language="c++",
-        include_dirs = ['/home/hr/projects/autowrap/autowrap/data_files/autowrap', '/home/hr/projects/autowrap/tests/test_files/full_lib'],
+        include_dirs = %(include_dirs)r,
         extra_compile_args = ['-Wno-unused-but-set-variable'],
         extra_link_args = [],
         ))
@@ -111,7 +111,7 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
 
     include_dirs = [os.path.abspath(d) for d in include_dirs]
     source_files = [os.path.basename(f) for f in source_files]
-    setup_code = template 
+    setup_code = template % locals()
     if debug:
         print("\n")
         print("-" * 70)
