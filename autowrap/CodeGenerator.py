@@ -334,7 +334,7 @@ class CodeGenerator(object):
         class_code = Code.Code()
         if r_class.methods:
             shared_ptr_inst = "cdef shared_ptr[%s] inst" % cy_type
-            if len(r_class.wrap_manual_memory) != 0:
+            if len(r_class.wrap_manual_memory) != 0 and r_class.wrap_manual_memory[0] != "__old-model":
                 shared_ptr_inst = r_class.wrap_manual_memory[0]
             if self.write_pxd:
                 class_pxd_code.add("""

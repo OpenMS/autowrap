@@ -164,6 +164,12 @@ class ResolvedClass(object):
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
         self.no_pxd_import = decl.annotations.get("no-pxd-import", False)
         self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", [])
+        # fix previous code where we had a bool ... 
+        if self.wrap_manual_memory == True:
+            self.wrap_manual_memory = ["__old-model"]
+        else:
+            self.wrap_manual_memory == []
+        assert( isinstance(self.wrap_manual_memory, list) )
         self.wrap_hash = decl.annotations.get("wrap-hash", [])
         self.local_map = local_map
         self.instance_map = instance_map
