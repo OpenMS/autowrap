@@ -103,6 +103,10 @@ class CodeGenerator(object):
         self.manual_code = manual_code
         self.extra_cimports = extra_cimports
 
+        self.include_shared_ptr=True
+        self.include_refholder=True
+        self.include_numpy=False
+
         self.target_path = os.path.abspath(pyx_target_path)
         self.target_pxd_path = self.target_path.split(".pyx")[0] + ".pxd"
         self.target_dir = os.path.dirname(self.target_path)
@@ -1148,16 +1152,29 @@ class CodeGenerator(object):
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
                    |from  libcpp.map     cimport map  as libcpp_map
-                   |from  smart_ptr cimport shared_ptr
-                   |from  AutowrapRefHolder cimport AutowrapRefHolder
-                   |from  AutowrapPtrHolder cimport AutowrapPtrHolder
-                   |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
                    |from  libcpp cimport bool
                    |from  libc.string cimport const_char
                    |from cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
-
                    """)
+        if self.include_refholder:
+            code.add("""
+                   |from  AutowrapRefHolder cimport AutowrapRefHolder
+                   |from  AutowrapPtrHolder cimport AutowrapPtrHolder
+                   |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
+                   """
+        if self.include_shared_ptr:
+            code.add("""
+                   |from  smart_ptr cimport shared_ptr
+                   """
+        if self.include_numpy:
+            code.add("""
+                   |cimport numpy as np
+                   |import numpy as np
+                   |cimport numpy as numpy
+                   |import numpy as numpy
+                   """
+
         return code
 
     def create_std_cimports(self):
