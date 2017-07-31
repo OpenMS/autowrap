@@ -1162,18 +1162,18 @@ class CodeGenerator(object):
                    |from  AutowrapRefHolder cimport AutowrapRefHolder
                    |from  AutowrapPtrHolder cimport AutowrapPtrHolder
                    |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
-                   """
+                   """)
         if self.include_shared_ptr:
             code.add("""
                    |from  smart_ptr cimport shared_ptr
-                   """
+                   """)
         if self.include_numpy:
             code.add("""
                    |cimport numpy as np
                    |import numpy as np
                    |cimport numpy as numpy
                    |import numpy as numpy
-                   """
+                   """)
 
         return code
 
