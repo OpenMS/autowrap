@@ -154,7 +154,7 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
 
 def test_full_lib():
     """
-    Example with multi-file library and multi-file result. 
+    Example with multi-file library and multi-file result.
 
     This shows a full run through of a case where multiple class files (A, B,
     C, D) with multiple classes in them (Aklass, A_second, etc.) need to be
@@ -194,9 +194,9 @@ def test_full_lib():
     # Step 2: Perform mapping
     pxd_decl_mapping = {}
     for de in decls:
-        tmp = pxd_decl_mapping.get(de.cpp_decl.pxd_path, []) 
+        tmp = pxd_decl_mapping.get(de.cpp_decl.pxd_path, [])
         tmp.append(de)
-        pxd_decl_mapping[ de.cpp_decl.pxd_path] = tmp 
+        pxd_decl_mapping[ de.cpp_decl.pxd_path] = tmp
 
     masterDict = {}
     masterDict[mnames[0]] = {"decls" : pxd_decl_mapping[ full_pxd_files[0] ], "addons" : [], "files" : [ full_pxd_files[0] ]}
