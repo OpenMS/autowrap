@@ -94,8 +94,8 @@ class CodeGenerator(object):
     ConversionProviders for each argument type.
     """
 
-    def __init__(self, resolved, instance_mapping, target_path=None,
-                 manual_code=None, extra_cimports=None):
+    def __init__(self, resolved, instance_mapping, pyx_target_path=None,
+                 manual_code=None, extra_cimports=None, allDecl={}):
 
         if manual_code is None:
             manual_code = dict()
@@ -103,9 +103,16 @@ class CodeGenerator(object):
         self.manual_code = manual_code
         self.extra_cimports = extra_cimports
 
-        self.target_path = os.path.abspath(target_path)
-        self.target_dir = os.path.dirname(self.target_path)
+        self.include_shared_ptr=True
+        self.include_refholder=True
+        self.include_numpy=False
 
+        self.target_path = os.path.abspath(pyx_target_path)
+        self.target_pxd_path = self.target_path.split(".pyx")[0] + ".pxd"
+        self.target_dir = os.path.dirname(self.target_path)
+        self.write_pxd = len(allDecl) > 0
+
+        ## Step 1: get all classes of current module
         self.classes = [d for d in resolved if isinstance(d, ResolvedClass)]
         self.enums = [d for d in resolved if isinstance(d, ResolvedEnum)]
         self.functions = [d for d in resolved if isinstance(d, ResolvedFunction)]
@@ -118,11 +125,39 @@ class CodeGenerator(object):
         self.resolved.extend(sorted(self.classes, key=lambda d: d.name))
 
         self.instance_mapping = instance_mapping
+        self.allDecl = allDecl
 
-        self.cr = setup_converter_registry(self.classes, self.enums, instance_mapping)
+        ## Step 2: get classes of complete project (includes other modules)
+        self.all_typedefs = self.typedefs
+        self.all_enums = self.enums
+        self.all_functions = self.functions
+        self.all_classes = self.classes
+        self.all_resolved = self.resolved
+        if len(allDecl) > 0:
+            
+            self.all_typedefs = []
+            self.all_enums = []
+            self.all_functions = []
+            self.all_classes = []
+            for modname, v in allDecl.items():
+                self.all_classes.extend( [d for d in v["decls"] if isinstance(d, ResolvedClass)] )
+                self.all_enums.extend( [d for d in v["decls"] if isinstance(d, ResolvedEnum)] )
+                self.all_functions.extend( [d for d in v["decls"] if isinstance(d, ResolvedFunction)] )
+                self.all_typedefs.extend( [d for d in v["decls"] if isinstance(d, ResolvedTypeDef)] )
+
+            self.all_resolved = []
+            self.all_resolved.extend(sorted(self.all_typedefs, key=lambda d: d.name))
+            self.all_resolved.extend(sorted(self.all_enums, key=lambda d: d.name))
+            self.all_resolved.extend(sorted(self.all_functions, key=lambda d: d.name))
+            self.all_resolved.extend(sorted(self.all_classes, key=lambda d: d.name))
+
+        # Register using all classes so that we know about the complete project
+        self.cr = setup_converter_registry(self.all_classes, self.all_enums, instance_mapping)
 
         self.top_level_code = []
+        self.top_level_pyx_code = []
         self.class_codes = defaultdict(list)
+        self.class_pxd_codes = defaultdict(list)
         self.wrapped_enums_cnt = 0
         self.wrapped_classes_cnt = 0
         self.wrapped_methods_cnt = 0
@@ -136,7 +171,7 @@ class CodeGenerator(object):
     def setup_cimport_paths(self):
 
         pxd_dirs = set()
-        for inst in self.classes + self.enums + self.functions + self.typedefs:
+        for inst in self.all_classes + self.all_enums + self.all_functions + self.all_typedefs:
             pxd_path = os.path.abspath(inst.cpp_decl.pxd_path)
             pxd_dir = os.path.dirname(pxd_path)
             pxd_dirs.add(pxd_dir)
@@ -156,6 +191,7 @@ class CodeGenerator(object):
         """
         self.setup_cimport_paths()
         self.create_cimports()
+        self.create_foreign_cimports()
         self.create_includes()
 
         def create_for(clz, method):
@@ -171,24 +207,43 @@ class CodeGenerator(object):
         create_for(ResolvedEnum, self.create_wrapper_for_enum)
         create_for(ResolvedFunction, self.create_wrapper_for_free_function)
 
-        code = "\n".join(ci.render() for ci in self.top_level_code)
-        code += " \n"
+        # Create code for the pyx file
+        if self.write_pxd:
+            pyx_code = self.create_default_cimports().render()
+            pyx_code += "\n".join(ci.render() for ci in self.top_level_pyx_code)
+        else:
+            pyx_code = "\n".join(ci.render() for ci in self.top_level_code)
+            pyx_code += "\n".join(ci.render() for ci in self.top_level_pyx_code)
+
+        pyx_code += " \n"
         names = set()
         for n, c in self.class_codes.items():
-            code += c.render()
-            code += " \n"
+            pyx_code += c.render()
+            pyx_code += " \n"
             names.add(n)
 
         # manual code which does not extend wrapped classes:
         for name, c in self.manual_code.items():
             if name not in names:
-                code += c.render()
-            code += " \n"
+                pyx_code += c.render()
+            pyx_code += " \n"
+
+        # Create code for the pxd file
+        pxd_code = "\n".join(ci.render() for ci in self.top_level_code)
+        pxd_code += " \n"
+        for n, c in self.class_pxd_codes.items():
+            pxd_code += c.render()
+            pxd_code += " \n"
 
         if debug:
-            print(code)
+            print(pxd_code)
+            print(pyx_code)
         with open(self.target_path, "w") as fp:
-            fp.write(code)
+            fp.write(pyx_code)
+
+        if self.write_pxd:
+            with open(self.target_pxd_path, "w") as fp:
+                fp.write(pxd_code)
 
     def filterout_iterators(self, methods):
         def parse(anno):
@@ -242,6 +297,12 @@ class CodeGenerator(object):
             name = decl.name
         L.info("create wrapper for enum %s" % name)
         code = Code.Code()
+        enum_pxd_code = Code.Code()
+        enum_pxd_code.add("""
+                   |
+                   |cdef class $name:
+                   |  pass
+                 """, name=name)
         code.add("""
                    |
                    |cdef class $name:
@@ -249,6 +310,7 @@ class CodeGenerator(object):
         for (name, value) in decl.items:
             code.add("    $name = $value", name=name, value=value)
         self.class_codes[decl.name] = code
+        self.class_pxd_codes[decl.name] = enum_pxd_code
 
         for class_name in decl.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
@@ -256,25 +318,60 @@ class CodeGenerator(object):
             self.class_codes[class_name].add(code)
 
     def create_wrapper_for_class(self, r_class):
-        """Create Cython code for a single class"""
+        """Create Cython code for a single class
+        
+        Note that the cdef class definition and the member variables go into
+        the .pxd file while the Python-level implementation goes into the .pyx
+        file. This allows us to cimport these classes later across modules.
+
+        """
         self.wrapped_classes_cnt += 1
         self.wrapped_methods_cnt += len(r_class.methods)
         cname = r_class.name
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
+        class_pxd_code = Code.Code()
         class_code = Code.Code()
-        if r_class.methods and not r_class.wrap_manual_memory:
-            class_code.add("""
+        if r_class.methods:
+            shared_ptr_inst = "cdef shared_ptr[%s] inst" % cy_type
+            if len(r_class.wrap_manual_memory) != 0 and r_class.wrap_manual_memory[0] != "__old-model":
+                shared_ptr_inst = r_class.wrap_manual_memory[0]
+            if self.write_pxd:
+                class_pxd_code.add("""
+                                |
+                                |cdef class $cname:
+                                |
+                                |    $shared_ptr_inst
+                                |
+                                """, locals())
+                shared_ptr_inst = "# see .pxd file for cdef of inst ptr" # do not implement in pyx file, only in pxd file
+
+            if len(r_class.wrap_manual_memory) != 0:
+                class_code.add("""
+                                |
+                                |cdef class $cname:
+                                |
+                                """, locals())
+            else:
+                class_code.add("""
+                                |
+                                |cdef class $cname:
+                                |
+                                |    $shared_ptr_inst
+                                |
+                                |    def __dealloc__(self):
+                                |         self.inst.reset()
+                                |
+                                """, locals())
+        else:
+            # Deal with pure structs (no methods)
+            class_pxd_code.add("""
                             |
                             |cdef class $cname:
                             |
-                            |    cdef shared_ptr[$cy_type] inst
-                            |
-                            |    def __dealloc__(self):
-                            |         self.inst.reset()
+                            |    pass
                             |
                             """, locals())
-        else:
             class_code.add("""
                             |
                             |cdef class $cname:
@@ -291,6 +388,7 @@ class CodeGenerator(object):
                             |
                             """ % r_class.wrap_hash[0], locals())
 
+        self.class_pxd_codes[cname] = class_pxd_code
         self.class_codes[cname] = class_code
 
         cons_created = False
@@ -656,7 +754,7 @@ class CodeGenerator(object):
             self.class_codes[static_clz].add(code)
             code = self._create_wrapper_for_free_function(decl, static_name)
 
-        self.top_level_code.append(code)
+        self.top_level_pyx_code.append(code)
 
     def _create_wrapper_for_free_function(self, decl, name=None):
         if name is None:
@@ -977,10 +1075,54 @@ class CodeGenerator(object):
                         """, locals())
         return meth_code
 
+    def create_foreign_cimports(self):
+        """Iterate over foreign modules and import all relevant classes from them
+
+        It is necessary to let Cython know about other autowrap-created classes
+        that may reside in other modules, basically any "cdef" definitions that
+        we may be using in this compilation unit. Since we are passing objects
+        as arguments quite frequently, we need to know about all other wrapped
+        classes and we need to cimport them.
+        
+        E.g. if we have module1 containing classA, classB and want to access it
+        through the pxd header, then we need to add:
+
+            from module1 import classA, classB
+        """
+        code = Code.Code()
+        for module in self.allDecl:
+            # We skip our own module
+            if self.target_path.find(module) == -1:
+
+                for resolved in self.allDecl[module]["decls"]:
+
+                    # We need to import classes and enums that could be used in
+                    # the Cython code in the current module 
+
+                    # use Cython name, which correctly imports template classes (instead of C name)
+                    name = resolved.name
+
+                    if resolved.__class__ in (ResolvedEnum,):
+                        if resolved.cpp_decl.annotations.get("wrap-attach"):
+                            # No need to import attached classes as they are
+                            # usually in the same pxd file and should not be
+                            # globally exported.
+                            pass
+                        else:
+                            code.add("from $module cimport $name", locals())
+                    if resolved.__class__ in (ResolvedClass, ):
+
+                        # Skip classes that explicitely should not have a pxd
+                        # import statement (abstract base classes and the like)
+                        if not resolved.no_pxd_import:
+                            code.add("from $module cimport $name", locals())
+
+        self.top_level_code.append(code)
+
     def create_cimports(self):
         self.create_std_cimports()
         code = Code.Code()
-        for resolved in self.resolved:
+        for resolved in self.all_resolved:
             import_from = resolved.pxd_import_path
             name = resolved.name
             if resolved.__class__ in (ResolvedEnum,):
@@ -996,7 +1138,7 @@ class CodeGenerator(object):
 
         self.top_level_code.append(code)
 
-    def create_std_cimports(self):
+    def create_default_cimports(self):
         code = Code.Code()
         # Using embedsignature here does not help much as it is only the Python
         # signature which does not really specify the argument types. We have
@@ -1010,21 +1152,39 @@ class CodeGenerator(object):
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
                    |from  libcpp.map     cimport map  as libcpp_map
-                   |from  smart_ptr cimport shared_ptr
-                   |from  AutowrapRefHolder cimport AutowrapRefHolder
-                   |from  AutowrapPtrHolder cimport AutowrapPtrHolder
-                   |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
                    |from  libcpp cimport bool
                    |from  libc.string cimport const_char
                    |from cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
-
                    """)
+        if self.include_refholder:
+            code.add("""
+                   |from  AutowrapRefHolder cimport AutowrapRefHolder
+                   |from  AutowrapPtrHolder cimport AutowrapPtrHolder
+                   |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
+                   """)
+        if self.include_shared_ptr:
+            code.add("""
+                   |from  smart_ptr cimport shared_ptr
+                   """)
+        if self.include_numpy:
+            code.add("""
+                   |cimport numpy as np
+                   |import numpy as np
+                   |cimport numpy as numpy
+                   |import numpy as numpy
+                   """)
+
+        return code
+
+    def create_std_cimports(self):
+        code = self.create_default_cimports()
         if self.extra_cimports is not None:
             for stmt in self.extra_cimports:
                 code.add(stmt)
 
         self.top_level_code.append(code)
+        return code
 
     def create_includes(self):
         code = Code.Code()

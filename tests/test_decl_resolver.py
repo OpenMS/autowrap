@@ -136,13 +136,14 @@ cdef extern from "A.h":
     assert n == "j"
 
 
-def _resolve(*names):
+def _resolve(*names, **kwargs):
     root = os.path.join(os.path.dirname(__file__), "test_files")
-    return autowrap.DeclResolver.resolve_decls_from_files(names, root=root)
+    num_processes = kwargs.get("num_processes", 1)
+    return autowrap.DeclResolver.resolve_decls_from_files(names, root=root, num_processes=num_processes)
 
 
 def test_simple():
-    (cdcl, enumdcl, f1, f2, f3), map_ = _resolve("minimal.pxd")
+    (cdcl, enumdcl, f1, f2, f3), map_ = _resolve("minimal.pxd", num_processes=1)
 
     assert cdcl.name == "Minimal"
     assert enumdcl.name == "ABCorD"
@@ -152,6 +153,12 @@ def test_simple():
     assert f2.name == "sumup"
     assert f3.name == "run_static"
 
+def test_simple_mp():
+    (cdcl, enumdcl, f1, f2, f3), map_ = _resolve("minimal.pxd", num_processes=2)
+
+    assert cdcl.name == "Minimal"
+    assert enumdcl.name == "ABCorD"
+    assert sorted(map_.keys()) == ["ABCorD", "Minimal"]
 
 def test_singular():
 

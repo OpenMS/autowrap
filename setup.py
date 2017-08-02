@@ -11,7 +11,7 @@ from setuptools import setup, find_packages
 
 
 # DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
-VERSION = (0, 11, 0)
+VERSION = (0, 12, 0)
 # DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
 
 

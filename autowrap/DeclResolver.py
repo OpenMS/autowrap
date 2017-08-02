@@ -38,6 +38,7 @@ from collections import defaultdict
 from autowrap.tools import OrderKeepingDictionary
 
 
+
 __doc__ = """
 
     The methods in this module take the class declarations created by
@@ -161,7 +162,14 @@ class ResolvedClass(object):
         self.cpp_decl = decl
         # self.items = getattr(decl, "items", [])
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
-        self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", False)
+        self.no_pxd_import = decl.annotations.get("no-pxd-import", False)
+        self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", [])
+        # fix previous code where we had a bool ... 
+        if self.wrap_manual_memory == True:
+            self.wrap_manual_memory = ["__old-model"]
+        else:
+            self.wrap_manual_memory == []
+        assert( isinstance(self.wrap_manual_memory, list) )
         self.wrap_hash = decl.annotations.get("wrap-hash", [])
         self.local_map = local_map
         self.instance_map = instance_map
@@ -201,13 +209,46 @@ class ResolvedFunction(ResolvedMethod):
     pass
 
 
-def resolve_decls_from_files(pathes, root):
+def resolve_decls_from_files_single_thread(pathes, root):
     decls = []
-    for path in pathes:
+    for k, path in enumerate(pathes):
         full_path = os.path.join(root, path)
-        L.info("parse %s" % full_path)
+        if k % 50 == 0: 
+            L.info("parsing progress %s out of %s" % (k, len(pathes)))
         decls.extend(PXDParser.parse_pxd_file(full_path))
     return _resolve_decls(decls)
+
+def resolve_decls_from_files(pathes, root, num_processes = 1):
+    if num_processes > 1:
+        return resolve_decls_from_files_multi_thread(pathes, root, num_processes)
+    else:
+        return resolve_decls_from_files_single_thread(pathes, root)
+
+def resolve_decls_from_files_multi_thread(pathes, root, num_processes):
+    """Perform parsing with multiple threads
+
+    This function distributes the work on `num_processes` processes and each
+    process works on 10 files at a time until there are no more files left to
+    work on.
+    """
+    import multiprocessing as mp
+
+    CONCURRENT_FILES_PER_CORE = 10
+    pool = mp.Pool(processes=num_processes)
+    full_pathes = [os.path.join(root, path) for path in pathes]
+
+    decls = []
+    while len(full_pathes) > 0:
+        n_work = len(full_pathes)
+        remaining = max(0, n_work - num_processes * CONCURRENT_FILES_PER_CORE)
+        args = [full_pathes.pop() for k in range(n_work - remaining)]
+        L.info("parsing progress %s out of %s" % (len(pathes)-remaining, len(pathes)))
+
+        res = pool.map(PXDParser.parse_pxd_file, args)
+        for r in res:
+            decls.extend(r)
+
+    return _resolve_decls(decls)  
 
 
 def resolve_decls_from_string(pxd_in_a_string):

@@ -230,3 +230,15 @@ which then calls a script building the cpp files
 using the `autowrap.Main.create_wrapper_code` directly. Next, the package is
 built by calling `setup.py`.
 
+Larger projects
+--------------
+
+By default, autowrap will produce a single `.pyx` file which contains a wrapper
+for every class and function provided to autowrap. This has the advantage that
+a single module is produced which contains all the wrapped classes and methods.
+However, for larger projects, this can lead to large .cpp files and problems
+with compilation. It is thus possible to change the default behavior of
+autowrap and split up the compilation into multiple units where each unit
+contains some of the projects classes. For an example on how to do this, see
+`./tests/test_full_library.py`.
+
