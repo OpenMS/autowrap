@@ -23,3 +23,14 @@ cdef extern from "B.hpp":
         Bklass(int i)
         Bklass(Bklass & i)
 
+    cdef enum B_KlassE "B::KlassE":
+        #wrap-attach:
+        #   Bklass
+        #wrap-instances:
+        #   KlassE := B_KlassE
+        #wrap-as:
+        #   KlassE
+        B1
+        B2
+        B3
+

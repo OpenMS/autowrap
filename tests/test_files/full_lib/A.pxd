@@ -23,3 +23,13 @@ cdef extern from "A.hpp":
         Aklass(int i)
         Aklass(Aklass & i)
 
+    cdef enum A_KlassE "A::KlassE":
+        #wrap-attach:
+        #   Aalias
+        #wrap-instances:
+        #   KlassE := A_KlassE
+        #wrap-as:
+        #   KlassE
+        A1
+        A2
+        A3

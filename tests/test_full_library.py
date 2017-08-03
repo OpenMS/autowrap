@@ -189,7 +189,7 @@ def test_full_lib():
     full_pxd_files = [ os.path.join(test_files, f) for f in pxd_files]
     decls, instance_map = autowrap.parse(full_pxd_files, ".", num_processes=int(PY_NUM_THREADS))
 
-    assert len(decls) == 10, len(decls)
+    assert len(decls) == 12, len(decls)
 
     # Step 2: Perform mapping
     pxd_decl_mapping = {}
@@ -233,11 +233,21 @@ def test_full_lib():
     assert Asecond.i_ == 8
     assert Aobj.i_ == 5
 
+    assert Aobj.KlassE is not None
+    assert Aobj.KlassE.A1 is not None
+    assert Aobj.KlassE.A2 is not None
+    assert Aobj.KlassE.A3 is not None
+                        
     Bobj = moduleB.Bklass(5)
     Bsecond = moduleB.B_second(8)
     assert Bsecond.i_ == 8
     Bsecond.processA( Aobj)
     assert Bsecond.i_ == 15
+
+    assert Bobj.KlassE is not None
+    assert Bobj.KlassE.B1 is not None
+    assert Bobj.KlassE.B2 is not None
+    assert Bobj.KlassE.B3 is not None
 
     Bsecond = moduleB.B_second(8)
     Dsecond = moduleCD.D_second(11)

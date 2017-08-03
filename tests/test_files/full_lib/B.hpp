@@ -19,6 +19,8 @@ class Bklass {
         int i_;
         Bklass(int i): i_(i) { };
         Bklass(const Bklass & i): i_(i.i_) { };
+
+    enum KlassE { B1, B2, B3};
 };
 
 class B_second {
