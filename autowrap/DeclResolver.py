@@ -214,7 +214,7 @@ def resolve_decls_from_files_single_thread(pathes, root):
     for k, path in enumerate(pathes):
         full_path = os.path.join(root, path)
         if k % 50 == 0: 
-            L.info("parsing progress %s out of %s" % (k, len(pathes)))
+            L.log(25, "parsing progress %s out of %s" % (k, len(pathes)))
         decls.extend(PXDParser.parse_pxd_file(full_path))
     return _resolve_decls(decls)
 
@@ -242,7 +242,7 @@ def resolve_decls_from_files_multi_thread(pathes, root, num_processes):
         n_work = len(full_pathes)
         remaining = max(0, n_work - num_processes * CONCURRENT_FILES_PER_CORE)
         args = [full_pathes.pop() for k in range(n_work - remaining)]
-        L.info("parsing progress %s out of %s" % (len(pathes)-remaining, len(pathes)))
+        L.log(25, "parsing progress %s out of %s with %s processes" % (len(pathes)-remaining, len(pathes), num_processes))
 
         res = pool.map(PXDParser.parse_pxd_file, args)
         for r in res:

@@ -1090,9 +1090,10 @@ class CodeGenerator(object):
             from module1 import classA, classB
         """
         code = Code.Code()
+        L.info("Create foreign imports for module %s" % self.target_path)
         for module in self.allDecl:
             # We skip our own module
-            if self.target_path.find(module) == -1:
+            if os.path.basename(self.target_path).split(".pyx")[0] != module:
 
                 for resolved in self.allDecl[module]["decls"]:
 
@@ -1116,6 +1117,9 @@ class CodeGenerator(object):
                         # import statement (abstract base classes and the like)
                         if not resolved.no_pxd_import:
                             code.add("from $module cimport $name", locals())
+
+            else: 
+                L.info("Skip imports from self (own module %s)" % module)
 
         self.top_level_code.append(code)
 
