@@ -228,10 +228,18 @@ def test_full_lib():
     include_dirs = masterDict[modname]["inc_dirs"]
     moduleA, moduleB, moduleCD = compile_and_import(mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files)
 
+    Aobj = moduleA.Aalias(5)
+    Asecond = moduleA.A_second(8)
+    assert Asecond.i_ == 8
+    assert Aobj.i_ == 5
+
     Bobj = moduleB.Bklass(5)
     Bsecond = moduleB.B_second(8)
     assert Bsecond.i_ == 8
+    Bsecond.processA( Aobj)
+    assert Bsecond.i_ == 15
 
+    Bsecond = moduleB.B_second(8)
     Dsecond = moduleCD.D_second(11)
     assert Dsecond.i_ == 11
     Dsecond.runB(Bsecond)

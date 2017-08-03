@@ -7,6 +7,8 @@
 #ifndef HEADER_B
 #define HEADER_B
 
+#include "A.hpp"
+
 enum testB {
     BB, BBB
 };
@@ -24,7 +26,7 @@ class B_second {
         int i_;
         B_second(int i): i_(i) { };
         B_second(const B_second & i): i_(i.i_) { };
+        void processA(const Aklass & a) {i_ = a.i_ + 10;}
 };
-
 
 #endif

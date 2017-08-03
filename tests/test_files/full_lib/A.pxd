@@ -17,6 +17,8 @@ cdef extern from "A.hpp":
         A_second(A_second & i)
 
     cdef cppclass Aklass:
+        # wrap-instances:
+        #     Aalias := Aklass
         int i_
         Aklass(int i)
         Aklass(Aklass & i)
