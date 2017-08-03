@@ -314,7 +314,8 @@ class CodeGenerator(object):
 
         for class_name in decl.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
-            code.add("%s = %s" % (decl.name, "__" + decl.name))
+            display_name = decl.cpp_decl.annotations.get("wrap-as", [decl.name])[0]
+            code.add("%s = %s" % (display_name, "__" + decl.name))
             self.class_codes[class_name].add(code)
 
     def create_wrapper_for_class(self, r_class):
