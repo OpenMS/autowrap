@@ -4,7 +4,7 @@
 #include <map>
 #include <boost/shared_ptr.hpp>
 
-#include "B.hpp":
+#include "B.hpp"
 
 #ifndef HEADER_D
 #define HEADER_D
