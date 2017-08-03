@@ -21,6 +21,7 @@ class Bklass {
         Bklass(const Bklass & i): i_(i.i_) { };
 
     enum KlassE { B1, B2, B3};
+    struct KlassKlass { int k_; };
 };
 
 class B_second {

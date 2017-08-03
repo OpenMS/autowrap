@@ -34,3 +34,14 @@ cdef extern from "B.hpp":
         B2
         B3
 
+
+    cdef cppclass B_KlassKlass "Bklass::KlassKlass":
+        #wrap-attach:
+        #   Bklass
+        #wrap-instances:
+        #   KlassKlass := B_KlassKlass
+        #wrap-as:
+        #   KlassKlass
+        B_KlassKlass()
+        int k_
+

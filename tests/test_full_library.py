@@ -189,7 +189,7 @@ def test_full_lib():
     full_pxd_files = [ os.path.join(test_files, f) for f in pxd_files]
     decls, instance_map = autowrap.parse(full_pxd_files, ".", num_processes=int(PY_NUM_THREADS))
 
-    assert len(decls) == 12, len(decls)
+    assert len(decls) == 13, len(decls)
 
     # Step 2: Perform mapping
     pxd_decl_mapping = {}
@@ -248,6 +248,16 @@ def test_full_lib():
     assert Bobj.KlassE.B1 is not None
     assert Bobj.KlassE.B2 is not None
     assert Bobj.KlassE.B3 is not None
+    assert Bobj.KlassKlass is not None
+
+    # there are two different ways to get Bklass::KlassKlass, either through a
+    # Bklass object or through the module
+    Bobj_kk = Bobj.KlassKlass()
+    Bobj_kk.k_ = 14
+    assert Bobj_kk.k_ == 14
+    Bobj_kk = moduleB.Bklass.KlassKlass()
+    Bobj_kk.k_ = 14
+    assert Bobj_kk.k_ == 14
 
     Bsecond = moduleB.B_second(8)
     Dsecond = moduleCD.D_second(11)
