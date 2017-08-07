@@ -157,6 +157,7 @@ class CodeGenerator(object):
         self.top_level_code = []
         self.top_level_pyx_code = []
         self.class_codes = defaultdict(list)
+        self.class_codes_extra = defaultdict(list)
         self.class_pxd_codes = defaultdict(list)
         self.wrapped_enums_cnt = 0
         self.wrapped_classes_cnt = 0
@@ -206,6 +207,13 @@ class CodeGenerator(object):
         create_for(ResolvedClass, self.create_wrapper_for_class)
         create_for(ResolvedEnum, self.create_wrapper_for_enum)
         create_for(ResolvedFunction, self.create_wrapper_for_free_function)
+
+        # resolve extra
+        for clz, codes in self.class_codes_extra.items():
+            if clz not in self.class_codes:
+                raise Exception("Cannot attach to class", clz, "make sure all wrap-attach are in the same file as parent class")
+            for c in codes:
+                self.class_codes[clz].add(c)
 
         # Create code for the pyx file
         if self.write_pxd:
@@ -314,7 +322,8 @@ class CodeGenerator(object):
 
         for class_name in decl.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
-            code.add("%s = %s" % (decl.name, "__" + decl.name))
+            display_name = decl.cpp_decl.annotations.get("wrap-as", [decl.name])[0]
+            code.add("%s = %s" % (display_name, "__" + decl.name))
             self.class_codes[class_name].add(code)
 
     def create_wrapper_for_class(self, r_class):
@@ -328,6 +337,11 @@ class CodeGenerator(object):
         self.wrapped_classes_cnt += 1
         self.wrapped_methods_cnt += len(r_class.methods)
         cname = r_class.name
+        if r_class.cpp_decl.annotations.get("wrap-attach"):
+            pyname = "__" + r_class.name
+        else:
+            pyname = cname
+
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
         class_pxd_code = Code.Code()
@@ -339,7 +353,7 @@ class CodeGenerator(object):
             if self.write_pxd:
                 class_pxd_code.add("""
                                 |
-                                |cdef class $cname:
+                                |cdef class $pyname:
                                 |
                                 |    $shared_ptr_inst
                                 |
@@ -349,13 +363,13 @@ class CodeGenerator(object):
             if len(r_class.wrap_manual_memory) != 0:
                 class_code.add("""
                                 |
-                                |cdef class $cname:
+                                |cdef class $pyname:
                                 |
                                 """, locals())
             else:
                 class_code.add("""
                                 |
-                                |cdef class $cname:
+                                |cdef class $pyname:
                                 |
                                 |    $shared_ptr_inst
                                 |
@@ -367,14 +381,14 @@ class CodeGenerator(object):
             # Deal with pure structs (no methods)
             class_pxd_code.add("""
                             |
-                            |cdef class $cname:
+                            |cdef class $pyname:
                             |
                             |    pass
                             |
                             """, locals())
             class_code.add("""
                             |
-                            |cdef class $cname:
+                            |cdef class $pyname:
                             |
                             """, locals())
 
@@ -425,6 +439,15 @@ class CodeGenerator(object):
         extra_methods_code = self.manual_code.get(cname)
         if extra_methods_code:
             class_code.add(extra_methods_code)
+
+
+        for class_name in r_class.cpp_decl.annotations.get("wrap-attach", []):
+            code = Code.Code()
+            display_name = r_class.cpp_decl.annotations.get("wrap-as", [r_class.name])[0]
+            code.add("%s = %s" % (display_name, "__" + r_class.name))
+            tmp = self.class_codes_extra.get(class_name, [])
+            tmp.append(code)
+            self.class_codes_extra[class_name] = tmp
 
     def _create_iter_methods(self, iterators, instance_mapping, local_mapping):
         """
@@ -1116,7 +1139,10 @@ class CodeGenerator(object):
                         # Skip classes that explicitely should not have a pxd
                         # import statement (abstract base classes and the like)
                         if not resolved.no_pxd_import:
-                            code.add("from $module cimport $name", locals())
+                            if resolved.cpp_decl.annotations.get("wrap-attach"):
+                                code.add("from $module cimport __$name", locals())
+                            else:
+                                code.add("from $module cimport $name", locals())
 
             else: 
                 L.info("Skip imports from self (own module %s)" % module)

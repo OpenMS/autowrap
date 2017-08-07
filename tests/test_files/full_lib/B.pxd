@@ -5,6 +5,7 @@ from libcpp cimport bool
 from libcpp.pair  cimport pair  as libcpp_pair 
 from libcpp.map  cimport map  as libcpp_map 
 from smart_ptr cimport shared_ptr
+from A cimport *
 
 cdef extern from "B.hpp":
 
@@ -15,9 +16,32 @@ cdef extern from "B.hpp":
         int i_
         B_second(int i)
         B_second(B_second & i)
+        void processA(Aklass & a)
 
     cdef cppclass Bklass:
         int i_
         Bklass(int i)
         Bklass(Bklass & i)
+
+    cdef enum B_KlassE "Bklass::KlassE":
+        #wrap-attach:
+        #   Bklass
+        #wrap-instances:
+        #   KlassE := B_KlassE
+        #wrap-as:
+        #   KlassE
+        B1
+        B2
+        B3
+
+
+    cdef cppclass B_KlassKlass "Bklass::KlassKlass":
+        #wrap-attach:
+        #   Bklass
+        #wrap-instances:
+        #   KlassKlass := B_KlassKlass
+        #wrap-as:
+        #   KlassKlass
+        B_KlassKlass()
+        int k_
 

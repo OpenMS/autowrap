@@ -189,7 +189,7 @@ def test_full_lib():
     full_pxd_files = [ os.path.join(test_files, f) for f in pxd_files]
     decls, instance_map = autowrap.parse(full_pxd_files, ".", num_processes=int(PY_NUM_THREADS))
 
-    assert len(decls) == 10, len(decls)
+    assert len(decls) == 13, len(decls)
 
     # Step 2: Perform mapping
     pxd_decl_mapping = {}
@@ -228,10 +228,38 @@ def test_full_lib():
     include_dirs = masterDict[modname]["inc_dirs"]
     moduleA, moduleB, moduleCD = compile_and_import(mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files)
 
+    Aobj = moduleA.Aalias(5)
+    Asecond = moduleA.A_second(8)
+    assert Asecond.i_ == 8
+    assert Aobj.i_ == 5
+
+    assert Aobj.KlassE is not None
+    assert Aobj.KlassE.A1 is not None
+    assert Aobj.KlassE.A2 is not None
+    assert Aobj.KlassE.A3 is not None
+                        
     Bobj = moduleB.Bklass(5)
     Bsecond = moduleB.B_second(8)
     assert Bsecond.i_ == 8
+    Bsecond.processA( Aobj)
+    assert Bsecond.i_ == 15
 
+    assert Bobj.KlassE is not None
+    assert Bobj.KlassE.B1 is not None
+    assert Bobj.KlassE.B2 is not None
+    assert Bobj.KlassE.B3 is not None
+    assert Bobj.KlassKlass is not None
+
+    # there are two different ways to get Bklass::KlassKlass, either through a
+    # Bklass object or through the module
+    Bobj_kk = Bobj.KlassKlass()
+    Bobj_kk.k_ = 14
+    assert Bobj_kk.k_ == 14
+    Bobj_kk = moduleB.Bklass.KlassKlass()
+    Bobj_kk.k_ = 14
+    assert Bobj_kk.k_ == 14
+
+    Bsecond = moduleB.B_second(8)
     Dsecond = moduleCD.D_second(11)
     assert Dsecond.i_ == 11
     Dsecond.runB(Bsecond)

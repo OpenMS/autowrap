@@ -17,7 +17,19 @@ cdef extern from "A.hpp":
         A_second(A_second & i)
 
     cdef cppclass Aklass:
+        # wrap-instances:
+        #     Aalias := Aklass
         int i_
         Aklass(int i)
         Aklass(Aklass & i)
 
+    cdef enum A_KlassE "Aklass::KlassE":
+        #wrap-attach:
+        #   Aalias
+        #wrap-instances:
+        #   KlassE := A_KlassE
+        #wrap-as:
+        #   KlassE
+        A1
+        A2
+        A3

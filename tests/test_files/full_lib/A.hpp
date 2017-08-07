@@ -17,6 +17,8 @@ class Aklass {
         int i_;
         Aklass(int i): i_(i) { };
         Aklass(const Aklass & i): i_(i.i_) { };
+
+    enum KlassE { A1, A2, A3};
 };
 
 class A_second {
