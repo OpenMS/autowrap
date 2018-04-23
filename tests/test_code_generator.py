@@ -666,6 +666,20 @@ def test_minimal():
     assert minimal.run(minimal) == 4
     assert minimal.run2(minimal) == 5
 
+    # Note that both C++ calls run3 and run4 do modify the object -- the fact
+    # that Cython thinks run4 is const does not impact this!
+    tm = wrapped.Minimal(5)
+    assert tm.get() == 5
+    assert tm.run3(tm) == 14
+    assert tm.get() == 10
+    assert tm.run3(tm) == 24
+    assert tm.get() == 20
+    tm = wrapped.Minimal(5)
+    assert tm.run4(tm) == 14
+    assert tm.get() == 10
+    assert tm.run4(tm) == 24
+    assert tm.get() == 20
+
     assert minimal.create().compute(3) == 4
 
     assert minimal.sumup([1, 2, 3]) == 6

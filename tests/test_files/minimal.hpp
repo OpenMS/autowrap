@@ -40,6 +40,8 @@ class Minimal {
         int compute_charp(char *p) const;
         int run(const Minimal &) const;
         int run2(Minimal *) const;
+        int run3(Minimal &) const;
+        int run4(Minimal &) const;
 
         unsigned int test_special_converter(unsigned int l) const;
 
@@ -106,3 +108,4 @@ class Minimal {
 
 int top_function(int i);
 int sumup(std::vector<int> &);
+

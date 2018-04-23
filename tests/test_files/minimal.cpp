@@ -76,6 +76,16 @@ int Minimal::run2(Minimal * inst) const
 {
     return inst->compute_int(4);
 }
+int Minimal::run3(Minimal &ref) const
+{
+    ref += ref; 
+    return ref.compute_int(3);
+}
+int Minimal::run4(Minimal &ref) const
+{
+    ref += ref; 
+    return ref.compute_int(3);
+}
 
 Minimal Minimal::create() const
 {
