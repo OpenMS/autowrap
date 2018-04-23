@@ -45,7 +45,7 @@ cdef extern from "minimal.hpp":
         void setVector(libcpp_vector[Minimal])
         libcpp_vector[Minimal] getVector()
 
-        int test2Lists(libcpp_vector[Minimal], libcpp_vector[int])
+        int test2Lists(const libcpp_vector[Minimal]&, libcpp_vector[int])
 
         libcpp_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
         libcpp_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
