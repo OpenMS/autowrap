@@ -53,9 +53,20 @@ class CppType(object):
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
         self.topmost_is_ref = False
+        self.topmost_is_const = False
         if self.is_ref:
             self.set_is_ref_rec()
             self.topmost_is_ref = True
+        if self.is_const:
+            self.set_is_const_rec()
+            self.topmost_is_const = True
+
+    def set_is_const_rec(self):
+        self.topmost_is_const = True
+        if self.template_args is None:
+            return
+        for t in self.template_args:
+            t.set_is_const_rec()
 
     def set_is_ref_rec(self):
         self.topmost_is_ref = True

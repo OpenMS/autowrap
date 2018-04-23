@@ -528,7 +528,7 @@ class StdPairConverter(TypeConverterBase):
             """, locals())
 
         cleanup_code = Code()
-        if cpp_type.is_ref:
+        if cpp_type.is_ref and not cpp_type.is_const:
             if not i1.is_enum and t1.base_type in self.converters.names_of_wrapper_classes:
                 temp1 = "temp1"
                 cleanup_code.add("""
@@ -693,7 +693,7 @@ class StdMapConverter(TypeConverterBase):
                 value_conv_cleanup = Code().add("")
                 value_conv_code = Code().add("$vtemp_var = $value_var", locals())
                 value_conv = "%s" % vtemp_var
-                if cpp_type.topmost_is_ref:
+                if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                     cleanup_code = Code().add("""
                         |$value_var[:] = $vtemp_var
                         """, locals())
@@ -728,7 +728,7 @@ class StdMapConverter(TypeConverterBase):
         code.add(key_conv_cleanup)
         code.add(value_conv_cleanup)
 
-        if cpp_type.is_ref:
+        if cpp_type.is_ref and not cpp_type.is_const:
             it = mangle("it_" + argument_var)
 
             key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
@@ -885,7 +885,7 @@ class StdSetConverter(TypeConverterBase):
                 |for $item in $argument_var:
                 |   $temp_var.insert(<$inner> $item)
                 """, locals())
-            if cpp_type.is_ref:
+            if cpp_type.is_ref and not cpp_type.is_const:
                 cleanup_code = Code().add("""
                     |replace = set()
                     |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
@@ -917,7 +917,7 @@ class StdSetConverter(TypeConverterBase):
                 |for $item in $argument_var:
                 |   $temp_var.insert($do_deref($item.inst.get()))
                 """, locals())
-            if cpp_type.is_ref:
+            if cpp_type.is_ref and not cpp_type.is_const:
 
                 instantiation = self._codeForInstantiateObjectFromIter(inner, it)
                 cleanup_code = Code().add("""
@@ -944,7 +944,7 @@ class StdSetConverter(TypeConverterBase):
                 """, locals())
 
             cleanup_code = ""
-            if cpp_type.is_ref:
+            if cpp_type.is_ref and not cpp_type.is_const:
                 cleanup_code = Code().add("""
                     |$argument_var.clear()
                     |$argument_var.update($temp_var)
@@ -1025,7 +1025,7 @@ class StdVectorConverter(TypeConverterBase):
 
     def _prepare_nonrecursive_cleanup(self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw):
         # B) Prepare the post-call
-        if cpp_type.topmost_is_ref:
+        if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
             # If the vector is passed by reference, we need to store the
             # result for Python.
             btm_add = ""
@@ -1065,7 +1065,7 @@ class StdVectorConverter(TypeConverterBase):
 
     def _prepare_recursive_cleanup(self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw):
         # B) Prepare the post-call
-        if cpp_type.topmost_is_ref:
+        if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
             # If the vector is passed by reference, we need to store the
             # result for Python.
             if recursion_cnt > 0:
@@ -1091,7 +1091,7 @@ class StdVectorConverter(TypeConverterBase):
     def _prepare_nonrecursive_precall(self, topmost_code, cpp_type, code_top, do_deref, *a, **kw):
             # A) Prepare the pre-call
         if topmost_code is not None:
-            if cpp_type.topmost_is_ref:
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                     # add cdef statements for the iterators (part of B, post-call but needs to
                     # be on top)
                 code_top += "|cdef libcpp_vector[$inner].iterator $it"
@@ -1177,7 +1177,7 @@ class StdVectorConverter(TypeConverterBase):
         # append the result from the inner loop iteration to the current result
         # (only if we actually give back the reference)
         #
-        if cpp_type.topmost_is_ref:
+        if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
             cleanup_code.add("""
                 |    replace_$recursion_cnt.append(replace_$recursion_cnt_next)
                 |    inc($it)
@@ -1190,7 +1190,7 @@ class StdVectorConverter(TypeConverterBase):
         if bottommost_code is None:
             # we are the outermost loop
             cleanup_code.content.extend(bottommost_code_callback.content)
-            if cpp_type.topmost_is_ref:
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 cleanup_code.add("""
                     |$argument_var[:] = replace_$recursion_cnt
                     |del $temp_var
@@ -1250,7 +1250,7 @@ class StdVectorConverter(TypeConverterBase):
                 |for $item in $argument_var:
                 |    $temp_var.push_back(<$inner> $item)
                 """, locals())
-            if cpp_type.topmost_is_ref:
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 cleanup_code = Code().add("""
                     |replace = []
                     |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
@@ -1308,7 +1308,7 @@ class StdVectorConverter(TypeConverterBase):
 
             cleanup_code = Code().add("")
 
-            if cpp_type.topmost_is_ref:
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 item2 = "%s_rec_b" % argument_var
                 instantiation = self._codeForInstantiateObjectFromIter(inner, it)
                 cleanup_code = Code().add("""
@@ -1345,7 +1345,7 @@ class StdVectorConverter(TypeConverterBase):
             # A) Prepare the pre-call
             code = Code()
             if topmost_code is not None:
-                if cpp_type.topmost_is_ref:
+                if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                     # add cdef statements for the iterators (part of B, post-call but needs to
                     # be on top)
                     code_top += "|cdef libcpp_vector[$inner].iterator $it"
@@ -1376,7 +1376,7 @@ class StdVectorConverter(TypeConverterBase):
                 """, locals())
 
             cleanup_code = Code().add("")
-            if cpp_type.topmost_is_ref:
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 cleanup_code = Code().add("""
                     |$argument_var[:] = $temp_var
                     """, locals())
@@ -1531,7 +1531,7 @@ class SharedPtrConverter(TypeConverterBase):
         call_as = "input_" + argument_var
         cleanup = ""
         # Put the pointer back if we pass by reference
-        if cpp_type.is_ref:
+        if cpp_type.is_ref and not cpp_type.is_const:
             cleanup = Code().add("""
                 |$argument_var.inst = input_$argument_var
                 """, locals())
