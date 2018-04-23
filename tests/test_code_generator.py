@@ -686,8 +686,31 @@ def test_minimal():
     m3 = wrapped.Minimal([1, 2, 3])
     assert m3.compute(0) == 4
 
+    ### Different ways of wrapping a function: 
+    # all three call() methods (call, call2, call3) do exactly the same thing
+    # and all modify the input argument. However, they are wrapped differently
+    # in the pxd file:
+    #
+    #   int call(libcpp_vector[Minimal] what) # ref-arg-out:0
+    #   int call2(libcpp_vector[Minimal]& what) # ref-arg-out:0
+    #   int call3(const libcpp_vector[Minimal]& what) # ref-arg-out:0
+    #
+    # and therefore only call2 will actually modify its input arguments (since
+    # call assumes call by value, call3 assumes call by const-ref and only
+    # call2 implements a full call by ref).
+    #
+    assert len(in_) == 2
+    assert m3.call(in_) == 1
+    assert len(in_) == 2
+    assert in_ == [m2, minimal]
+
+    assert len(in_) == 2
+    assert m3.call2(in_) == 1
+    assert len(in_) == 3
+    assert in_ == [m2, minimal, m2]
+
     in_ = [b"a", b"bc"]
-    assert m3.call2(in_) == 3
+    assert m3.call_str(in_) == 3
     assert in_ == [b"a", b"bc", b"hi"]
 
     msg, = m3.message()

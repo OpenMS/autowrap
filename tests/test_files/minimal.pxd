@@ -55,9 +55,11 @@ cdef extern from "minimal.hpp":
         int size()
         int operator[](size_t index) #wrap-upper-limit:size()
 
-        int sumup(libcpp_vector[int] what)
+        int sumup(libcpp_vector[int]& what)
         int call(libcpp_vector[Minimal] what) # ref-arg-out:0
-        int call2(libcpp_vector[libcpp_string] & what)
+        int call2(libcpp_vector[Minimal]& what) # ref-arg-out:0
+        int call3(const libcpp_vector[Minimal]& what) # ref-arg-out:0
+        int call_str(libcpp_vector[libcpp_string] & what)
         libcpp_vector[libcpp_string] message()
         libcpp_vector[Minimal] create_two()
         int operator==(Minimal &)

@@ -88,7 +88,7 @@ Minimal & Minimal::getRef()
     return *this;
 }
 
-int Minimal::sumup(std::vector<int> & what) const {
+int Minimal::sumup(const std::vector<int> & what) const {
     int sum = 0;
     for (std::vector<int>::const_iterator it = what.begin(); it != what.end(); ++it)
         sum += *it;
@@ -104,7 +104,29 @@ int Minimal::call(std::vector<Minimal> & arg) const
     return sum;
 }
 
-int Minimal::call2(std::vector<std::string> & arg) const
+int Minimal::call2(std::vector<Minimal> & arg) const
+{
+    int sum = 0;
+    for (std::vector<Minimal>::const_iterator it = arg.begin(); it != arg.end(); ++it)
+        sum += it->compute(0);
+
+    arg.push_back(arg.at(0));
+    return sum;
+}
+
+
+int Minimal::call3(std::vector<Minimal> & arg) const
+{
+    int sum = 0;
+    for (std::vector<Minimal>::const_iterator it = arg.begin(); it != arg.end(); ++it)
+        sum += it->compute(0);
+
+    arg.push_back(arg.at(0));
+    return sum;
+}
+
+
+int Minimal::call_str(std::vector<std::string> & arg) const
 {
     int sum = 0;
     for (std::vector<std::string>::const_iterator it = arg.begin(); it != arg.end(); ++it)
