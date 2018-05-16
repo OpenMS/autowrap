@@ -43,6 +43,7 @@ import autowrap
 import os
 import math
 import copy
+import sys
 
 from .utils import expect_exception
 
@@ -884,6 +885,32 @@ def test_automatic_string_conversion():
 
     msg = h.get_more({"greet": input_greet_unicode, "name": input_bytes})
     assert isinstance(msg, bytes)
+    assert msg == expected
+
+
+def test_automatic_output_string_conversion():
+    target = os.path.join(test_files, "libcpp_utf8_output_string_test.pyx")
+    include_dirs = autowrap.parse_and_generate_code(["libcpp_utf8_output_string_test.pxd"],
+                                                    root=test_files, target=target, debug=True)
+
+    wrapped = autowrap.Utils.compile_and_import("libcpp_utf8_output_string_wrapped", [target, ],
+                                                include_dirs)
+    h = wrapped.LibCppUtf8OutputStringTest()
+
+    input_bytes = b"J\xc3\xbcrgen"
+    input_unicode = b"J\xc3\xbcrgen".decode('utf-8')
+
+    expected = b"Hello J\xc3\xbcrgen".decode('utf-8')
+    expected_type = str
+    if sys.version_info[0] < 3:
+        expected_type = unicode
+
+    msg = h.get(input_bytes)
+    assert isinstance(msg, expected_type)
+    assert msg == expected
+
+    msg = h.get(input_unicode)
+    assert isinstance(msg, expected_type)
     assert msg == expected
 
 

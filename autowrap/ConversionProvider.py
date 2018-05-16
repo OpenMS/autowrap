@@ -1501,6 +1501,15 @@ class StdStringUnicodeConverter(StdStringConverter):
         return "isinstance(%s, (bytes, unicode))" % argument_var
 
 
+class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
+
+    def get_base_types(self):
+        return "libcpp_utf8_output_string",
+
+    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        return "%s = %s.decode('utf-8')" % (output_py_var, input_cpp_var)
+
+
 class SharedPtrConverter(TypeConverterBase):
 
     """
@@ -1584,6 +1593,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(CharConverter())
     converters.register(StdStringConverter())
     converters.register(StdStringUnicodeConverter())
+    converters.register(StdStringUnicodeOutputConverter())
     converters.register(StdVectorConverter())
     converters.register(StdSetConverter())
     converters.register(StdMapConverter())

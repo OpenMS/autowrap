@@ -1203,6 +1203,7 @@ class CodeGenerator(object):
                    |#cython: embedsignature=False
                    |from  libcpp.string  cimport string as libcpp_string
                    |from  libcpp.string  cimport string as libcpp_utf8_string
+                   |from  libcpp.string  cimport string as libcpp_utf8_output_string
                    |from  libcpp.set     cimport set as libcpp_set
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
