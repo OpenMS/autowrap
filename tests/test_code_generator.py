@@ -719,6 +719,11 @@ def test_minimal():
     assert in_ == [m2, minimal]
 
     assert len(in_) == 2
+    assert m3.call3(in_) == 1
+    assert len(in_) == 2
+    assert in_ == [m2, minimal]
+
+    assert len(in_) == 2
     assert m3.call2(in_) == 1
     assert len(in_) == 3
     assert in_ == [m2, minimal, m2]
