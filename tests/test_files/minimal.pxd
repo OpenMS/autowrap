@@ -34,8 +34,12 @@ cdef extern from "minimal.hpp":
         const_char * pass_const_charptr(const_char *)
         libcpp_string compute_str(libcpp_string what)
         int compute_charp(char * what)
+        # Note how both run3 and run4 have the same implementation - declaring
+        # it const in Cython will not affect the result!
         int run(Minimal & ref)
         int run2(Minimal *p)
+        int run3(Minimal & ref)
+        int run4(const Minimal & ref) # attention here!
         Minimal create()
         Minimal & getRef()   # wrap-ignore
 
@@ -45,7 +49,7 @@ cdef extern from "minimal.hpp":
         void setVector(libcpp_vector[Minimal])
         libcpp_vector[Minimal] getVector()
 
-        int test2Lists(libcpp_vector[Minimal], libcpp_vector[int])
+        int test2Lists(const libcpp_vector[Minimal]&, libcpp_vector[int])
 
         libcpp_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
         libcpp_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
@@ -55,9 +59,14 @@ cdef extern from "minimal.hpp":
         int size()
         int operator[](size_t index) #wrap-upper-limit:size()
 
-        int sumup(libcpp_vector[int] what)
+        # Note how both call, call2 and call3 have the same implementation -
+        # however, declaring it const in Cython will affect the result since it
+        # will not get copied back!
+        int sumup(libcpp_vector[int]& what)
         int call(libcpp_vector[Minimal] what) # ref-arg-out:0
-        int call2(libcpp_vector[libcpp_string] & what)
+        int call2(libcpp_vector[Minimal]& what) # ref-arg-out:0
+        int call3(const libcpp_vector[Minimal]& what) # ref-arg-out:0
+        int call_str(libcpp_vector[libcpp_string] & what)
         libcpp_vector[libcpp_string] message()
         libcpp_vector[Minimal] create_two()
         int operator==(Minimal &)

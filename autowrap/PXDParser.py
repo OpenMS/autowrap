@@ -153,6 +153,14 @@ def _extract_template_args(node):
 def _extract_type(base_type, decl):
     """ extracts type information from node in parse_pxd_file tree """
 
+    type_is_const = isinstance(base_type, Nodes.CConstTypeNode)
+
+    # Complex const values, e.g. "const Int *" need to be reduced to base type
+    # to get the correct name. Note: we will have to deal with const-ness first
+    # and then with templated arguments that are nested.
+    if type_is_const:
+        base_type = base_type.base_type
+
     template_parameters = None
     if isinstance(base_type, TemplatedTypeNode):
         template_parameters = []
@@ -166,14 +174,15 @@ def _extract_type(base_type, decl):
                 is_long = hasattr(arg_node.base_type, "longness") and arg_node.base_type.longness
 
                 # Handle const template arguments which do not have a name
-                # themselves, only their base types have name attribute
-                is_const = isinstance(arg_node.base_type, Nodes.CConstTypeNode)
-                if is_const:
+                # themselves, only their base types have name attribute (see
+                # for example: shared_ptr<const Int>)
+                arg_is_const = isinstance(arg_node.base_type, Nodes.CConstTypeNode)
+                if arg_is_const:
                     name = arg_node.base_type.base_type.name
                 else:
                     name = arg_node.base_type.name
 
-                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned, is_long, is_const=is_const)
+                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned, is_long, is_const=arg_is_const)
                 template_parameters.append(ttype)
             elif isinstance(arg_node, NameNode):
                 name = arg_node.name
@@ -190,14 +199,8 @@ def _extract_type(base_type, decl):
     is_ref = isinstance(decl, CReferenceDeclaratorNode)
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
     is_long = hasattr(base_type, "longness") and base_type.longness
-    is_const = isinstance(base_type, Nodes.CConstTypeNode)
 
-    # Complex const values, e.g. "const Int *" need to be reduced to base type
-    # to get the correct name
-    if is_const:
-        base_type = base_type.base_type
-
-    return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long, is_const=is_const)
+    return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long, is_const=type_is_const)
 
 
 class BaseDecl(object):

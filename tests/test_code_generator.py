@@ -667,6 +667,20 @@ def test_minimal():
     assert minimal.run(minimal) == 4
     assert minimal.run2(minimal) == 5
 
+    # Note that both C++ calls run3 and run4 do modify the object -- the fact
+    # that Cython thinks run4 is const does not impact this!
+    tm = wrapped.Minimal(5)
+    assert tm.get() == 5
+    assert tm.run3(tm) == 14
+    assert tm.get() == 10
+    assert tm.run3(tm) == 24
+    assert tm.get() == 20
+    tm = wrapped.Minimal(5)
+    assert tm.run4(tm) == 14
+    assert tm.get() == 10
+    assert tm.run4(tm) == 24
+    assert tm.get() == 20
+
     assert minimal.create().compute(3) == 4
 
     assert minimal.sumup([1, 2, 3]) == 6
@@ -687,8 +701,36 @@ def test_minimal():
     m3 = wrapped.Minimal([1, 2, 3])
     assert m3.compute(0) == 4
 
+    ### Different ways of wrapping a function: 
+    # all three call() methods (call, call2, call3) do exactly the same thing
+    # and all modify the input argument. However, they are wrapped differently
+    # in the pxd file:
+    #
+    #   int call(libcpp_vector[Minimal] what) # ref-arg-out:0
+    #   int call2(libcpp_vector[Minimal]& what) # ref-arg-out:0
+    #   int call3(const libcpp_vector[Minimal]& what) # ref-arg-out:0
+    #
+    # and therefore only call2 will actually modify its input arguments (since
+    # call assumes call by value, call3 assumes call by const-ref and only
+    # call2 implements a full call by ref).
+    #
+    assert len(in_) == 2
+    assert m3.call(in_) == 1
+    assert len(in_) == 2
+    assert in_ == [m2, minimal]
+
+    assert len(in_) == 2
+    assert m3.call3(in_) == 1
+    assert len(in_) == 2
+    assert in_ == [m2, minimal]
+
+    assert len(in_) == 2
+    assert m3.call2(in_) == 1
+    assert len(in_) == 3
+    assert in_ == [m2, minimal, m2]
+
     in_ = [b"a", b"bc"]
-    assert m3.call2(in_) == 3
+    assert m3.call_str(in_) == 3
     assert in_ == [b"a", b"bc", b"hi"]
 
     msg, = m3.message()

@@ -40,12 +40,16 @@ class Minimal {
         int compute_charp(char *p) const;
         int run(const Minimal &) const;
         int run2(Minimal *) const;
+        int run3(Minimal &) const;
+        int run4(Minimal &) const;
 
         unsigned int test_special_converter(unsigned int l) const;
 
-        int sumup(std::vector<int> &) const;
+        int sumup(const std::vector<int> &) const;
         int call(std::vector<Minimal> & arg) const;
-        int call2(std::vector<std::string> & arg) const;
+        int call2(std::vector<Minimal> & arg) const;
+        int call3(std::vector<Minimal> & arg) const;
+        int call_str(std::vector<std::string> & arg) const;
 
         bool operator==(const Minimal &other) const;
 
@@ -104,3 +108,4 @@ class Minimal {
 
 int top_function(int i);
 int sumup(std::vector<int> &);
+
