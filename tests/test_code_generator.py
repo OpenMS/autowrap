@@ -764,6 +764,7 @@ def test_minimal():
     assert wrapped.top_function(42) == 84
     assert wrapped.sumup([1, 2, 3]) == 6
     assert wrapped.Minimal.run_static(1) == 4
+    assert wrapped.Minimal.run_static_extra_arg(1, True) == 4
 
     # != not declared, so:
     expect_exception(lambda m1, m2: m1 != m2)(m1, m2)

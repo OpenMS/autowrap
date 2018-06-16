@@ -79,7 +79,7 @@ class Minimal {
 
         enum ABCorD enumTest(enum ABCorD) const;
 
-        static long int run_static(long int);
+        static long int run_static(long int, bool = true);
 
         operator int() const {
             return 4711;

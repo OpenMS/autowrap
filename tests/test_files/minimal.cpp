@@ -195,7 +195,7 @@ std::vector<Minimal>::iterator Minimal::end()
     return this->_mi.end();
 }
 
-long int Minimal::run_static(long int i)
+long int Minimal::run_static(long int i, bool)
 {
     return i*4;
 }
