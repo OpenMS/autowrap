@@ -163,6 +163,8 @@ def test_libcpp():
     libcpp = autowrap.Utils.compile_and_import("libcpp", [target, ], include_dirs)
     assert libcpp.__name__ == "libcpp"
     print(dir(libcpp))
+    assert len(libcpp.LibCppTest.__doc__) == 97
+    assert len(libcpp.LibCppTest.twist.__doc__) == 116
 
     sub_libcpp_copy_constructors(libcpp)
 

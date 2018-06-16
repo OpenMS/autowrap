@@ -44,6 +44,10 @@ cdef extern from "libcpp_test.hpp":
     cdef cppclass LibCppTest:
         # wrap-hash:
         #  get()
+        #
+        # wrap-doc:
+        #  This is some class doc
+        #  Pretty cool stuff! 
 
         LibCppTest()
         LibCppTest(int ii)
