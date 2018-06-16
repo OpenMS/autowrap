@@ -348,13 +348,22 @@ class CodeGenerator(object):
         class_code = Code.Code()
         if r_class.methods:
             shared_ptr_inst = "cdef shared_ptr[%s] inst" % cy_type
+
+            # Class documentation (multi-line)
+            docstring = "Cython implementation of %s\n" % cy_type
+            extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", "")
+            for extra_doc_line in extra_doc:
+                docstring += "\n    " + extra_doc_line
+
             if len(r_class.wrap_manual_memory) != 0 and r_class.wrap_manual_memory[0] != "__old-model":
                 shared_ptr_inst = r_class.wrap_manual_memory[0]
             if self.write_pxd:
                 class_pxd_code.add("""
                                 |
                                 |cdef class $pyname:
-                                |
+                                |    \"\"\"
+                                |    $docstring
+                                |    \"\"\"
                                 |    $shared_ptr_inst
                                 |
                                 """, locals())
@@ -364,12 +373,18 @@ class CodeGenerator(object):
                 class_code.add("""
                                 |
                                 |cdef class $pyname:
+                                |    \"\"\"
+                                |    $docstring
+                                |    \"\"\"
                                 |
                                 """, locals())
             else:
                 class_code.add("""
                                 |
                                 |cdef class $pyname:
+                                |    \"\"\"
+                                |    $docstring
+                                |    \"\"\"
                                 |
                                 |    $shared_ptr_inst
                                 |
@@ -382,6 +397,9 @@ class CodeGenerator(object):
             class_pxd_code.add("""
                             |
                             |cdef class $pyname:
+                            |    \"\"\"
+                            |    $docstring
+                            |    \"\"\"
                             |
                             |    pass
                             |
@@ -389,6 +407,9 @@ class CodeGenerator(object):
             class_code.add("""
                             |
                             |cdef class $pyname:
+                            |    \"\"\"
+                            |    $docstring
+                            |    \"\"\"
                             |
                             """, locals())
 
