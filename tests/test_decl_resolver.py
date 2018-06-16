@@ -143,7 +143,7 @@ def _resolve(*names, **kwargs):
 
 
 def test_simple():
-    (cdcl, enumdcl, f1, f2, f3), map_ = _resolve("minimal.pxd", num_processes=1)
+    (cdcl, enumdcl, f1, f2, f3, f4), map_ = _resolve("minimal.pxd", num_processes=1)
 
     assert cdcl.name == "Minimal"
     assert enumdcl.name == "ABCorD"
@@ -152,9 +152,12 @@ def test_simple():
     assert f1.name == "top_function"
     assert f2.name == "sumup"
     assert f3.name == "run_static"
+    assert f3.name == f3.cpp_decl.name
+    assert f4.name == "run_static_extra_arg"
+    assert f4.cpp_decl.name == "run_static" # need to remember the raw cpp fxn name
 
 def test_simple_mp():
-    (cdcl, enumdcl, f1, f2, f3), map_ = _resolve("minimal.pxd", num_processes=2)
+    (cdcl, enumdcl, f1, f2, f3, f4), map_ = _resolve("minimal.pxd", num_processes=2)
 
     assert cdcl.name == "Minimal"
     assert enumdcl.name == "ABCorD"

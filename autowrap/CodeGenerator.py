@@ -776,16 +776,22 @@ class CodeGenerator(object):
             code = self._create_wrapper_for_free_function(decl)
         else:
             code = Code.Code()
-            static_name = "__static_%s_%s" % (static_clz, decl.name)
+            static_name = "__static_%s_%s" % (static_clz, decl.name) # name used to attach to class
             code.add("%s = %s" % (decl.name, static_name))
             self.class_codes[static_clz].add(code)
-            code = self._create_wrapper_for_free_function(decl, static_name)
+            orig_cpp_name = decl.cpp_decl.name # original cpp name (not displayname)
+            code = self._create_wrapper_for_free_function(decl, static_name, orig_cpp_name)
 
         self.top_level_pyx_code.append(code)
 
-    def _create_wrapper_for_free_function(self, decl, name=None):
+    def _create_wrapper_for_free_function(self, decl, name=None, orig_cpp_name=None):
         if name is None:
             name = decl.name
+
+        # Need to the original cpp name and not the display name (which is for
+        # Python only and C++ knows nothing about)
+        if orig_cpp_name is None:
+            orig_cpp_name = decl.name
 
         fun_code = Code.Code()
 
@@ -793,7 +799,7 @@ class CodeGenerator(object):
             self._create_fun_decl_and_input_conversion(fun_code, name, decl, is_free_fun=True)
 
         call_args_str = ", ".join(call_args)
-        mangled_name = "_" + decl.name + "_" + decl.pxd_import_path
+        mangled_name = "_" + orig_cpp_name + "_" + decl.pxd_import_path
         cy_call_str = "%s(%s)" % (mangled_name, call_args_str)
 
         res_t = decl.result_type
@@ -1186,6 +1192,8 @@ class CodeGenerator(object):
                 name = resolved.cpp_decl.name
                 code.add("from $import_from cimport $name as _$name", locals())
             elif resolved.__class__ in (ResolvedFunction, ):
+                # Ensure the name the original C++ name (and not the Python display name)
+                name = resolved.cpp_decl.name
                 mangled_name = "_" + name + "_" + import_from
                 code.add("from $import_from cimport $name as $mangled_name", locals())
             elif resolved.__class__ in (ResolvedTypeDef, ):

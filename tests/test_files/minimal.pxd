@@ -84,3 +84,5 @@ cdef extern from "minimal.hpp" namespace "Minimal":
 
     long int run_static(long int) # wrap-attach:Minimal
 
+    long int run_static(long int, bool) # wrap-attach:Minimal wrap-as:run_static_extra_arg
+
