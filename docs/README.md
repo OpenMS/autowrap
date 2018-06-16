@@ -235,11 +235,11 @@ Test examples
 
 The tests provide several examples on how to wrap tricky C++ constructs, see for example 
 
-- ../tests/test_files/minimal.pxd for a class example that uses static methods, pointers, operators ([], +=, \*, etc) and iterators
-- ../tests/test_files/libcpp_stl_test.pxd for examples using the STL 
-- ../tests/test_files/libcpp_test.pxd for a set of C++ functions that use abstract base classes
-- ../tests/test_files/libcpp_utf8_string_test.pxd for an example using UTF8 strings
-- ../tests/test_files/templated.pxd for an example using templated classes
+- [minimal.pxd](../tests/test_files/minimal.pxd) for a class example that uses static methods, pointers, operators ([], +=, \*, etc) and iterators
+- [libcpp_stl_test.pxd](../tests/test_files/libcpp_stl_test.pxd) for examples using the STL 
+- [libcpp_test.pxd](../tests/test_files/libcpp_test.pxd) for a set of C++ functions that use abstract base classes
+- [libcpp_utf8_string_test.pxd](../tests/test_files/libcpp_utf8_string_test.pxd) for an example using UTF8 strings
+- [templated.pxd](../tests/test_files/templated.pxd) for an example using templated classes
 
 Further examples
 ----------------
