@@ -630,6 +630,8 @@ def test_minimal():
 
     minimal = wrapped.Minimal()
 
+    assert len(minimal.compute.__doc__) == 297
+
     # test members
     assert minimal.m_accessible == 0
     assert minimal.m_const == -1

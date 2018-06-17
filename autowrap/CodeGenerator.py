@@ -515,12 +515,24 @@ class CodeGenerator(object):
         if use_kwargs:
             kwargs = ", **kwargs"
 
+        docstrings = "\n"
+        for method in methods:
+            # Prepare docstring
+            docstrings += " " * 8 + "  - Cython signature: %s" % method
+            extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
+            if len(extra_doc) > 0:
+                docstrings += "\n" + " " * 12 + extra_doc
+            docstrings += "\n"
+
         method_code.add("""
                           |
                           |def $py_name(self, *args $kwargs):
+                          |    \"\"\"$docstrings\"\"\"
                         """, locals())
 
         first_iteration = True
+
+
         for (dispatched_m_name, method) in zip(dispatched_m_names, methods):
             args = augment_arg_names(method)
             if not args:
@@ -592,8 +604,7 @@ class CodeGenerator(object):
                 dispatched_m_names.append(dispatched_m_name)
                 code = self.create_wrapper_for_nonoverloaded_method(cdcl,
                                                                     dispatched_m_name,
-                                                                    method,
-                                                                    )
+                                                                    method)
                 codes.append(code)
 
             code = self._create_overloaded_method_decl(py_name, dispatched_m_names, methods, True)
@@ -639,7 +650,7 @@ class CodeGenerator(object):
         docstring = "Cython signature: %s" % method
         extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
         if len(extra_doc) > 0:
-            docstring += "\n" + extra_doc
+            docstring += "\n" + " "*8 + extra_doc
 
         py_signature = ", ".join(py_signature_parts)
         code.add("""
