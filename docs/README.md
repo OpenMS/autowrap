@@ -54,7 +54,7 @@ folder and run
 
 which will generate files `py_int_holder.pyx` and `py_int_holder.cpp`
 which you can compile using the following file `setup.py` which we
-also provide in the `example` folder:
+provide in `example/setup.py`:
 
 ```python
 import os, pkg_resources
@@ -118,21 +118,29 @@ Assuming you want to wrap the following C++ class
 
 you could generate the following .pyx file and run autowrap (see below for a list of all directives)
 
-```
+```cython
     cdef extern from "libcpp_test.hpp":
         # example where no instance exists with the base class name
         # we should make sure that no Python class "TemplateClassName" is generated
+        # NOTE: the text after "wrap-doc" will appear in the Python __doc__ string
         cdef cppclass TemplateClassName[TemplateType]:
             # wrap-instances:
             #   TemplatedWithFloat := TemplateClassName[float]
             #   TemplatedWithDouble := TemplateClassName[double]
+            #
+            # wrap-doc:
+            #   TemplatedClass for double and float, 
+            #   useful for processing foobars
+
             TemplateType myInner_
             TemplateClassName(TemplateType i)
+
             void process_data(double ret_1, double ret_2)
 ```
 
 which will generate Cython code that allows direct access to the public
-internal variable `myInner_` as well as to the two constructors and the `process_data` function.
+internal variable `myInner_` as well as to the two constructors and the
+`process_data` function.
 
 Directives
 ----------
@@ -140,7 +148,9 @@ Directives
 A number of directives allow the user to modify the behavior of autowrap, which
 are generally added as a comment after a function or class declaration. All
 directives can be used as `wrap-XXX:argument` with the argument being optional
-for some directives:
+for some directives. You can combine directives easily for classes (see above)
+and for methods by putting them on the same line. The currently supported
+directives are:
 
 - `wrap-ignore`: Will not create a wrapper for this function or class (e.g. abstract base class that needs to be known to Cython but cannot be wrapped)
 - `wrap-iter-begin`: For begin iterators
@@ -149,7 +159,7 @@ for some directives:
 - `wrap-pass-constructor`: Create a special constructor that cannot be called
   (e.g. can be used on the default constructor if in C++ an argument is
   required for the constructor)
-- `wrap-doc`: Injection Python docstring for function, e.g. `wrap-doc:Some important docstring`
+- `wrap-doc`: Injection of a true Python docstring for function or class, e.g. `wrap-doc:Some important docstring`
 - `wrap-as`: Wrap with a different name, e.g. `wrap-as:NewName`
 - `wrap-constant`: Useful for constant properties that should have `__get__` but no `__set__`
 - `wrap-upper-limit`: Can be used to check input argument of type int (e.g. for operator[]) to make sure the input integer does not exceed the limit
@@ -193,7 +203,8 @@ http://docs.cython.org/src/userguide/external_C_code.html
 
 ### Class Directives
 
-Directives for classes are put after the class with one indent:
+Directives for classes are put after the class with one indent and an empty
+line between two directives:
 
 ```
         cdef cppclass TemplatedClass[U,V]:
@@ -218,6 +229,17 @@ class is the same as the name of the C++ class.
 Additionally, TemplatedClass[U,V] gets additional methods from C[U] and from D without having to re-declare them.
 
 Finally, the object is hashable in Python (assuming it has a function `getName()` that returns a string).
+
+Test examples
+-------------
+
+The tests provide several examples on how to wrap tricky C++ constructs, see for example 
+
+- [minimal.pxd](../tests/test_files/minimal.pxd) for a class example that uses static methods, pointers, operators ([], +=, \*, etc) and iterators
+- [libcpp_stl_test.pxd](../tests/test_files/libcpp_stl_test.pxd) for examples using the STL 
+- [libcpp_test.pxd](../tests/test_files/libcpp_test.pxd) for a set of C++ functions that use abstract base classes
+- [libcpp_utf8_string_test.pxd](../tests/test_files/libcpp_utf8_string_test.pxd) for an example using UTF8 strings
+- [templated.pxd](../tests/test_files/templated.pxd) for an example using templated classes
 
 Further examples
 ----------------

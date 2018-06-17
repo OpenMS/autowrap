@@ -44,6 +44,14 @@ cdef extern from "libcpp_test.hpp":
     cdef cppclass LibCppTest:
         # wrap-hash:
         #  get()
+        #
+        # wrap-doc:
+        #  This is some class doc
+        #  Pretty cool stuff! 
+        #  -----
+        #  With a trick, we can even get multiple paragraphs, allowing us to
+        #  write much longer documentation.
+        #
 
         LibCppTest()
         LibCppTest(int ii)
@@ -55,7 +63,7 @@ cdef extern from "libcpp_test.hpp":
         libcpp_vector[Int] * integer_vector_ptr
         Int * integer_ptr
 
-        int  get() #wrap-as:gett
+        int get() #wrap-as:gett wrap-doc:getting access to an integer
 
         libcpp_pair[int,libcpp_string] twist(libcpp_pair[libcpp_string, int]) #wrap-doc:Dont forget this stuff here!
         libcpp_vector[int] process(libcpp_vector[int] &)
