@@ -346,14 +346,15 @@ class CodeGenerator(object):
         cy_type = self.cr.cython_type(cname)
         class_pxd_code = Code.Code()
         class_code = Code.Code()
+
+        # Class documentation (multi-line)
+        docstring = "Cython implementation of %s\n" % cy_type
+        extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", "")
+        for extra_doc_line in extra_doc:
+            docstring += "\n    " + extra_doc_line
+
         if r_class.methods:
             shared_ptr_inst = "cdef shared_ptr[%s] inst" % cy_type
-
-            # Class documentation (multi-line)
-            docstring = "Cython implementation of %s\n" % cy_type
-            extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", "")
-            for extra_doc_line in extra_doc:
-                docstring += "\n    " + extra_doc_line
 
             if len(r_class.wrap_manual_memory) != 0 and r_class.wrap_manual_memory[0] != "__old-model":
                 shared_ptr_inst = r_class.wrap_manual_memory[0]
