@@ -1,7 +1,21 @@
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
+
+import copy
+import math
+import os
+import sys
 
 import pytest
+
+import autowrap
+import autowrap.Code
+import autowrap.CodeGenerator
+import autowrap.DeclResolver
+import autowrap.Main
+import autowrap.PXDParser
+import autowrap.Utils
+
+from .utils import expect_exception
 
 __license__ = """
 
@@ -33,21 +47,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-import autowrap.DeclResolver
-import autowrap.CodeGenerator
-import autowrap.PXDParser
-import autowrap.Utils
-import autowrap.Code
-import autowrap.Main
-import autowrap
 
-import os
-import math
-import copy
-
-from .utils import expect_exception
-
-test_files = os.path.join(os.path.dirname(__file__),  "test_files", "full_lib")
+test_files = os.path.join(os.path.dirname(__file__), "test_files", "full_lib")
 
 template = """
 from distutils.core import setup, Extension
@@ -81,6 +82,7 @@ setup(cmdclass = {'build_ext' : build_ext},
      )
 
 """
+
 
 def compile_and_import(names, source_files, include_dirs=None, extra_files=[], **kws):
 
@@ -120,39 +122,32 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
         print("\n")
 
     now = os.getcwd()
-    os.chdir(tempdir)
-    with open("setup.py", "w") as fp:
-        fp.write(setup_code)
 
-    import sys
-    sys.path.insert(0, tempdir)
-    if debug:
-        print("\n")
-        print("-" * 70)
-        import pprint
-        pprint.pprint(sys.path)
-        print("-" * 70)
-        print("\n")
+    try:
+        sys.path.insert(0, tempdir)
+        os.chdir(tempdir)
+        with open("setup.py", "w") as fp:
+            fp.write(setup_code)
+        assert (
+            subprocess.Popen(
+                "%s setup.py build_ext --force --inplace" % sys.executable,
+                shell=True,
+                cwd=tempdir,
+            ).wait()
+            == 0
+        )
 
-    assert subprocess.Popen("%s setup.py build_ext --force --inplace" % sys.executable, shell=True).wait() == 0
+        results = [__import__(name) for name in names]
 
-    results = []
-    for name in names:
-        print("BUILT")
-        result = __import__(name)
-        print("imported")
-        if debug:
-            print("imported", result)
-        results.append(result)
+    finally:
+        sys.path = sys.path[1:]
+        os.chdir(now)
 
-    sys.path = sys.path[1:]
-    os.chdir(now)
     print(results)
     return results
 
 
-
-def test_full_lib():
+def test_full_lib(tmpdir):
     """
     Example with multi-file library and multi-file result.
 
@@ -181,13 +176,17 @@ def test_full_lib():
     are not an issue.
     """
 
+    os.chdir(tmpdir.strpath)
+
     mnames = ["moduleA", "moduleB", "moduleCD"]
 
     # Step 1: parse all header files
     PY_NUM_THREADS = 1
     pxd_files = ["A.pxd", "B.pxd", "C.pxd", "D.pxd"]
-    full_pxd_files = [ os.path.join(test_files, f) for f in pxd_files]
-    decls, instance_map = autowrap.parse(full_pxd_files, ".", num_processes=int(PY_NUM_THREADS))
+    full_pxd_files = [os.path.join(test_files, f) for f in pxd_files]
+    decls, instance_map = autowrap.parse(
+        full_pxd_files, ".", num_processes=int(PY_NUM_THREADS)
+    )
 
     assert len(decls) == 13, len(decls)
 
@@ -196,37 +195,61 @@ def test_full_lib():
     for de in decls:
         tmp = pxd_decl_mapping.get(de.cpp_decl.pxd_path, [])
         tmp.append(de)
-        pxd_decl_mapping[ de.cpp_decl.pxd_path] = tmp
+        pxd_decl_mapping[de.cpp_decl.pxd_path] = tmp
 
     masterDict = {}
-    masterDict[mnames[0]] = {"decls" : pxd_decl_mapping[ full_pxd_files[0] ], "addons" : [], "files" : [ full_pxd_files[0] ]}
-    masterDict[mnames[1]] = {"decls" : pxd_decl_mapping[ full_pxd_files[1] ], "addons" : [], "files" : [ full_pxd_files[1] ]}
-    masterDict[mnames[2]] = {"decls" : pxd_decl_mapping[ full_pxd_files[2] ] + pxd_decl_mapping[ full_pxd_files[3] ], "addons" : [], "files" : [ full_pxd_files[2] ] + [full_pxd_files[3] ]}
+    masterDict[mnames[0]] = {
+        "decls": pxd_decl_mapping[full_pxd_files[0]],
+        "addons": [],
+        "files": [full_pxd_files[0]],
+    }
+    masterDict[mnames[1]] = {
+        "decls": pxd_decl_mapping[full_pxd_files[1]],
+        "addons": [],
+        "files": [full_pxd_files[1]],
+    }
+    masterDict[mnames[2]] = {
+        "decls": pxd_decl_mapping[full_pxd_files[2]]
+        + pxd_decl_mapping[full_pxd_files[3]],
+        "addons": [],
+        "files": [full_pxd_files[2]] + [full_pxd_files[3]],
+    }
 
     # Step 3: Generate Cython code
     converters = []
     for modname in mnames:
         m_filename = "%s.pyx" % modname
-        cimports, manual_code = autowrap.Main.collect_manual_code(masterDict[modname]["addons"])
+        cimports, manual_code = autowrap.Main.collect_manual_code(
+            masterDict[modname]["addons"]
+        )
         autowrap.Main.register_converters(converters)
-        autowrap_include_dirs = autowrap.generate_code(masterDict[modname]["decls"], instance_map,
-                                                       target=m_filename, debug=False, manual_code=manual_code,
-                                                       extra_cimports=cimports,
-                                                       include_boost=True, allDecl=masterDict)
+        autowrap_include_dirs = autowrap.generate_code(
+            masterDict[modname]["decls"],
+            instance_map,
+            target=m_filename,
+            debug=False,
+            manual_code=manual_code,
+            extra_cimports=cimports,
+            include_boost=True,
+            allDecl=masterDict,
+        )
         masterDict[modname]["inc_dirs"] = autowrap_include_dirs
 
     # Step 4: Generate CPP code
     for modname in mnames:
         m_filename = "%s.pyx" % modname
         autowrap_include_dirs = masterDict[modname]["inc_dirs"]
-        autowrap.Main.run_cython(inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename)
-
+        autowrap.Main.run_cython(
+            inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename
+        )
 
     # Step 5: Compile
-    all_pyx_files = ["%s.pyx" % modname  for modname in mnames]
-    all_pxd_files = ["%s.pxd" % modname  for modname in mnames]
+    all_pyx_files = ["%s.pyx" % modname for modname in mnames]
+    all_pxd_files = ["%s.pxd" % modname for modname in mnames]
     include_dirs = masterDict[modname]["inc_dirs"]
-    moduleA, moduleB, moduleCD = compile_and_import(mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files)
+    moduleA, moduleB, moduleCD = compile_and_import(
+        mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files
+    )
 
     Aobj = moduleA.Aalias(5)
     Asecond = moduleA.A_second(8)
@@ -237,11 +260,11 @@ def test_full_lib():
     assert Aobj.KlassE.A1 is not None
     assert Aobj.KlassE.A2 is not None
     assert Aobj.KlassE.A3 is not None
-                        
+
     Bobj = moduleB.Bklass(5)
     Bsecond = moduleB.B_second(8)
     assert Bsecond.i_ == 8
-    Bsecond.processA( Aobj)
+    Bsecond.processA(Aobj)
     assert Bsecond.i_ == 15
 
     assert Bobj.KlassE is not None
@@ -264,6 +287,7 @@ def test_full_lib():
     assert Dsecond.i_ == 11
     Dsecond.runB(Bsecond)
     assert Dsecond.i_ == 8
+
 
 if __name__ == "__main__":
     test_libcpp()
