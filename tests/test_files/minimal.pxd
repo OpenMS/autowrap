@@ -25,7 +25,7 @@ cdef extern from "minimal.hpp":
 
         int get()
         libcpp_string compute(libcpp_string)
-        Int compute(int number1, int number2)
+        Int compute(int number1, int number2) # wrap-doc:This method is essential for foobar
         int compute(Int number)
         float compute(float number)
         int compute_int(int)
@@ -46,8 +46,8 @@ cdef extern from "minimal.hpp":
 
         unsigned int test_special_converter(unsigned int)
 
-        void setVector(libcpp_vector[Minimal])
-        libcpp_vector[Minimal] getVector()
+        void setVector(libcpp_vector[Minimal]) # wrap-doc:Sets vector
+        libcpp_vector[Minimal] getVector()# wrap-doc:Gets vector
 
         int test2Lists(const libcpp_vector[Minimal]&, libcpp_vector[int])
 
