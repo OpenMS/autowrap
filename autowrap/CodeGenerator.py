@@ -322,7 +322,7 @@ class CodeGenerator(object):
         code.add("""
                 |    cdef dict __enum_mapping
                 |    def __init__(self):
-                |        self.__enum_mapping = dict([ (v, k) for k, v in self.__class__.__dict__.iteritems() if isinstance(v, int) ])
+                |        self.__enum_mapping = dict([ (v, k) for k, v in self.__class__.__dict__.items() if isinstance(v, int) ])
                 |    def getMapping(self):
                 |        return self.__enum_mapping""")
 
