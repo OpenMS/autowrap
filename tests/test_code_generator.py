@@ -631,6 +631,12 @@ def test_minimal():
 
     minimal = wrapped.Minimal()
 
+    assert len(wrapped.Minimal.ABCorD().getMapping()) == 4
+    assert wrapped.Minimal.ABCorD().getMapping()[0] == 'A'
+    assert wrapped.Minimal.ABCorD().getMapping()[2] == 'B'
+    assert wrapped.Minimal.ABCorD().getMapping()[3] == 'C'
+    assert wrapped.Minimal.ABCorD().getMapping()[4] == 'D'
+
     assert len(minimal.compute.__doc__) == 297
 
     # test members

@@ -317,6 +317,15 @@ class CodeGenerator(object):
                  """, name=name)
         for (name, value) in decl.items:
             code.add("    $name = $value", name=name, value=value)
+
+        # Add mapping of int (enum) to the value of the enum (as string)
+        code.add("""
+                |    cdef dict __enum_mapping
+                |    def __init__(self):
+                |        self.__enum_mapping = dict([ (v, k) for k, v in self.__class__.__dict__.iteritems() if isinstance(v, int) ])
+                |    def getMapping(self):
+                |        return self.__enum_mapping""")
+
         self.class_codes[decl.name] = code
         self.class_pxd_codes[decl.name] = enum_pxd_code
 
