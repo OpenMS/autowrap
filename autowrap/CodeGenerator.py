@@ -349,6 +349,9 @@ class CodeGenerator(object):
 
         # Class documentation (multi-line)
         docstring = "Cython implementation of %s\n" % cy_type
+        if r_class.cpp_decl.annotations.get("wrap-inherits", "") != "":
+            docstring += "     -- Inherits from %s\n" % r_class.cpp_decl.annotations.get("wrap-inherits", "")
+
         extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", "")
         for extra_doc_line in extra_doc:
             docstring += "\n    " + extra_doc_line
