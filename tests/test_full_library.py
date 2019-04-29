@@ -262,6 +262,9 @@ def test_full_lib(tmpdir):
     assert Aobj.KlassE.A3 is not None
 
     Bobj = moduleB.Bklass(5)
+    assert Bobj.i_ == 5 # access through A_second
+    Bobj.callA2()
+    assert Bobj.i_ == 6 # access through A_second
     Bsecond = moduleB.B_second(8)
     assert Bsecond.i_ == 8
     Bsecond.processA(Aobj)
@@ -282,6 +285,11 @@ def test_full_lib(tmpdir):
     Bobj_kk.k_ = 14
     assert Bobj_kk.k_ == 14
 
+    # Check doc string
+    assert "Inherits from" in moduleB.Bklass.__doc__
+    assert "some doc!" in moduleB.Bklass.__doc__
+    assert len(moduleB.Bklass.__doc__) == 92, len(moduleB.Bklass.__doc__)
+
     Bsecond = moduleB.B_second(8)
     Dsecond = moduleCD.D_second(11)
     assert Dsecond.i_ == 11
@@ -291,3 +299,4 @@ def test_full_lib(tmpdir):
 
 if __name__ == "__main__":
     test_libcpp()
+
