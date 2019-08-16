@@ -217,7 +217,7 @@ class CppType(object):
     @staticmethod
     def _from_string(str_):
         # TODO is there a reason why "_" is not in the regex?
-        matched = re.match("([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?",
+        matched = re.match(r"([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?",
                            str_.strip())
         if matched is None:
             raise Exception("can not parse '%s'" % str_)

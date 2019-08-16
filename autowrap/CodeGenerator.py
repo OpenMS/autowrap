@@ -255,7 +255,7 @@ class CodeGenerator(object):
 
     def filterout_iterators(self, methods):
         def parse(anno):
-            m = re.match("(\S+)\((\S+)\)", anno)
+            m = re.match(r"(\S+)\((\S+)\)", anno)
             assert m is not None, "invalid iter annotation"
             name, type_str = m.groups()
             return name, CppType.from_string(type_str)
