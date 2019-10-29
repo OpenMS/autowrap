@@ -1189,12 +1189,17 @@ class CodeGenerator(object):
         E.g. if we have module1 containing classA, classB and want to access it
         through the pxd header, then we need to add:
 
-            from module1 import classA, classB
+            from .module1 import classA, classB
+
         """
         code = Code.Code()
         L.info("Create foreign imports for module %s" % self.target_path)
         for module in self.allDecl:
             # We skip our own module
+
+            mname = module
+            if sys.version_info >= (3, 0): mname = "." + module
+
             if os.path.basename(self.target_path).split(".pyx")[0] != module:
 
                 for resolved in self.allDecl[module]["decls"]:
@@ -1212,16 +1217,16 @@ class CodeGenerator(object):
                             # globally exported.
                             pass
                         else:
-                            code.add("from $module cimport $name", locals())
+                            code.add("from $mname cimport $name", locals())
                     if resolved.__class__ in (ResolvedClass, ):
 
                         # Skip classes that explicitely should not have a pxd
                         # import statement (abstract base classes and the like)
                         if not resolved.no_pxd_import:
                             if resolved.cpp_decl.annotations.get("wrap-attach"):
-                                code.add("from $module cimport __$name", locals())
+                                code.add("from $mname cimport __$name", locals())
                             else:
-                                code.add("from $module cimport $name", locals())
+                                code.add("from $mname cimport $name", locals())
 
             else: 
                 L.info("Skip imports from self (own module %s)" % module)

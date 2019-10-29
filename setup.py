@@ -10,7 +10,7 @@ except ImportError:
 from setuptools import find_packages, setup
 
 # DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
-VERSION = (0, 20, 0)
+VERSION = (0, 20, 1)
 # DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
 
 
