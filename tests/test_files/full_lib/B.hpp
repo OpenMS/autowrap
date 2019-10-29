@@ -14,11 +14,11 @@ enum testB {
 };
 
 
-class Bklass {
+class Bklass : public A_second {
     public:
-        int i_;
-        Bklass(int i): i_(i) { };
-        Bklass(const Bklass & i): i_(i.i_) { };
+        // int i_; // from parent class
+        Bklass(int i): A_second(i) { };
+        Bklass(const Bklass & i): A_second(i.i_) { };
 
     enum KlassE { B1, B2, B3};
     struct KlassKlass { int k_; };
