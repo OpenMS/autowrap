@@ -167,6 +167,7 @@ def test_libcpp():
     assert len(libcpp.LibCppTest.__doc__) == 214
     assert len(libcpp.LibCppTest.twist.__doc__) == 124
     assert len(libcpp.LibCppTest.gett.__doc__) == 66
+    assert len(libcpp.ABS_Impl1.__doc__) == 89
 
     sub_libcpp_copy_constructors(libcpp)
 
@@ -630,6 +631,12 @@ def test_minimal():
     assert wrapped.__name__ == "wrapped"
 
     minimal = wrapped.Minimal()
+
+    assert len(wrapped.Minimal.ABCorD().getMapping()) == 4
+    assert wrapped.Minimal.ABCorD().getMapping()[0] == 'A'
+    assert wrapped.Minimal.ABCorD().getMapping()[2] == 'B'
+    assert wrapped.Minimal.ABCorD().getMapping()[3] == 'C'
+    assert wrapped.Minimal.ABCorD().getMapping()[4] == 'D'
 
     assert len(minimal.compute.__doc__) == 297
 

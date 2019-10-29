@@ -42,6 +42,7 @@ from Cython.Compiler.ExprNodes import *
 from autowrap.Types import CppType
 
 import os
+import sys
 
 # import logging as L
 
@@ -429,6 +430,7 @@ def parse_pxd_file(path):
     # TODO sync with CodeGenerator.py function fixed_include_dirs
     data = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
     options.include_path = [data]
+    options.language_level = sys.version_info.major
 
     path = os.path.abspath(path)
     basename = os.path.basename(path)

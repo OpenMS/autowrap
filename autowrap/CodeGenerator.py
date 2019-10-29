@@ -110,6 +110,10 @@ class CodeGenerator(object):
         self.target_path = os.path.abspath(pyx_target_path)
         self.target_pxd_path = self.target_path.split(".pyx")[0] + ".pxd"
         self.target_dir = os.path.dirname(self.target_path)
+
+        # If true, we will write separate pxd and pyx files (need to ensure the
+        # right code goes to header if we use pxd headers). Alternatively, we
+        # will simply write a single pyx file.
         self.write_pxd = len(allDecl) > 0
 
         ## Step 1: get all classes of current module
@@ -255,7 +259,7 @@ class CodeGenerator(object):
 
     def filterout_iterators(self, methods):
         def parse(anno):
-            m = re.match("(\S+)\((\S+)\)", anno)
+            m = re.match(r"(\S+)\((\S+)\)", anno)
             assert m is not None, "invalid iter annotation"
             name, type_str = m.groups()
             return name, CppType.from_string(type_str)
@@ -306,6 +310,7 @@ class CodeGenerator(object):
         L.info("create wrapper for enum %s" % name)
         code = Code.Code()
         enum_pxd_code = Code.Code()
+
         enum_pxd_code.add("""
                    |
                    |cdef class $name:
@@ -317,6 +322,13 @@ class CodeGenerator(object):
                  """, name=name)
         for (name, value) in decl.items:
             code.add("    $name = $value", name=name, value=value)
+
+        # Add mapping of int (enum) to the value of the enum (as string)
+        code.add("""
+                |
+                |    def getMapping(self):
+                |        return dict([ (v, k) for k, v in self.__class__.__dict__.items() if isinstance(v, int) ])""" )
+
         self.class_codes[decl.name] = code
         self.class_pxd_codes[decl.name] = enum_pxd_code
 
@@ -349,6 +361,9 @@ class CodeGenerator(object):
 
         # Class documentation (multi-line)
         docstring = "Cython implementation of %s\n" % cy_type
+        if r_class.cpp_decl.annotations.get("wrap-inherits", "") != "":
+            docstring += "     -- Inherits from %s\n" % r_class.cpp_decl.annotations.get("wrap-inherits", "")
+
         extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", "")
         for extra_doc_line in extra_doc:
             docstring += "\n    " + extra_doc_line

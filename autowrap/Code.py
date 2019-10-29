@@ -74,9 +74,9 @@ class Code(object):
                 print(what)
                 print(kw)
                 raise
-            res = re.sub("^[ ]*\n[ ]*\|", "", res)     # ltrim first line
-            res = re.sub("\n+ *\+", "", res)
-            for line in re.split("\n *\|", res):
+            res = re.sub(r"^[ ]*\n[ ]*\|", "", res)     # ltrim first line
+            res = re.sub(r"\n+ *\+", "", res)
+            for line in re.split(r"\n *\|", res):
                 self.content.append(line.rstrip())
         else:
             self.content.append(what)
