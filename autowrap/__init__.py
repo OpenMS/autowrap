@@ -52,7 +52,7 @@ def parse(files, root, num_processes=1):
 
 
 def generate_code(decls, instance_map, target, debug=False, manual_code=None,
-                  extra_cimports=None, include_boost=True, include_numpy=False, allDecl=[]):
+                  extra_cimports=None, include_boost=True, include_numpy=False, allDecl=[], shared_ptr="boost"):
 
     import autowrap.CodeGenerator
     gen = CodeGenerator.CodeGenerator(decls,
@@ -60,11 +60,12 @@ def generate_code(decls, instance_map, target, debug=False, manual_code=None,
                                       pyx_target_path=target,
                                       manual_code=manual_code,
                                       extra_cimports=extra_cimports, 
-                                      allDecl=allDecl)
+                                      allDecl=allDecl,
+                                      shared_ptr)
     gen.include_numpy=include_numpy
     gen.create_pyx_file(debug)
     includes = gen.get_include_dirs(include_boost)
-    print("Autwrap has wrapped %s classes, %s methods and %s enums" % (
+    print("Autowrap has wrapped %s classes, %s methods and %s enums" % (
         gen.wrapped_classes_cnt,
         gen.wrapped_methods_cnt,
         gen.wrapped_enums_cnt))

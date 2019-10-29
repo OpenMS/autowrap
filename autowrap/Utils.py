@@ -83,6 +83,8 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     else:
         compile_args = ""
 
+    compile_args += ", '-std=c++11' "
+        
     include_dirs = [os.path.abspath(d) for d in include_dirs]
     source_files = [os.path.basename(f) for f in source_files]
     setup_code = template % locals()
