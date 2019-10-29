@@ -75,7 +75,6 @@ def test_number_conv():
     repr_ = "%.13e" % outl[0]
     assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
 
-
 def test_shared_ptr():
 
     target = os.path.join(test_files, "shared_ptr_test.pyx")
@@ -194,7 +193,6 @@ def test_templated():
     assert templated.computeSeven() == 7
     assert templated_o.computeSeven() == 7
 
-
 def test_gil_unlock():
 
     target = os.path.join(test_files, "gil_testing_wrapper.pyx")
@@ -237,7 +235,6 @@ def test_automatic_string_conversion():
     msg = h.get_more({"greet": input_greet_unicode, "name": input_bytes})
     assert isinstance(msg, bytes)
     assert msg == expected
-
 
 def test_automatic_output_string_conversion():
     target = os.path.join(test_files, "libcpp_utf8_output_string_test.pyx")

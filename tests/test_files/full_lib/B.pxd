@@ -18,8 +18,14 @@ cdef extern from "B.hpp":
         B_second(B_second & i)
         void processA(Aklass & a)
 
-    cdef cppclass Bklass:
-        int i_
+    cdef cppclass Bklass (A_second):
+        # wrap-inherits:
+        #  A_second
+        #
+        # wrap-doc: 
+        #  some doc!
+
+        int i_  # we need to copy public member accessors
         Bklass(int i)
         Bklass(Bklass & i)
 

@@ -49,6 +49,7 @@ from .utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
+
 def sub_libcpp_copy_constructors(libcpp):
     """ Test copy constructors
     """
@@ -92,7 +93,6 @@ def sub_libcpp_copy_constructors(libcpp):
     assert int_wrpcpy.i_ == 1
 
 def test_libcpp():
-
     target = os.path.join(test_files, "libcpp_test.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(["libcpp_test.pxd"],
@@ -104,6 +104,7 @@ def test_libcpp():
     assert len(libcpp.LibCppTest.__doc__) == 214
     assert len(libcpp.LibCppTest.twist.__doc__) == 124
     assert len(libcpp.LibCppTest.gett.__doc__) == 66
+    assert len(libcpp.ABS_Impl1.__doc__) == 89
 
     sub_libcpp_copy_constructors(libcpp)
 
