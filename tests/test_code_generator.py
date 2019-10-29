@@ -167,6 +167,7 @@ def test_libcpp():
     assert len(libcpp.LibCppTest.__doc__) == 214
     assert len(libcpp.LibCppTest.twist.__doc__) == 124
     assert len(libcpp.LibCppTest.gett.__doc__) == 66
+    assert len(libcpp.ABS_Impl1.__doc__) == 89
 
     sub_libcpp_copy_constructors(libcpp)
 
