@@ -61,7 +61,7 @@ def generate_code(decls, instance_map, target, debug=False, manual_code=None,
                                       manual_code=manual_code,
                                       extra_cimports=extra_cimports, 
                                       allDecl=allDecl,
-                                      shared_ptr)
+                                      shared_ptr=shared_ptr)
     gen.include_numpy=include_numpy
     gen.create_pyx_file(debug)
     includes = gen.get_include_dirs(include_boost)
