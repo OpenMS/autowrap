@@ -26,6 +26,7 @@ class A_second {
         int i_;
         A_second(int i): i_(i) { };
         A_second(const A_second & i): i_(i.i_) { };
+        void callA2() {i_++;};
 };
 
 
