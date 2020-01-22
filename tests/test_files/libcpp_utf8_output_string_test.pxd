@@ -1,3 +1,4 @@
+# cython: language_level=2
 from libcpp.string cimport string as libcpp_utf8_output_string
 
 cdef extern from "libcpp_utf8_output_string_test.hpp":

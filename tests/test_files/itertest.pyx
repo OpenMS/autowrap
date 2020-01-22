@@ -1,3 +1,4 @@
+#cython: language_level=2
 from cython.operator cimport dereference as deref, preincrement as preinc
 from libcpp.list cimport list as cpplist
 
