@@ -47,6 +47,10 @@ import autowrap.Code as Code
 
 import logging as L
 
+special_class_doc = ""
+def namespace_handler(ns):
+    return ns
+
 try:
     unicode = unicode
 except NameError:
@@ -356,11 +360,19 @@ class CodeGenerator(object):
 
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
+
+        # Attempt to derive sane class name and namespace
+        cpp_name = str(cy_type)
+        namespace = namespace_handler(r_class.ns)
+        if cpp_name.startswith("_"):
+            cpp_name = cpp_name[1:]
+
         class_pxd_code = Code.Code()
         class_code = Code.Code()
 
         # Class documentation (multi-line)
         docstring = "Cython implementation of %s\n" % cy_type
+        docstring += special_class_doc % locals()
         if r_class.cpp_decl.annotations.get("wrap-inherits", "") != "":
             docstring += "     -- Inherits from %s\n" % r_class.cpp_decl.annotations.get("wrap-inherits", "")
 
