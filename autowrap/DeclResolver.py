@@ -144,6 +144,19 @@ class ResolvedAttribute(object):
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
 
 
+default_namespace = ""
+
+def get_namespace(pxd, default_namespace):
+    filehandle = open(pxd)
+    fulltext = filehandle.read()
+    filehandle.close()
+    import re
+    match = re.search("cdef extern.*?namespace\s*\"([^\"]*)\"", fulltext)
+    if not match:
+        return default_namespace
+    else:
+        return match.group(1)
+
 class ResolvedClass(object):
 
     """ contains all info for generating wrapping code of
@@ -160,7 +173,8 @@ class ResolvedClass(object):
         self.attributes = attributes
 
         self.cpp_decl = decl
-        # self.items = getattr(decl, "items", [])
+        self.ns = get_namespace(decl.pxd_path, default_namespace)
+
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
         self.no_pxd_import = decl.annotations.get("no-pxd-import", False)
         self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", [])
