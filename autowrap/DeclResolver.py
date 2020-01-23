@@ -151,7 +151,7 @@ def get_namespace(pxd, default_namespace):
     fulltext = filehandle.read()
     filehandle.close()
     import re
-    match = re.search("cdef extern.*?namespace\s*\"([^\"]*)\"", fulltext)
+    match = re.search(r"cdef extern.*?namespace\s*\"([^\"]*)\"", fulltext)
     if not match:
         return default_namespace
     else:
