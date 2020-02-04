@@ -484,7 +484,11 @@ def parse_pxd_file(path):
         handler = handlers.get(type(body))
         if handler is not None:
             # L.info("parsed %s, handler=%s" % (body.__class__, handler.im_self))
-            result.append(handler(body, lines, path))
+            try:
+                result.append(handler(body, lines, path))
+            except Exception:
+                raise Exception("failed to parse " +path)
+                
         else:
             for node in getattr(body, "stats", []):
                 handler = handlers.get(type(node))
