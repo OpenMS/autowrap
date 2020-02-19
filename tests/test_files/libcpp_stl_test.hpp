@@ -24,6 +24,24 @@ class IntWrapper {
         }
 };
 
+class IntVecWrapper {
+
+    public:
+      std::vector<int> iv_;
+
+        IntVecWrapper() {}
+
+        int& operator[](int i)
+        {
+          return iv_[i];
+        }
+
+        void push_back(int i)
+        {
+          iv_.push_back(i);
+        }
+};
+
 class MapWrapper {
 
     public:
@@ -34,6 +52,25 @@ class MapWrapper {
       {
         map_ = other.map_;
       }
+};
+
+class LibCppSTLVector
+{
+    std::vector<IntWrapper> m_list;
+    public:
+        LibCppSTLVector() {};
+
+        IntWrapper& operator[](int i)
+        {
+          return m_list[i];
+        }
+
+        size_t size() {return m_list.size();}
+
+        void push_back(const IntWrapper& i)
+        {
+          m_list.push_back(i);
+        }
 };
 
 class LibCppSTLTest {

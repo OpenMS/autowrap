@@ -74,6 +74,20 @@ def test_stl_libcpp():
     assert len(m1.map_) == 1
     assert len(m2.map_) == 2
 
+    # Test wrapping of operator[]
+    vec_wrapper = libcpp_stl.IntVecWrapper()
+    vec_wrapper.push_back(5)
+    assert vec_wrapper[0] == 5
+    vec_wrapper[0] = 7
+    assert vec_wrapper[0] == 7
+
+    vec_wrapper = libcpp_stl.LibCppSTLVector()
+    itest = libcpp_stl.IntWrapper(5)
+    vec_wrapper.push_back( itest )
+    assert vec_wrapper[0].i_ == 5
+    itest = libcpp_stl.IntWrapper(7)
+    vec_wrapper[0] = itest
+    assert vec_wrapper[0].i_ == 7
 
     # Part 1
     # Test std::set< Widget* >
