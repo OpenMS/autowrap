@@ -261,9 +261,6 @@ class IntegerConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
-        if cpp_type.is_ref:
-            cpp_type = cpp_type.base_type
-
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
