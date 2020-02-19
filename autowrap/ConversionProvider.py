@@ -154,7 +154,16 @@ class TypeConverterBase(object):
         raise NotImplementedError()
 
     def call_method(self, res_type, cy_call_str):
+        """
+        Creates a temporary object which has the type of the current TypeConverter object.
+
+        The object is *always* named "_r" and will be of type "res_type". It will be assigned the value of "cy_call_str".
+        """
         cy_res_type = self.converters.cython_type(res_type)
+        if cy_res_type.is_ref:
+            cy_res_type = cy_res_type.base_type
+            return "cdef %s _r = %s" % (cy_res_type, cy_call_str)
+
         return "cdef %s _r = %s" % (cy_res_type, cy_call_str)
 
     def matching_python_type(self, cpp_type):
@@ -164,6 +173,14 @@ class TypeConverterBase(object):
         raise NotImplementedError()
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
+        """
+        Sets up the conversion of input arguments.
+
+        Returns a tuple as follows:
+          - code : a code object to be added to the beginning of the function
+          - call_as : a piece of code indicating how the argument should be called as going forward
+          - cleanup : a piece of cleanup code to be added to the bottom of the function
+        """
         raise NotImplementedError()
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
@@ -182,6 +199,9 @@ class TypeConverterBase(object):
             shared_ptr[ _FooObject ] (new _FooObject (*foo_iter)  )
             shared_ptr[ _FooObject ] (new _FooObject (**foo_iter_ptr)  )
         """
+
+        if cpp_type.is_ref:
+            cpp_type = cpp_type.base_type
 
         if cpp_type.is_ptr:
             cpp_type_base = cpp_type.base_type
@@ -241,6 +261,9 @@ class IntegerConverter(TypeConverterBase):
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
+        if cpp_type.is_ref:
+            cpp_type = cpp_type.base_type
+
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
@@ -433,13 +456,17 @@ class TypeToWrapConverter(TypeConverterBase):
             call_as = "(%s.inst.get())" % (argument_var, )
         else:
             call_as = "(deref(%s.inst.get()))" % (argument_var, )
+
         cleanup = ""
         return code, call_as, cleanup
 
     def call_method(self, res_type, cy_call_str):
         t = self.converters.cython_type(res_type)
 
-        if t.is_ptr:
+        if t.is_ref:
+            # If t is a ref, we would like to call on the base type
+            t = t.base_type
+        elif t.is_ptr:
 
             # Special treatment for const raw ptr
             const = ""
@@ -462,6 +489,8 @@ class TypeToWrapConverter(TypeConverterBase):
 
         cy_clz = self.converters.cython_type(cpp_type)
         if cpp_type.is_ptr:
+            cy_clz = cy_clz.base_type
+        if cpp_type.is_ref:
             cy_clz = cy_clz.base_type
 
         t = cpp_type.base_type
