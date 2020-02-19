@@ -135,6 +135,11 @@ int Minimal::call3(std::vector<Minimal> & arg) const
     return sum;
 }
 
+int Minimal::call4(int & arg) const
+{
+  arg += 1;
+  return arg;
+}
 
 int Minimal::call_str(std::vector<std::string> & arg) const
 {
