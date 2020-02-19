@@ -157,7 +157,14 @@ class TypeConverterBase(object):
         """
         Creates a temporary object which has the type of the current TypeConverter object.
 
-        The object is *always* named "_r" and will be of type "res_type". It will be assigned the value of "cy_call_str".
+        The object is *always* named "_r" and will be of type "res_type". It
+        will be assigned the value of "cy_call_str".
+
+        Note that Cython cannot declare C++ references, therefore 
+
+           cdef int & _r 
+
+        Is illegal to declare and we have to remove any references from the type.
         """
         cy_res_type = self.converters.cython_type(res_type)
         if cy_res_type.is_ref:
@@ -485,9 +492,9 @@ class TypeToWrapConverter(TypeConverterBase):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
 
         cy_clz = self.converters.cython_type(cpp_type)
-        if cpp_type.is_ptr:
-            cy_clz = cy_clz.base_type
-        if cpp_type.is_ref:
+
+        # Need to ensure that type inside the raw ptr is an object and not a ref/ptr
+        if cpp_type.is_ptr or cpp_type.is_ref:
             cy_clz = cy_clz.base_type
 
         t = cpp_type.base_type
