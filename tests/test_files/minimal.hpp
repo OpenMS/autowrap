@@ -49,6 +49,7 @@ class Minimal {
         int call(std::vector<Minimal> & arg) const;
         int call2(std::vector<Minimal> & arg) const;
         int call3(std::vector<Minimal> & arg) const;
+        int call4(int & arg) const;
         int call_str(std::vector<std::string> & arg) const;
 
         bool operator==(const Minimal &other) const;
