@@ -39,8 +39,8 @@ from Cython.Distutils import build_ext
 
 ext = Extension("test_files/out.cpp", language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = [],
-        extra_link_args = [],
+        extra_compile_args = ['-stdlib=libc++'],
+        extra_link_args = ['-stdlib=libc++'],
         )
 
 setup(cmdclass = {'build_ext' : build_ext},
