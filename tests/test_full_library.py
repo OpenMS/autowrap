@@ -51,6 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files", "full_lib")
 
+
 template = """
 from distutils.core import setup, Extension
 
@@ -62,17 +63,17 @@ from Cython.Distutils import build_ext
 ext = []
 ext.append( Extension("moduleCD", sources = ['package/moduleCD.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable', '-stdlib=libc++'],
+        extra_compile_args = ['-Wno-unused-but-set-variable', %(stdlib)r],
         extra_link_args = ['-stdlib=libc++'],
         ))
 ext.append(Extension("moduleA", sources = ['package/moduleA.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable', '-stdlib=libc++'],
+        extra_compile_args = ['-Wno-unused-but-set-variable', %(stdlib)r],
         extra_link_args = ['-stdlib=libc++'],
         ))
 ext.append(Extension("moduleB", sources = ['package/moduleB.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable', '-stdlib=libc++'],
+        extra_compile_args = ['-Wno-unused-but-set-variable', %(stdlib)r],
         extra_link_args = ['-stdlib=libc++'],
         ))
 
@@ -102,6 +103,11 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
         compile_args = "'-Wno-unused-but-set-variable'"
     else:
         compile_args = ""
+
+    if sys.platform == "darwin":
+        stdlib = '-stdlib=libc++'
+    else:
+        stdlib = ''
 
     setup_code = template % locals()
     if debug:

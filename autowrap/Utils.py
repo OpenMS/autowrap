@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 from __future__ import print_function
+from sys import platform
 
 __license__ = """
 
@@ -45,8 +46,8 @@ from Cython.Distutils import build_ext
 
 ext = Extension("%(name)s", sources = %(source_files)s, language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = [%(compile_args)s, '-stdlib=libc++'],
-        extra_link_args = ['-stdlib=libc++'],
+        extra_compile_args = [%(compile_args)s, %(stdlib)r],
+        extra_link_args = [%(stdlib)r],
         )
 
 setup(cmdclass = {'build_ext' : build_ext},
@@ -56,6 +57,8 @@ setup(cmdclass = {'build_ext' : build_ext},
      )
 
 """
+
+
 
 
 def compile_and_import(name, source_files, include_dirs=None, **kws):
@@ -69,6 +72,11 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     import tempfile
     import subprocess
     import sys
+
+    if platform == "darwin":
+        stdlib = '-stdlib=libc++'
+    else:
+        stdlib = ''
 
     tempdir = tempfile.mkdtemp()
     if debug:
