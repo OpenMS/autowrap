@@ -63,18 +63,18 @@ from Cython.Distutils import build_ext
 ext = []
 ext.append( Extension("moduleCD", sources = ['package/moduleCD.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable', %(stdlib)r],
-        extra_link_args = ['-stdlib=libc++'],
+        extra_compile_args = %(compile_args)r,
+        extra_link_args = %(link_args)r,
         ))
 ext.append(Extension("moduleA", sources = ['package/moduleA.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable', %(stdlib)r],
-        extra_link_args = ['-stdlib=libc++'],
+        extra_compile_args = %(compile_args)r,
+        extra_link_args = %(link_args)r,
         ))
 ext.append(Extension("moduleB", sources = ['package/moduleB.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable', %(stdlib)r],
-        extra_link_args = ['-stdlib=libc++'],
+        extra_compile_args = %(compile_args)r,
+        extra_link_args = %(link_args)r,
         ))
 
 setup(
@@ -99,15 +99,15 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
     import sys
     from importlib import import_module
 
-    if sys.platform != "win32":
-        compile_args = "'-Wno-unused-but-set-variable'"
-    else:
-        compile_args = ""
-
+    compile_args = []
+    link_args = []
+    
     if sys.platform == "darwin":
-        stdlib = '-stdlib=libc++'
-    else:
-        stdlib = ''
+        compile_args += ["-stdlib=libc++"]
+        link_args += ["-stdlib=libc++"]
+
+    if sys.platform != "win32":
+        compile_args += ["-Wno-unused-but-set-variable"]
 
     setup_code = template % locals()
     if debug:
