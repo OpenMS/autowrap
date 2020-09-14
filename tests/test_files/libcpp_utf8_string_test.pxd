@@ -1,3 +1,4 @@
+# cython: language_level=2
 from libcpp.string cimport string as libcpp_utf8_string
 from libcpp.string cimport string as libcpp_string
 from libcpp.map cimport map as libcpp_map
