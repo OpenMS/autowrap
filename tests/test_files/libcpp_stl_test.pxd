@@ -13,10 +13,24 @@ cdef extern from "libcpp_stl_test.hpp":
         IntWrapper(IntWrapper&)
         IntWrapper(int i)
 
+    cdef cppclass IntVecWrapper:
+        IntVecWrapper()
+        libcpp_vector[int] iv_
+
+        int& operator[](size_t index)
+        void push_back(int)
+
     cdef cppclass MapWrapper:
         libcpp_map[int, double] map_
         MapWrapper()
         MapWrapper(MapWrapper&)
+
+    cdef cppclass LibCppSTLVector:
+
+        LibCppSTLVector()
+        size_t size()
+        IntWrapper& operator[](size_t index) #wrap-upper-limit:size()
+        void push_back(const IntWrapper&)
 
     cdef cppclass LibCppSTLTest:
 

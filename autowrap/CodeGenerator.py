@@ -602,8 +602,9 @@ class CodeGenerator(object):
                 return codes
             elif op == "[]":
                 assert len(methods) == 1, "overloaded operator[] not suppored"
-                code = self.create_special_getitem_method(methods[0])
-                return [code]
+                code_get = self.create_special_getitem_method(methods[0])
+                code_set = self.create_special_setitem_method(methods[0])
+                return [code_get, code_set]
             elif op == "+":
                 assert len(methods) == 1, "overloaded operator+ not suppored"
                 code = self.create_special_add_method(cdcl, methods[0])
@@ -649,8 +650,7 @@ class CodeGenerator(object):
         args = augment_arg_names(method)
 
         # Step 0: collect conversion data for input args and call
-        # input_conversion for more sophisticated conversion code (e.g.
-        # std::vector<Obj>)
+        # input_conversion for more sophisticated conversion code (e.g. std::vector<Obj>)
         py_signature_parts = []
         input_conversion_codes = []
         cleanups = []
@@ -1042,7 +1042,7 @@ class CodeGenerator(object):
         return code
 
     def create_special_getitem_method(self, mdcl):
-        L.info("   create wrapper for operator[]")
+        L.info("   create get wrapper for operator[]")
         meth_code = Code.Code()
 
         (call_arg,), cleanups, (in_type,) =\
@@ -1095,6 +1095,52 @@ class CodeGenerator(object):
                 to_py_code = "    %s" % to_py_code
             meth_code.add(to_py_code)
             meth_code.add("    return $out_var", locals())
+
+        return meth_code
+
+    def create_special_setitem_method(self, mdcl):
+        # Note: setting will only work with a ref signature
+        #   Object operator[](size_t k)  -> only get is implemented
+        #   Object& operator[](size_t k) -> get and set is implemented
+        res_t = mdcl.result_type
+        if not res_t.is_ref:
+            L.info("   skip set wrapper for operator[] since return value is not a reference")
+            return Code.Code()
+
+        res_t_base = res_t.base_type
+
+        L.info("   create set wrapper for operator[]")
+        meth_code = Code.Code()
+
+        call_arg = "key"
+        value_arg = "value"
+
+        meth_code.add("""
+                     |def __setitem__(self, key, $res_t_base value):
+                     |    \"\"\"Test\"\"\"
+                     |    assert isinstance(key, (int, long)), 'arg index wrong type'
+                     |
+                     |    cdef long _idx = $call_arg
+                     |    if _idx < 0:
+                     |        raise IndexError("invalid index %d" % _idx)
+                     """, locals())
+
+        size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
+        if size_guard:
+            meth_code.add("""
+                     |    if _idx >= self.inst.get().$size_guard:
+                     |        raise IndexError("invalid index %d" % _idx)
+                     """, locals())
+
+        # Store the input argument as
+        #  CppObject[ idx ] = value
+        #
+        cy_call_str = "deref(self.inst.get())[%s]" % call_arg
+        out_converter = self.cr.get(res_t)
+        code, call_as, cleanup = out_converter.input_conversion(res_t, value_arg, 0)
+        meth_code.add("""
+                 |    $cy_call_str = $call_as
+                 """, locals())
 
         return meth_code
 
