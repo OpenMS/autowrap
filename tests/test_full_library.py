@@ -1,6 +1,13 @@
 from __future__ import absolute_import, print_function
 
 import os
+<<<<<<< HEAD
+=======
+import sys
+import glob
+
+import pytest
+>>>>>>> jpfeuffer/feature/relative_import
 
 import autowrap
 import autowrap.Code
@@ -43,6 +50,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files", "full_lib")
 
+
 template = """
 from distutils.core import setup, Extension
 
@@ -52,24 +60,24 @@ import pprint
 from Cython.Distutils import build_ext
 
 ext = []
-ext.append( Extension("moduleCD", sources = ['moduleCD.pyx'], language="c++",
+ext.append( Extension("moduleCD", sources = ['package/moduleCD.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable'],
-        extra_link_args = [],
+        extra_compile_args = %(compile_args)r,
+        extra_link_args = %(link_args)r,
         ))
-ext.append(Extension("moduleA", sources = ['moduleA.pyx'], language="c++",
+ext.append(Extension("moduleA", sources = ['package/moduleA.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable'],
-        extra_link_args = [],
+        extra_compile_args = %(compile_args)r,
+        extra_link_args = %(link_args)r,
         ))
-ext.append(Extension("moduleB", sources = ['moduleB.pyx'], language="c++",
+ext.append(Extension("moduleB", sources = ['package/moduleB.cpp'], language="c++",
         include_dirs = %(include_dirs)r,
-        extra_compile_args = ['-Wno-unused-but-set-variable'],
-        extra_link_args = [],
+        extra_compile_args = %(compile_args)r,
+        extra_link_args = %(link_args)r,
         ))
 
-setup(cmdclass = {'build_ext' : build_ext},
-      name="moduleCD",
+setup(
+      name="package",
       version="0.0.1",
       ext_modules = ext
      )
@@ -88,24 +96,18 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
     import tempfile
     import subprocess
     import sys
+    from importlib import import_module
 
-    tempdir = tempfile.mkdtemp()
-    if debug:
-        print("\n")
-        print("tempdir=", tempdir)
-        print("\n")
-    for source_file in source_files:
-        shutil.copy(source_file, tempdir)
-    for extra_file in extra_files:
-        shutil.copy(extra_file, tempdir)
+    compile_args = []
+    link_args = []
+    
+    if sys.platform == "darwin":
+        compile_args += ["-stdlib=libc++"]
+        link_args += ["-stdlib=libc++"]
 
     if sys.platform != "win32":
-        compile_args = "'-Wno-unused-but-set-variable'"
-    else:
-        compile_args = ""
+        compile_args += ["-Wno-unused-but-set-variable"]
 
-    include_dirs = [os.path.abspath(d) for d in include_dirs]
-    source_files = [os.path.basename(f) for f in source_files]
     setup_code = template % locals()
     if debug:
         print("\n")
@@ -117,20 +119,25 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
     now = os.getcwd()
 
     try:
-        sys.path.insert(0, tempdir)
-        os.chdir(tempdir)
+        sys.path.insert(0, now)
+        sys.path.insert(0, now+"/package")
+
         with open("setup.py", "w") as fp:
             fp.write(setup_code)
+
         assert (
             subprocess.Popen(
                 "%s setup.py build_ext --force --inplace" % sys.executable,
-                shell=True,
-                cwd=tempdir,
+                shell=True
             ).wait()
             == 0
         )
+        files = glob.iglob("*.so")
+        for file in files:
+            if os.path.isfile(file):
+                shutil.copy2(file, "./package/")
 
-        results = [__import__(name) for name in names]
+        results = [import_module(name) for name in names]
 
     finally:
         sys.path = sys.path[1:]
@@ -169,9 +176,16 @@ def test_full_lib(tmpdir):
     are not an issue.
     """
 
+<<<<<<< HEAD
     curdir = os.getcwd()
 
     os.chdir(tmpdir.strpath)
+=======
+    workdir = tmpdir.strpath + "/package"
+    os.makedirs(workdir)
+    os.chdir(workdir)
+    open("__init__.py", "a").close()
+>>>>>>> jpfeuffer/feature/relative_import
 
     try:
 
@@ -184,6 +198,7 @@ def test_full_lib(tmpdir):
         decls, instance_map = autowrap.parse(
             full_pxd_files, ".", num_processes=int(PY_NUM_THREADS)
         )
+<<<<<<< HEAD
 
         assert len(decls) == 13, len(decls)
 
@@ -251,6 +266,26 @@ def test_full_lib(tmpdir):
     finally:
 
         os.chdir(curdir)
+=======
+        masterDict[modname]["inc_dirs"] = autowrap_include_dirs
+
+    os.chdir("..")
+    # Step 4: Generate CPP code
+    for modname in mnames:
+        m_filename = "package/%s.pyx" % modname
+        autowrap_include_dirs = masterDict[modname]["inc_dirs"]
+        autowrap.Main.run_cython(
+            inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename
+        )
+
+    # Step 5: Compile
+    all_pyx_files = ["package/%s.pyx" % modname for modname in mnames]
+    all_pxd_files = ["package/%s.pxd" % modname for modname in mnames]
+    include_dirs = masterDict[modname]["inc_dirs"]
+    moduleA, moduleB, moduleCD = compile_and_import(
+        mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files
+    )
+>>>>>>> jpfeuffer/feature/relative_import
 
     Aobj = moduleA.Aalias(5)
     Asecond = moduleA.A_second(8)

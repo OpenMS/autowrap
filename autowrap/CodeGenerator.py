@@ -1248,7 +1248,8 @@ class CodeGenerator(object):
         E.g. if we have module1 containing classA, classB and want to access it
         through the pxd header, then we need to add:
 
-            from module1 import classA, classB
+            from .module1 import classA, classB
+
         """
         code = Code.Code()
         L.info("Create foreign imports for module %s" % self.target_path)
@@ -1256,8 +1257,8 @@ class CodeGenerator(object):
             # We skip our own module
 
             mname = module
-            if self.add_relative: mname = "." + module
-                
+            if sys.version_info >= (3, 0) and self.add_relative: mname = "." + module
+
             if os.path.basename(self.target_path).split(".pyx")[0] != module:
 
                 for resolved in self.allDecl[module]["decls"]:
