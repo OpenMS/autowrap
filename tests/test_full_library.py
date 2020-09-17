@@ -176,16 +176,10 @@ def test_full_lib(tmpdir):
     are not an issue.
     """
 
-<<<<<<< HEAD
-    curdir = os.getcwd()
-
-    os.chdir(tmpdir.strpath)
-=======
     workdir = tmpdir.strpath + "/package"
     os.makedirs(workdir)
     os.chdir(workdir)
     open("__init__.py", "a").close()
->>>>>>> jpfeuffer/feature/relative_import
 
     try:
 
@@ -198,7 +192,6 @@ def test_full_lib(tmpdir):
         decls, instance_map = autowrap.parse(
             full_pxd_files, ".", num_processes=int(PY_NUM_THREADS)
         )
-<<<<<<< HEAD
 
         assert len(decls) == 13, len(decls)
 
@@ -249,43 +242,22 @@ def test_full_lib(tmpdir):
 
         # Step 4: Generate CPP code
         for modname in mnames:
-            m_filename = "%s.pyx" % modname
+            m_filename = "package/%s.pyx" % modname
             autowrap_include_dirs = masterDict[modname]["inc_dirs"]
             autowrap.Main.run_cython(
                 inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename
             )
 
         # Step 5: Compile
-        all_pyx_files = ["%s.pyx" % modname for modname in mnames]
-        all_pxd_files = ["%s.pxd" % modname for modname in mnames]
+        all_pyx_files = ["package/%s.pyx" % modname for modname in mnames]
+        all_pxd_files = ["package/%s.pxd" % modname for modname in mnames]
         include_dirs = masterDict[modname]["inc_dirs"]
         moduleA, moduleB, moduleCD = compile_and_import(
             mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files
         )
 
     finally:
-
         os.chdir(curdir)
-=======
-        masterDict[modname]["inc_dirs"] = autowrap_include_dirs
-
-    os.chdir("..")
-    # Step 4: Generate CPP code
-    for modname in mnames:
-        m_filename = "package/%s.pyx" % modname
-        autowrap_include_dirs = masterDict[modname]["inc_dirs"]
-        autowrap.Main.run_cython(
-            inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename
-        )
-
-    # Step 5: Compile
-    all_pyx_files = ["package/%s.pyx" % modname for modname in mnames]
-    all_pxd_files = ["package/%s.pxd" % modname for modname in mnames]
-    include_dirs = masterDict[modname]["inc_dirs"]
-    moduleA, moduleB, moduleCD = compile_and_import(
-        mnames, all_pyx_files, include_dirs, extra_files=all_pxd_files
-    )
->>>>>>> jpfeuffer/feature/relative_import
 
     Aobj = moduleA.Aalias(5)
     Asecond = moduleA.A_second(8)
