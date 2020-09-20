@@ -1,13 +1,7 @@
 from __future__ import absolute_import, print_function
 
 import os
-<<<<<<< HEAD
-=======
-import sys
 import glob
-
-import pytest
->>>>>>> jpfeuffer/feature/relative_import
 
 import autowrap
 import autowrap.Code
