@@ -170,6 +170,7 @@ def test_full_lib(tmpdir):
     are not an issue.
     """
 
+    curdir = os.getcwd()
     workdir = tmpdir.strpath + "/package"
     os.makedirs(workdir)
     os.chdir(workdir)
