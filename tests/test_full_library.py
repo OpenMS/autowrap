@@ -234,7 +234,7 @@ def test_full_lib(tmpdir):
                 allDecl=masterDict,
             )
             masterDict[modname]["inc_dirs"] = autowrap_include_dirs
-
+        os.chdir("..")
         # Step 4: Generate CPP code
         for modname in mnames:
             m_filename = "package/%s.pyx" % modname
