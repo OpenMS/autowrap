@@ -232,6 +232,7 @@ def test_full_lib(tmpdir):
                 extra_cimports=cimports,
                 include_boost=True,
                 allDecl=masterDict,
+                add_relative=True
             )
             masterDict[modname]["inc_dirs"] = autowrap_include_dirs
         os.chdir("..")
