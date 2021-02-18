@@ -99,7 +99,7 @@ class CodeGenerator(object):
     """
 
     def __init__(self, resolved, instance_mapping, pyx_target_path=None,
-                 manual_code=None, extra_cimports=None, allDecl={}, add_relative=False):
+                 manual_code=None, extra_cimports=None, allDecl={}):
 
         if manual_code is None:
             manual_code = dict()
@@ -107,10 +107,9 @@ class CodeGenerator(object):
         self.manual_code = manual_code
         self.extra_cimports = extra_cimports
 
-        self.include_shared_ptr = True
-        self.include_refholder = True
-        self.include_numpy = False
-        self.add_relative = add_relative
+        self.include_shared_ptr=True
+        self.include_refholder=True
+        self.include_numpy=False
 
         self.target_path = os.path.abspath(pyx_target_path)
         self.target_pxd_path = self.target_path.split(".pyx")[0] + ".pxd"
@@ -1248,17 +1247,12 @@ class CodeGenerator(object):
         E.g. if we have module1 containing classA, classB and want to access it
         through the pxd header, then we need to add:
 
-            from .module1 import classA, classB
-
+            from module1 import classA, classB
         """
         code = Code.Code()
         L.info("Create foreign imports for module %s" % self.target_path)
         for module in self.allDecl:
             # We skip our own module
-
-            mname = module
-            if sys.version_info >= (3, 0) and self.add_relative: mname = "." + module
-
             if os.path.basename(self.target_path).split(".pyx")[0] != module:
 
                 for resolved in self.allDecl[module]["decls"]:
@@ -1276,16 +1270,16 @@ class CodeGenerator(object):
                             # globally exported.
                             pass
                         else:
-                            code.add("from $mname cimport $name", locals())
+                            code.add("from $module cimport $name", locals())
                     if resolved.__class__ in (ResolvedClass, ):
 
                         # Skip classes that explicitely should not have a pxd
                         # import statement (abstract base classes and the like)
                         if not resolved.no_pxd_import:
                             if resolved.cpp_decl.annotations.get("wrap-attach"):
-                                code.add("from $mname cimport __$name", locals())
+                                code.add("from $module cimport __$name", locals())
                             else:
-                                code.add("from $mname cimport $name", locals())
+                                code.add("from $module cimport $name", locals())
 
             else: 
                 L.info("Skip imports from self (own module %s)" % module)
