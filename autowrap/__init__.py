@@ -52,7 +52,7 @@ def parse(files, root, num_processes=1):
 
 
 def generate_code(decls, instance_map, target, debug=False, manual_code=None,
-                  extra_cimports=None, include_boost=True, include_numpy=False, allDecl=[]):
+                  extra_cimports=None, include_boost=True, include_numpy=False, allDecl=[], add_relative=False):
 
     import autowrap.CodeGenerator
     gen = CodeGenerator.CodeGenerator(decls,
@@ -60,7 +60,8 @@ def generate_code(decls, instance_map, target, debug=False, manual_code=None,
                                       pyx_target_path=target,
                                       manual_code=manual_code,
                                       extra_cimports=extra_cimports, 
-                                      allDecl=allDecl)
+                                      allDecl=allDecl,
+                                      add_relative=add_relative)
     gen.include_numpy=include_numpy
     gen.create_pyx_file(debug)
     includes = gen.get_include_dirs(include_boost)
