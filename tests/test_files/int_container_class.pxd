@@ -1,3 +1,4 @@
+# cython: language_level=2
 from libcpp.list cimport *
 
 cdef extern from "int_container_class.hpp":

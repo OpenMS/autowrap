@@ -1,3 +1,4 @@
+# cython: language_level=2
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector
 from libc.string cimport const_char
@@ -66,6 +67,7 @@ cdef extern from "minimal.hpp":
         int call(libcpp_vector[Minimal] what) # ref-arg-out:0
         int call2(libcpp_vector[Minimal]& what) # ref-arg-out:0
         int call3(const libcpp_vector[Minimal]& what) # ref-arg-out:0
+        int call4(int & what)
         int call_str(libcpp_vector[libcpp_string] & what)
         libcpp_vector[libcpp_string] message()
         libcpp_vector[Minimal] create_two()
