@@ -30,6 +30,8 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 
+htmlcov
+
 tests/test_files/gil_testing_wrapper.pyx
 tests/test_files/libcpp_stl_test.pyx
 tests/test_files/libcpp_utf8_string_test.pyx

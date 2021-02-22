@@ -28,29 +28,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-template = """
-
-from distutils.core import setup, Extension
-
-import sys
-import pprint
-
-from Cython.Distutils import build_ext
-
-ext = Extension("test_files/out.cpp", language="c++",
-        include_dirs = %(include_dirs)r,
-        extra_compile_args = [],
-        extra_link_args = [],
-        )
-
-setup(cmdclass = {'build_ext' : build_ext},
-      name="test_main",
-      version="0.0.1",
-      ext_modules = [ext]
-     )
-
-"""
-
 
 def test_from_command_line():
     import os

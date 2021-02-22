@@ -47,6 +47,10 @@ import autowrap.Code as Code
 
 import logging as L
 
+special_class_doc = ""
+def namespace_handler(ns):
+    return ns
+
 try:
     unicode = unicode
 except NameError:
@@ -95,17 +99,17 @@ class CodeGenerator(object):
     """
 
     def __init__(self, resolved, instance_mapping, pyx_target_path=None,
-                 manual_code=None, extra_cimports=None, allDecl={}, shared_ptr="boost"):
+                 manual_code=None, extra_cimports=None, allDecl={}, add_relative=False, shared_ptr="boost"):
 
         if manual_code is None:
             manual_code = dict()
 
         self.manual_code = manual_code
         self.extra_cimports = extra_cimports
-
         self.include_shared_ptr=shared_ptr
         self.include_refholder=True
         self.include_numpy=False
+        self.add_relative = add_relative
 
         self.target_path = os.path.abspath(pyx_target_path)
         self.target_pxd_path = self.target_path.split(".pyx")[0] + ".pxd"
@@ -356,11 +360,19 @@ class CodeGenerator(object):
 
         L.info("create wrapper for class %s" % cname)
         cy_type = self.cr.cython_type(cname)
+
+        # Attempt to derive sane class name and namespace
+        cpp_name = str(cy_type)
+        namespace = namespace_handler(r_class.ns)
+        if cpp_name.startswith("_"):
+            cpp_name = cpp_name[1:]
+
         class_pxd_code = Code.Code()
         class_code = Code.Code()
 
         # Class documentation (multi-line)
         docstring = "Cython implementation of %s\n" % cy_type
+        docstring += special_class_doc % locals()
         if r_class.cpp_decl.annotations.get("wrap-inherits", "") != "":
             docstring += "     -- Inherits from %s\n" % r_class.cpp_decl.annotations.get("wrap-inherits", "")
 
@@ -589,8 +601,9 @@ class CodeGenerator(object):
                 return codes
             elif op == "[]":
                 assert len(methods) == 1, "overloaded operator[] not suppored"
-                code = self.create_special_getitem_method(methods[0])
-                return [code]
+                code_get = self.create_special_getitem_method(methods[0])
+                code_set = self.create_special_setitem_method(methods[0])
+                return [code_get, code_set]
             elif op == "+":
                 assert len(methods) == 1, "overloaded operator+ not suppored"
                 code = self.create_special_add_method(cdcl, methods[0])
@@ -636,8 +649,7 @@ class CodeGenerator(object):
         args = augment_arg_names(method)
 
         # Step 0: collect conversion data for input args and call
-        # input_conversion for more sophisticated conversion code (e.g.
-        # std::vector<Obj>)
+        # input_conversion for more sophisticated conversion code (e.g. std::vector<Obj>)
         py_signature_parts = []
         input_conversion_codes = []
         cleanups = []
@@ -1029,7 +1041,7 @@ class CodeGenerator(object):
         return code
 
     def create_special_getitem_method(self, mdcl):
-        L.info("   create wrapper for operator[]")
+        L.info("   create get wrapper for operator[]")
         meth_code = Code.Code()
 
         (call_arg,), cleanups, (in_type,) =\
@@ -1082,6 +1094,52 @@ class CodeGenerator(object):
                 to_py_code = "    %s" % to_py_code
             meth_code.add(to_py_code)
             meth_code.add("    return $out_var", locals())
+
+        return meth_code
+
+    def create_special_setitem_method(self, mdcl):
+        # Note: setting will only work with a ref signature
+        #   Object operator[](size_t k)  -> only get is implemented
+        #   Object& operator[](size_t k) -> get and set is implemented
+        res_t = mdcl.result_type
+        if not res_t.is_ref:
+            L.info("   skip set wrapper for operator[] since return value is not a reference")
+            return Code.Code()
+
+        res_t_base = res_t.base_type
+
+        L.info("   create set wrapper for operator[]")
+        meth_code = Code.Code()
+
+        call_arg = "key"
+        value_arg = "value"
+
+        meth_code.add("""
+                     |def __setitem__(self, key, $res_t_base value):
+                     |    \"\"\"Test\"\"\"
+                     |    assert isinstance(key, (int, long)), 'arg index wrong type'
+                     |
+                     |    cdef long _idx = $call_arg
+                     |    if _idx < 0:
+                     |        raise IndexError("invalid index %d" % _idx)
+                     """, locals())
+
+        size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
+        if size_guard:
+            meth_code.add("""
+                     |    if _idx >= self.inst.get().$size_guard:
+                     |        raise IndexError("invalid index %d" % _idx)
+                     """, locals())
+
+        # Store the input argument as
+        #  CppObject[ idx ] = value
+        #
+        cy_call_str = "deref(self.inst.get())[%s]" % call_arg
+        out_converter = self.cr.get(res_t)
+        code, call_as, cleanup = out_converter.input_conversion(res_t, value_arg, 0)
+        meth_code.add("""
+                 |    $cy_call_str = $call_as
+                 """, locals())
 
         return meth_code
 
@@ -1189,12 +1247,17 @@ class CodeGenerator(object):
         E.g. if we have module1 containing classA, classB and want to access it
         through the pxd header, then we need to add:
 
-            from module1 import classA, classB
+            from .module1 import classA, classB
+
         """
         code = Code.Code()
         L.info("Create foreign imports for module %s" % self.target_path)
         for module in self.allDecl:
             # We skip our own module
+
+            mname = module
+            if sys.version_info >= (3, 0) and self.add_relative: mname = "." + module
+
             if os.path.basename(self.target_path).split(".pyx")[0] != module:
 
                 for resolved in self.allDecl[module]["decls"]:
@@ -1212,16 +1275,16 @@ class CodeGenerator(object):
                             # globally exported.
                             pass
                         else:
-                            code.add("from $module cimport $name", locals())
+                            code.add("from $mname cimport $name", locals())
                     if resolved.__class__ in (ResolvedClass, ):
 
                         # Skip classes that explicitely should not have a pxd
                         # import statement (abstract base classes and the like)
                         if not resolved.no_pxd_import:
                             if resolved.cpp_decl.annotations.get("wrap-attach"):
-                                code.add("from $module cimport __$name", locals())
+                                code.add("from $mname cimport __$name", locals())
                             else:
-                                code.add("from $module cimport $name", locals())
+                                code.add("from $mname cimport $name", locals())
 
             else: 
                 L.info("Skip imports from self (own module %s)" % module)

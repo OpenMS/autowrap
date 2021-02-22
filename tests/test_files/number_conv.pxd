@@ -1,3 +1,4 @@
+# cython: language_level=2
 from libcpp.vector cimport vector as libcpp_vector
 from libc.float cimport *
 
