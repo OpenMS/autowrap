@@ -66,7 +66,6 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         include_dirs = []
 
     debug = kws.get("debug")
-    which_std = kws.get("std")
     import os.path
     import shutil
     import tempfile
@@ -90,15 +89,6 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
 
     if sys.platform != "win32":
         compile_args += ["-Wno-unused-but-set-variable"]
-
-    if which_std == "c++11":
-        compile_args += ["-std=c++11"]
-    elif which_std == "c++14":
-        compile_args += ["-std=c++14"]
-    elif which_std == "c++17":
-        compile_args += ["-std=c++17"]
-    elif which_std == "c++20":
-        compile_args += ["-std=c++20"]
 
         
     include_dirs = [os.path.abspath(d) for d in include_dirs]
