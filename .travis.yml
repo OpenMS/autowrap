@@ -9,7 +9,10 @@ matrix:
     - python: 3.8
       dist: xenial
       sudo: true
+env:
+  - CYTHON="<=0.29.21"
+  - CYTHON=">0.29.21"
 install:
-  - pip install -U Cython
+  - pip install -U Cython==${CYTHON}
   - travis_retry python setup.py develop
 script: "py.test tests/"
