@@ -1,17 +1,12 @@
 language: python
-matrix:
-  include:
-    - python: 2.7
-    - python: 3.4
-    - python: 3.5
-    - python: 3.6
-    - python: 3.7
-    - python: 3.8
-      dist: xenial
-      sudo: true
-  env:
-    - CYTHON="<=0.29.21"
-    - CYTHON=">0.29.21"
+python:
+    - '3.8'
+    - '3.7'
+    - '3.6'
+    - '2.7'
+env:
+  - CYTHON="<=0.29.21"
+  - CYTHON=">0.29.21"
 install:
   - pip install -U Cython${CYTHON}
   - travis_retry python setup.py develop
