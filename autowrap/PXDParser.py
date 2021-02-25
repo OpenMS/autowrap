@@ -63,8 +63,8 @@ def parse_class_annotations(node, lines):
 
 
 def _parse_multiline_annotations(lines):
-    """ does the hard work for parse_class_annotations, and is
-        better testable than this.
+    """does the hard work for parse_class_annotations, and is
+    better testable than this.
     """
     it = iter(lines)
     result = defaultdict(list)
@@ -94,9 +94,9 @@ def _parse_multiline_annotations(lines):
 
 def parse_line_annotations(node, lines):
     """
-       parses comments at end of line, in most cases the lines of
-       method declarations.
-       handles method declarations over multiple lines
+    parses comments at end of line, in most cases the lines of
+    method declarations.
+    handles method declarations over multiple lines
     """
 
     result = dict()
@@ -170,9 +170,14 @@ def _extract_type(base_type, decl):
                 arg_decl = arg_node.declarator
                 is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
                 is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
-                is_unsigned = hasattr(arg_node.base_type, "signed")\
+                is_unsigned = (
+                    hasattr(arg_node.base_type, "signed")
                     and not arg_node.base_type.signed
-                is_long = hasattr(arg_node.base_type, "longness") and arg_node.base_type.longness
+                )
+                is_long = (
+                    hasattr(arg_node.base_type, "longness")
+                    and arg_node.base_type.longness
+                )
 
                 # Handle const template arguments which do not have a name
                 # themselves, only their base types have name attribute (see
@@ -183,7 +188,22 @@ def _extract_type(base_type, decl):
                 else:
                     name = arg_node.base_type.name
 
-                ttype = CppType(name, None, is_ptr, is_ref, is_unsigned, is_long, is_const=arg_is_const)
+                args = None
+                template_args = getattr(arg_node.base_type, "positional_args", None)
+                if template_args:
+                    args = [
+                        _extract_type(t.base_type, t.declarator) for t in template_args
+                    ]
+                    name = arg_node.base_type.base_type_node.name
+                ttype = CppType(
+                    name,
+                    args,
+                    is_ptr,
+                    is_ref,
+                    is_unsigned,
+                    is_long,
+                    is_const=arg_is_const,
+                )
                 template_parameters.append(ttype)
             elif isinstance(arg_node, NameNode):
                 name = arg_node.name
@@ -201,11 +221,18 @@ def _extract_type(base_type, decl):
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
     is_long = hasattr(base_type, "longness") and base_type.longness
 
-    return CppType(base_type.name, template_parameters, is_ptr, is_ref, is_unsigned, is_long, is_const=type_is_const)
+    return CppType(
+        base_type.name,
+        template_parameters,
+        is_ptr,
+        is_ref,
+        is_unsigned,
+        is_long,
+        is_const=type_is_const,
+    )
 
 
 class BaseDecl(object):
-
     def __init__(self, name, annotations, pxd_path):
         self.name = name
         self.annotations = annotations
@@ -213,7 +240,6 @@ class BaseDecl(object):
 
 
 class CTypeDefDecl(BaseDecl):
-
     def __init__(self, new_name, type_, annotations, pxd_path):
         super(CTypeDefDecl, self).__init__(new_name, annotations, pxd_path)
         self.type_ = type_
@@ -231,7 +257,6 @@ class CTypeDefDecl(BaseDecl):
 
 
 class EnumDecl(BaseDecl):
-
     def __init__(self, name, items, annotations, pxd_path):
         super(EnumDecl, self).__init__(name, annotations, pxd_path)
         self.items = items
@@ -261,9 +286,9 @@ class EnumDecl(BaseDecl):
 
 
 class CppClassDecl(BaseDecl):
-
-    def __init__(self, name, template_parameters, methods, attributes,
-                 annotations, pxd_path):
+    def __init__(
+        self, name, template_parameters, methods, attributes, annotations, pxd_path
+    ):
         super(CppClassDecl, self).__init__(name, annotations, pxd_path)
         self.methods = methods
         self.attributes = attributes
@@ -273,14 +298,16 @@ class CppClassDecl(BaseDecl):
     def parseTree(cls, node, lines, pxd_path):
         name = node.name
         template_parameters = node.templates
-        if template_parameters and \
-          isinstance(template_parameters, list) and \
-          isinstance(template_parameters[0], tuple):
+        if (
+            template_parameters
+            and isinstance(template_parameters, list)
+            and isinstance(template_parameters[0], tuple)
+        ):
             # Cython 0.24 uses [(string, bool)] to indicate name and whether
             # template argument is required or optional.
             # For now, convert to pre-0.24 format
             template_parameters = [t[0] for t in template_parameters]
-            
+
         class_annotations = parse_class_annotations(node, lines)
         methods = OrderKeepingDictionary()
         attributes = []
@@ -292,11 +319,12 @@ class CppClassDecl(BaseDecl):
                 elif isinstance(decl, CppAttributeDecl):
                     attributes.append(decl)
 
-        return cls(name, template_parameters, methods, attributes,
-                   class_annotations, pxd_path)
+        return cls(
+            name, template_parameters, methods, attributes, class_annotations, pxd_path
+        )
 
     def __str__(self):
-        rv = ["cppclass %s: " % (self.name, )]
+        rv = ["cppclass %s: " % (self.name,)]
         for meth_list in self.methods.values():
             rv += ["     " + str(method) for method in meth_list]
         return "\n".join(rv)
@@ -326,15 +354,12 @@ class CppClassDecl(BaseDecl):
 
 
 class CppAttributeDecl(BaseDecl):
-
     def __init__(self, name, type_, annotations, pxd_path):
-        super(CppAttributeDecl, self).__init__(name, annotations,
-                                               pxd_path)
+        super(CppAttributeDecl, self).__init__(name, annotations, pxd_path)
         self.type_ = type_
 
 
 class CppMethodOrFunctionDecl(BaseDecl):
-
     def __init__(self, result_type, name, arguments, annotations, pxd_path):
         super(CppMethodOrFunctionDecl, self).__init__(name, annotations, pxd_path)
         self.result_type = result_type
@@ -343,12 +368,13 @@ class CppMethodOrFunctionDecl(BaseDecl):
     def transformed(self, typemap):
         result_type = self.result_type.transformed(typemap)
         args = [(n, t.transformed(typemap)) for n, t in self.arguments]
-        return CppMethodOrFunctionDecl(result_type, self.name, args,
-                                       self.annotations, self.pxd_path)
+        return CppMethodOrFunctionDecl(
+            result_type, self.name, args, self.annotations, self.pxd_path
+        )
 
     def matches(self, other):
-        """ only checks method name signature,
-            does not consider argument names"""
+        """only checks method name signature,
+        does not consider argument names"""
         if self.name != other.name:
             return False
         self_key = [self.result_type] + [t for (__, t) in self.arguments]
@@ -356,29 +382,32 @@ class CppMethodOrFunctionDecl(BaseDecl):
         return self_key == other_key
 
     def __str__(self):
-        return "CppMethodOrFunctionDecl: %s %s (%s)" % (self.result_type,
-                                                        self.name, ["%s %s" % (str(t), n) for n, t in self.arguments])
+        return "CppMethodOrFunctionDecl: %s %s (%s)" % (
+            self.result_type,
+            self.name,
+            ["%s %s" % (str(t), n) for n, t in self.arguments],
+        )
 
 
 class MethodOrAttributeDecl(object):
-
     @classmethod
     def parseTree(cls, node, lines, pxd_path):
         annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
             return None  # nested classes only can be delcared in pxd
 
-        decl, = node.declarators
+        (decl,) = node.declarators
         result_type = _extract_type(node.base_type, decl)
 
         if isinstance(decl, CNameDeclaratorNode):
             # Handle regular declarations
             return CppAttributeDecl(decl.name, result_type, annotations, pxd_path)
 
-        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(decl.base, CFuncDeclaratorNode):
+        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(
+            decl.base, CFuncDeclaratorNode
+        ):
             # Handle raw pointer declarations (call with base name)
-            return CppAttributeDecl(decl.base.name, result_type, annotations,
-                                    pxd_path)
+            return CppAttributeDecl(decl.base.name, result_type, annotations, pxd_path)
         if isinstance(decl.base, CFuncDeclaratorNode):
             decl = decl.base
 
@@ -427,6 +456,7 @@ def parse_pxd_file(path):
     options, sources = parse_command_line(["--cplus", path])
 
     import pkg_resources
+
     # TODO sync with CodeGenerator.py function fixed_include_dirs
     data = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
     options.include_path = [data]
@@ -472,12 +502,13 @@ def parse_pxd_file(path):
     def cimport(b, _, __):
         print("cimport", b.module_name, "as", b.as_name)
 
-    handlers = {CEnumDefNode: EnumDecl.parseTree,
-                CppClassNode: CppClassDecl.parseTree,
-                CTypeDefNode: CTypeDefDecl.parseTree,
-                CVarDefNode: MethodOrAttributeDecl.parseTree,
-                CImportStatNode: cimport,
-                }
+    handlers = {
+        CEnumDefNode: EnumDecl.parseTree,
+        CppClassNode: CppClassDecl.parseTree,
+        CTypeDefNode: CTypeDefDecl.parseTree,
+        CVarDefNode: MethodOrAttributeDecl.parseTree,
+        CImportStatNode: cimport,
+    }
 
     result = []
     for body in iter_bodies(root):
@@ -492,7 +523,9 @@ def parse_pxd_file(path):
                     result.append(handler(node, lines, path))
     return result
 
+
 if __name__ == "__main__":
 
     import sys
+
     print(parse_pxd_file(sys.argv[1]))
