@@ -99,17 +99,16 @@ class CodeGenerator(object):
     """
 
     def __init__(self, resolved, instance_mapping, pyx_target_path=None,
-                 manual_code=None, extra_cimports=None, allDecl={}, add_relative=False):
+                 manual_code=None, extra_cimports=None, allDecl={}, add_relative=False, shared_ptr="boost"):
 
         if manual_code is None:
             manual_code = dict()
 
         self.manual_code = manual_code
         self.extra_cimports = extra_cimports
-
-        self.include_shared_ptr = True
-        self.include_refholder = True
-        self.include_numpy = False
+        self.include_shared_ptr=shared_ptr
+        self.include_refholder=True
+        self.include_numpy=False
         self.add_relative = add_relative
 
         self.target_path = os.path.abspath(pyx_target_path)
@@ -1339,9 +1338,13 @@ class CodeGenerator(object):
                    |from  AutowrapPtrHolder cimport AutowrapPtrHolder
                    |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
                    """)
-        if self.include_shared_ptr:
+        if self.include_shared_ptr == "boost":
             code.add("""
                    |from  smart_ptr cimport shared_ptr
+                   """)
+        elif self.include_shared_ptr == "std":
+            code.add("""
+                   |from libcpp.memory cimport shared_ptr
                    """)
         if self.include_numpy:
             code.add("""
