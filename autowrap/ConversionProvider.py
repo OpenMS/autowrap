@@ -225,15 +225,57 @@ class TypeConverterBase(object):
             make_shared[ _FooObject ] (*foo_iter)
             make_shared[ _FooObject ] (**foo_iter_ptr)
         """
+        tmp_cpp_type = cpp_type
+        if tmp_cpp_type.is_ref:
+            tmp_cpp_type = tmp_cpp_type.base_type
 
-        if cpp_type.is_ref:
-            cpp_type = cpp_type.base_type
-
-        if cpp_type.is_ptr:
-            cpp_type_base = cpp_type.base_type
+        if tmp_cpp_type.is_ptr:
+            cpp_type_base = tmp_cpp_type.base_type
             return string.Template("make_shared[$cpp_type_base](deref(deref($it)))").substitute(locals())
         else:
             return string.Template("make_shared[$cpp_type](deref($it))").substitute(locals())
+
+    def _codeForAddressFromIter(self, cpp_type, it):
+        """
+        Code for creation of a shared_ptr from the same memory location as the iterator (double deref for iterator-ptr)
+        Note that if cpp_type is a pointer and the iterator therefore refers to
+        a STL object of std::vector< _FooObject* >, then we need the base type
+        to instantate a new object and dereference twice.
+        Example output:
+            *foo_iter
+            **foo_iter_ptr
+        """
+
+        tmp_cpp_type = cpp_type
+        if tmp_cpp_type.is_ref:
+            tmp_cpp_type = tmp_cpp_type.base_type
+
+        if tmp_cpp_type.is_ptr:
+            cpp_type_base = tmp_cpp_type.base_type
+            return string.Template("deref(deref($it))").substitute(locals())
+        else:
+            return string.Template("deref($it)").substitute(locals())
+
+    def _codeForPtrType(self, cpp_type, it):
+        """
+        Code for creation of a shared_ptr from the same memory location as the iterator (double deref for iterator-ptr)
+        Note that if cpp_type is a pointer and the iterator therefore refers to
+        a STL object of std::vector< _FooObject* >, then we need the base type
+        to instantate a new object and dereference twice.
+        Example output:
+            *foo_iter
+            **foo_iter_ptr
+        """
+
+        tmp_cpp_type = cpp_type
+        if tmp_cpp_type.is_ref:
+            tmp_cpp_type = tmp_cpp_type.base_type
+
+        if tmp_cpp_type.is_ptr:
+            cpp_type_base = tmp_cpp_type.base_type
+            return string.Template("$cpp_type_base *").substitute(locals())
+        else:
+            return string.Template("$cpp_type *").substitute(locals())
 
 
 class VoidConverter(TypeConverterBase):
@@ -1086,9 +1128,14 @@ class StdVectorConverter(TypeConverterBase):
                 # If we are inside a recursion, we have to dereference the
                 # _previous_ iterator.
                 a[0]["temp_var_used"] = "deref(%s)" % it_prev
-                tp_add = "$it = $temp_var_used.begin()"
+                tp_add = """
+                |$it = $temp_var_used.begin()
+                """
             else:
-                tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
+                tp_add = """
+                |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
+                |cdef $ptrtype address_$item
+                """
                 btm_add = """
                 |del $temp_var
                 """
@@ -1103,7 +1150,11 @@ class StdVectorConverter(TypeConverterBase):
                 |if newlen > oldlen: $argument_var.extend([$cy_tt.__new__($cy_tt) for i in range(0,tmpnewlen-oldlen)])
                 |else: del $argument_var[newlen:]
                 |for $item in $argument_var:
-                |    $item.inst.swap($make_shared)
+                |    if $item.inst.get() != NULL:
+                |        address_$item = $item.inst.get()
+                |        address_$item[0] = $address
+                |    else:
+                |        $item.inst = $make_shared
                 |    inc($it)
                 """ + btm_add, *a, **kw)
         else:
@@ -1336,6 +1387,8 @@ class StdVectorConverter(TypeConverterBase):
 
             instantiation = self._codeForInstantiateObjectFromIter(inner, it)
             make_shared = self._codeForMakeSharedPtrFromIter(inner, it)
+            address = self._codeForAddressFromIter(inner, it)
+            ptrtype = self._codeForPtrType(inner, it)
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(
                 cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
