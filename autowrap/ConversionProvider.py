@@ -217,13 +217,13 @@ class TypeConverterBase(object):
 
     def _codeForMakeSharedPtrFromIter(self, cpp_type, it):
         """
-        Code for new object instantation from iterator (double deref for iterator-ptr)
+        Code for creation of a shared_ptr from the same memory location as the iterator (double deref for iterator-ptr)
         Note that if cpp_type is a pointer and the iterator therefore refers to
         a STL object of std::vector< _FooObject* >, then we need the base type
         to instantate a new object and dereference twice.
         Example output:
-            shared_ptr[ _FooObject ] (new _FooObject (*foo_iter)  )
-            shared_ptr[ _FooObject ] (new _FooObject (**foo_iter_ptr)  )
+            make_shared[ _FooObject ] (*foo_iter)
+            make_shared[ _FooObject ] (**foo_iter_ptr)
         """
 
         if cpp_type.is_ref:
