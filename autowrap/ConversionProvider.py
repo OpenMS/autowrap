@@ -193,7 +193,6 @@ class TypeConverterBase(object):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         raise NotImplementedError()
 
-
     def _codeForInstantiateObjectFromIter(self, cpp_type, it):
         """
         Code for new object instantation from iterator (double deref for iterator-ptr)
@@ -215,6 +214,27 @@ class TypeConverterBase(object):
             return string.Template("shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))").substitute(locals())
         else:
             return string.Template("shared_ptr[$cpp_type](new $cpp_type(deref($it)))").substitute(locals())
+
+    def _codeForMakeSharedPtrFromIter(self, cpp_type, it):
+        """
+        Code for new object instantation from iterator (double deref for iterator-ptr)
+        Note that if cpp_type is a pointer and the iterator therefore refers to
+        a STL object of std::vector< _FooObject* >, then we need the base type
+        to instantate a new object and dereference twice.
+        Example output:
+            shared_ptr[ _FooObject ] (new _FooObject (*foo_iter)  )
+            shared_ptr[ _FooObject ] (new _FooObject (**foo_iter_ptr)  )
+        """
+
+        if cpp_type.is_ref:
+            cpp_type = cpp_type.base_type
+
+        if cpp_type.is_ptr:
+            cpp_type_base = cpp_type.base_type
+            return string.Template("make_shared[$cpp_type_base](deref(deref($it)))").substitute(locals())
+        else:
+            return string.Template("make_shared[$cpp_type](deref($it))").substitute(locals())
+
 
 class VoidConverter(TypeConverterBase):
 
@@ -1070,7 +1090,6 @@ class StdVectorConverter(TypeConverterBase):
             else:
                 tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
                 btm_add = """
-                |$argument_var[:] = replace_$recursion_cnt
                 |del $temp_var
                 """
                 a[0]["temp_var_used"] = temp_var
@@ -1078,11 +1097,13 @@ class StdVectorConverter(TypeConverterBase):
             # Add cleanup code (loop through the temporary vector C++ and
             # add items to the python replace_n list).
             cleanup_code = Code().add(tp_add + """
-                |replace_$recursion_cnt = []
-                |while $it != $temp_var_used.end():
-                |    $item = $cy_tt.__new__($cy_tt)
-                |    $item.inst = $instantiation
-                |    replace_$recursion_cnt.append($item)
+                |oldlen = len($argument_var)
+                |tmpnewlen = $temp_var_used.size()
+                |newlen = max(oldlen, tmpnewlen)
+                |if newlen > oldlen: $argument_var.extend([$cy_tt.__new__($cy_tt) for i in range(0,tmpnewlen-oldlen)])
+                |else: del $argument_var[newlen:]
+                |for $item in $argument_var:
+                |    $item.inst.swap($make_shared)
                 |    inc($it)
                 """ + btm_add, *a, **kw)
         else:
@@ -1110,8 +1131,12 @@ class StdVectorConverter(TypeConverterBase):
                 tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
                 a[0]["temp_var_used"] = temp_var
             cleanup_code = Code().add(tp_add + """
-                |replace_$recursion_cnt = []
-                |while $it != $temp_var_used.end():
+                |oldlen = len($argument_var)
+                |tmpnewlen = $temp_var_used.size()
+                |newlen = max(oldlen, tmpnewlen)
+                |if newlen > oldlen: $argument_var.extend([[] for i in range(0,tmpnewlen-oldlen)])
+                |else: del $argument_var[newlen:]
+                |for $item in $argument_var:
                 """, *a, **kw)
         else:
             if recursion_cnt == 0:
@@ -1212,7 +1237,6 @@ class StdVectorConverter(TypeConverterBase):
         #
         if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
             cleanup_code.add("""
-                |    replace_$recursion_cnt.append(replace_$recursion_cnt_next)
                 |    inc($it)
                              """, *a, **kw)
 
@@ -1225,7 +1249,6 @@ class StdVectorConverter(TypeConverterBase):
             cleanup_code.content.extend(bottommost_code_callback.content)
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 cleanup_code.add("""
-                    |$argument_var[:] = replace_$recursion_cnt
                     |del $temp_var
                                  """, *a, **kw)
         else:
@@ -1312,6 +1335,7 @@ class StdVectorConverter(TypeConverterBase):
                 do_deref = ""
 
             instantiation = self._codeForInstantiateObjectFromIter(inner, it)
+            make_shared = self._codeForMakeSharedPtrFromIter(inner, it)
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(
                 cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())

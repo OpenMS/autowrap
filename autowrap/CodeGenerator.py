@@ -1340,11 +1340,11 @@ class CodeGenerator(object):
                    """)
         if self.include_shared_ptr == "boost":
             code.add("""
-                   |from  smart_ptr cimport shared_ptr
+                   |from  smart_ptr cimport shared_ptr, make_shared
                    """)
         elif self.include_shared_ptr == "std":
             code.add("""
-                   |from libcpp.memory cimport shared_ptr
+                   |from libcpp.memory cimport shared_ptr, make_shared
                    """)
         if self.include_numpy:
             code.add("""
