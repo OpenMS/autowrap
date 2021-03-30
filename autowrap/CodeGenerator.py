@@ -1327,6 +1327,7 @@ class CodeGenerator(object):
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
                    |from  libcpp.map     cimport map  as libcpp_map
+                   |from  libcpp.utility cimport move  as libcpp_move
                    |from  libcpp cimport bool
                    |from  libc.string cimport const_char
                    |from cython.operator cimport dereference as deref,

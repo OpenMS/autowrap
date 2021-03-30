@@ -1148,7 +1148,7 @@ class StdVectorConverter(TypeConverterBase):
                 |for $item in $argument_var:
                 |    if $item.inst.get() != NULL:
                 |        address_$item = $item.inst.get()
-                |        address_$item[0] = $address
+                |        address_$item[0] = libcpp_move($address)
                 |    else:
                 |        $item.inst = $make_shared
                 |    inc($it)

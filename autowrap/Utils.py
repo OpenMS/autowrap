@@ -84,8 +84,11 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     link_args = []
 
     if sys.platform == "darwin":
-        compile_args += ["-stdlib=libc++"]
+        compile_args += ["-stdlib=libc++", "-std=c++11"]
         link_args += ["-stdlib=libc++"]
+
+    if sys.platform == "linux" or sys.platform == "linux2":
+        compile_args += ["-std=c++11"]
 
     if sys.platform != "win32":
         compile_args += ["-Wno-unused-but-set-variable"]
