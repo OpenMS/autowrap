@@ -235,9 +235,9 @@ class TypeConverterBase(object):
         else:
             return string.Template("make_shared[$cpp_type](deref($it))").substitute(locals())
 
-    def _codeForAddressFromIter(self, cpp_type, it):
+    def _codeForDerefFromIter(self, cpp_type, it):
         """
-        Code for creation of a shared_ptr from the same memory location as the iterator (double deref for iterator-ptr)
+        Code for creation of correct dereferencing code from an iterator (i.e. double deref for iterator-ptr)
         Note that if cpp_type is a pointer and the iterator therefore refers to
         a STL object of std::vector< _FooObject* >, then we need the base type
         to instantate a new object and dereference twice.
@@ -256,15 +256,11 @@ class TypeConverterBase(object):
         else:
             return string.Template("deref($it)").substitute(locals())
 
-    def _codeForPtrType(self, cpp_type, it):
+    def _codeForPtrType(self, cpp_type):
         """
-        Code for creation of a shared_ptr from the same memory location as the iterator (double deref for iterator-ptr)
-        Note that if cpp_type is a pointer and the iterator therefore refers to
-        a STL object of std::vector< _FooObject* >, then we need the base type
-        to instantate a new object and dereference twice.
+        Code for creation of a pointer type from the inner type
         Example output:
-            *foo_iter
-            **foo_iter_ptr
+            foo *
         """
 
         tmp_cpp_type = cpp_type
@@ -1387,8 +1383,8 @@ class StdVectorConverter(TypeConverterBase):
 
             instantiation = self._codeForInstantiateObjectFromIter(inner, it)
             make_shared = self._codeForMakeSharedPtrFromIter(inner, it)
-            address = self._codeForAddressFromIter(inner, it)
-            ptrtype = self._codeForPtrType(inner, it)
+            address = self._codeForDerefFromIter(inner, it)
+            ptrtype = self._codeForPtrType(inner)
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(
                 cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
