@@ -1318,7 +1318,7 @@ class CodeGenerator(object):
         # signature which does not really specify the argument types. We have
         # to use a docstring for each method.
         code.add("""
-                   |#cython: c_string_encoding=ascii  # for cython>=0.19
+                   |#cython: c_string_encoding=ascii
                    |#cython: embedsignature=False
                    |from  libcpp.string  cimport string as libcpp_string
                    |from  libcpp.string  cimport string as libcpp_utf8_string
