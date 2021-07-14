@@ -79,11 +79,11 @@ def _parse_multiline_annotations(lines):
             line = line[1:].strip()
             if line.endswith(":"):
                 key = line.rstrip(":")
-                line = next(it).strip()
+                line = next(it).lstrip()
                 while line.startswith("#  "):
                     value = line[1:].strip()
                     result[key].append(value)
-                    line = next(it).strip()
+                    line = next(it).lstrip()
             else:
                 key = line
                 result[key] = True
