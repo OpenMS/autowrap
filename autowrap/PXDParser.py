@@ -132,10 +132,8 @@ def parse_line_annotations(node, lines):
                     # they belong to the previous key
                     value = " " + f_
                     result[key] += value
-      except:
-        print("error parsing line annotation on line:")
-        print(line)
-        raise
+      except Exception as e:
+        raise ValueError("Cannot parse '{}'".format(line)) from e
     return result
 
 
