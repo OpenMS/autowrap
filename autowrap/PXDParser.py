@@ -113,6 +113,7 @@ def parse_line_annotations(node, lines):
         break
 
     for line in lines[start:end]:
+      try:
         __, __, comment = line.partition("#")
         if comment:
             key = None
@@ -131,6 +132,10 @@ def parse_line_annotations(node, lines):
                     # they belong to the previous key
                     value = " " + f_
                     result[key] += value
+      except:
+        print("error parsing line annotation on line:")
+        print(line)
+        raise
     return result
 
 
