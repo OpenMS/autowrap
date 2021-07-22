@@ -10,7 +10,7 @@ except ImportError:
 from setuptools import find_packages, setup
 
 
-VERSION = (0, 22, 1)
+VERSION = (0, 22, 3)
 # DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
 
 
@@ -42,6 +42,6 @@ C++ libraries based on annotated (commented) cython pxd files. """,
     include_package_data=True,  # see MANIFEST.in
     zip_safe=False,
     test_suite="nose.collector",
-    install_requires=["Cython>=0.19"],
+    install_requires=["Cython>=0.19", "setuptools"],
     entry_points={"console_scripts": ["autowrap = autowrap.Main:main"]},
 )
