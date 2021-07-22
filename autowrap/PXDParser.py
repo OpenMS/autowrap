@@ -523,7 +523,7 @@ def parse_pxd_file(path):
             try:
                 result.append(handler(body, lines, path))
             except Exception:
-                raise Exception("failed to parse " +path)
+                raise Exception("failed to parse " + path)
                 
         else:
             for node in getattr(body, "stats", []):
