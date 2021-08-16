@@ -458,7 +458,10 @@ class CodeGenerator(object):
 
         for attribute in r_class.attributes:
             if not attribute.wrap_ignore:
-                class_code.add(self._create_wrapper_for_attribute(attribute))
+                try:
+                    class_code.add(self._create_wrapper_for_attribute(attribute))
+                except Exception:
+                    raise Exception("Failed to create wrapper for attribute " + attribute.cpp_decl.name + " in: " + attribute.cpp_decl.pxd_path)
 
         iterators, non_iter_methods = self.filterout_iterators(r_class.methods)
 
