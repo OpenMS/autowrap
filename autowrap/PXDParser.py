@@ -123,7 +123,7 @@ def parse_line_annotations(node, lines):
                     continue
                 if ":" in f:
                     key, value = f.split(":", 1)
-                    assert value.strip(), "empty value for key '%s'" % key
+                    assert value.strip(), "empty value (or excess space?) for key '%s' in line '%s'" % (key, line.rstrip())
                     result[key] = value
                 elif f.find("wrap-") != -1:
                     key, value = f, True
