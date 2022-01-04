@@ -38,6 +38,12 @@ cdef extern from "minimal.hpp":
         # Note how both run3 and run4 have the same implementation - declaring
         # it const in Cython will not affect the result!
         int run(Minimal & ref)
+        # wrap-doc:
+        #  Test for Mulitline Comment
+        #    with indentation
+        #  
+        #  and empty line
+        
         int run2(Minimal *p)
         int run3(Minimal & ref)
         int run4(const Minimal & ref) # attention here!

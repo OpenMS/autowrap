@@ -95,6 +95,8 @@ def test_minimal():
 
     assert len(minimal.compute.__doc__) == 297
 
+    assert len(minimal.run.__doc__) == 111
+
     # test members
     assert minimal.m_accessible == 0
     assert minimal.m_const == -1

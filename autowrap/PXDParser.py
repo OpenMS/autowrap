@@ -81,9 +81,16 @@ def _parse_multiline_annotations(lines):
                 key = line.rstrip(":")
                 line = next(it).strip()
                 while line.startswith("#  "):
-                    value = line[1:].strip()
-                    result[key].append(value)
-                    line = next(it).strip()
+                    if key == "wrap-doc":
+                        value = line[3:].rstrip() # rstrip to keep indentation in docs
+                    else:
+                        value = line[1:].strip()
+                    if not (key != "wrap-doc" and not value): # don't add empty non wrap-doc values
+                        result[key].append(value)
+                    try:
+                        line = next(it).lstrip() # lstrip to keep empty lines in docs
+                    except StopIteration:
+                        break
             else:
                 key = line
                 result[key] = True
@@ -98,12 +105,11 @@ def parse_line_annotations(node, lines):
     method declarations.
     handles method declarations over multiple lines
     """
-
     result = dict()
     # pos starts counting with 1 and limits are inclusive
     start = node.pos[1] - 1
     end = node.end_pos()[1]
-
+    
     while end < len(lines):
         if lines[end].strip() == "":
             end += 1
@@ -134,6 +140,13 @@ def parse_line_annotations(node, lines):
                     result[key] += value
       except Exception as e:
         raise ValueError("Cannot parse '{}'".format(line)) from e
+    
+    # check for multi line annotations after method declaration
+    additional_annotations = _parse_multiline_annotations(lines[end:])
+    # add multi line doc string to result (overwrites single line wrap-doc, if exists)
+    if "wrap-doc" in additional_annotations.keys():
+        result["wrap-doc"] = '\n' + '\n'.join(additional_annotations["wrap-doc"])
+
     return result
 
 
