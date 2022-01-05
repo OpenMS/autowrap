@@ -506,3 +506,15 @@ cdef extern from "*":
     assert str(td1.type_) == "A[B[C]]"
     assert str(td2.type_) == "A[C,D[E[F]]]"
     assert str(td3.type_) == "A[Y,B[C[Y],C[Y,D[E]]]]", str(td.type_)
+
+
+def test_multiline_docs():
+    lines = ["# wrap-doc:",
+             "#  first line",
+             "#    second line indented",
+             "#  "]
+    result = autowrap.PXDParser._parse_multiline_annotations(lines)
+
+    assert result["wrap-doc"][0] == "first line"
+    assert result["wrap-doc"][1] == "  second line indented"
+    assert result["wrap-doc"][2] == ""
