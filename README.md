@@ -1,4 +1,4 @@
-autowrap [![Build Status](https://travis-ci.org/uweschmitt/autowrap.svg?branch=master)](https://travis-ci.org/uweschmitt/autowrap)
+autowrap [![build autowrap](https://github.com/OpenMS/autowrap/actions/workflows/ci-autowrap.yaml/badge.svg)](https://github.com/OpenMS/autowrap/actions/workflows/ci-autowrap.yaml)
 ========
 
 
