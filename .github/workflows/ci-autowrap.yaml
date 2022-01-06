@@ -48,7 +48,7 @@ jobs:
           python -m pip install -U pip
       - name: Upgrade cython version
         run: |
-          python -m pip install Cython${CYTHON} "Cython${{ matrix.CYTHON }}"
+          python -m pip install "Cython${{ matrix.CYTHON }}"
       - name: run tests
         run: |
           python setup.py develop
