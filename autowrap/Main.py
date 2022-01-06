@@ -170,8 +170,10 @@ def register_converters(converters):
         sys.path.pop(0)
 
 
-def run_cython(inc_dirs, extra_opts, out):
+def run_cython(inc_dirs, extra_opts, out, warn_level=1):
     from Cython.Compiler.Main import compile, CompilationOptions
+    import Cython.Compiler.Errors
+    Cython.Compiler.Errors.LEVEL = warn_level
 
     # Try to get directive_defaults (API differs from 0.25 on)
     try:

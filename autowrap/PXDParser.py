@@ -38,6 +38,7 @@ from Cython.Compiler import Pipeline
 from Cython.Compiler.Scanning import FileSourceDescriptor
 from Cython.Compiler.Nodes import *
 from Cython.Compiler.ExprNodes import *
+import Cython.Compiler.Errors
 
 from autowrap.Types import CppType
 
@@ -105,11 +106,12 @@ def parse_line_annotations(node, lines):
     method declarations.
     handles method declarations over multiple lines
     """
+
     result = dict()
     # pos starts counting with 1 and limits are inclusive
     start = node.pos[1] - 1
     end = node.end_pos()[1]
-    
+
     while end < len(lines):
         if lines[end].strip() == "":
             end += 1
@@ -467,7 +469,9 @@ def parse_str(what):
         return result
 
 
-def parse_pxd_file(path):
+def parse_pxd_file(path, warn_level=1):
+
+    Cython.Compiler.Errors.LEVEL = warn_level
 
     options, sources = parse_command_line(["--cplus", path])
 
@@ -531,11 +535,7 @@ def parse_pxd_file(path):
         handler = handlers.get(type(body))
         if handler is not None:
             # L.info("parsed %s, handler=%s" % (body.__class__, handler.im_self))
-            try:
-                result.append(handler(body, lines, path))
-            except Exception:
-                raise Exception("failed to parse " + path)
-                
+            result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):
                 handler = handlers.get(type(node))
@@ -547,5 +547,8 @@ def parse_pxd_file(path):
 if __name__ == "__main__":
 
     import sys
+    if len(sys.argv) == 3:
+        print(parse_pxd_file(sys.argv[1], sys.argv[2]))
+    else:
+        print(parse_pxd_file(sys.argv[1]))
 
-    print(parse_pxd_file(sys.argv[1]))

@@ -110,7 +110,7 @@ __doc__ = """
 
 """
 
-import logging as L
+from autowrap import logger
 
 
 class ResolvedTypeDef(object):
@@ -130,9 +130,9 @@ class ResolvedEnum(object):
         self.cpp_decl = decl
         self.items = decl.items
         self.type_ = Types.CppType(self.name, enum_items=self.items)
-        L.info("created resolved enum: %s" % (decl.name, ))
-        L.info("           with items: %s" % (decl.items))
-        L.info("")
+        logger.info("created resolved enum: %s" % (decl.name, ))
+        logger.info("           with items: %s" % (decl.items))
+        logger.info("")
 
 
 class ResolvedAttribute(object):
@@ -223,22 +223,22 @@ class ResolvedFunction(ResolvedMethod):
     pass
 
 
-def resolve_decls_from_files_single_thread(pathes, root):
+def resolve_decls_from_files_single_thread(pathes, root, cython_warn_level = 1):
     decls = []
     for k, path in enumerate(pathes):
         full_path = os.path.join(root, path)
         if k % 50 == 0: 
-            L.log(25, "parsing progress %s out of %s" % (k, len(pathes)))
-        decls.extend(PXDParser.parse_pxd_file(full_path))
+            logger.log(25, "parsing progress %s out of %s" % (k, len(pathes)))
+        decls.extend(PXDParser.parse_pxd_file(full_path, cython_warn_level))
     return _resolve_decls(decls)
 
-def resolve_decls_from_files(pathes, root, num_processes = 1):
+def resolve_decls_from_files(pathes, root, num_processes = 1, cython_warn_level = 1):
     if num_processes > 1:
-        return resolve_decls_from_files_multi_thread(pathes, root, num_processes)
+        return resolve_decls_from_files_multi_thread(pathes, root, num_processes, cython_warn_level)
     else:
-        return resolve_decls_from_files_single_thread(pathes, root)
+        return resolve_decls_from_files_single_thread(pathes, root, cython_warn_level)
 
-def resolve_decls_from_files_multi_thread(pathes, root, num_processes):
+def resolve_decls_from_files_multi_thread(pathes, root, num_processes, cython_warn_level = 1):
     """Perform parsing with multiple threads
 
     This function distributes the work on `num_processes` processes and each
@@ -246,6 +246,7 @@ def resolve_decls_from_files_multi_thread(pathes, root, num_processes):
     work on.
     """
     import multiprocessing as mp
+    from functools import partial
 
     CONCURRENT_FILES_PER_CORE = 10
     pool = mp.Pool(processes=num_processes)
@@ -256,9 +257,9 @@ def resolve_decls_from_files_multi_thread(pathes, root, num_processes):
         n_work = len(full_pathes)
         remaining = max(0, n_work - num_processes * CONCURRENT_FILES_PER_CORE)
         args = [full_pathes.pop() for k in range(n_work - remaining)]
-        L.log(25, "parsing progress %s out of %s with %s processes" % (len(pathes)-remaining, len(pathes), num_processes))
-
-        res = pool.map(PXDParser.parse_pxd_file, args)
+        logger.log(25, "parsing progress %s out of %s with %s processes" % (len(pathes)-remaining, len(pathes), num_processes))
+        parse_pxd_file_warn = partial(PXDParser.parse_pxd_file, warn_level = cython_warn_level)
+        res = pool.map(parse_pxd_file_warn, args)
         for r in res:
             decls.extend(r)
 
@@ -281,7 +282,7 @@ def _resolve_decls(decls):
         list of instances of ResolvedClass
     """
 
-    L.info("start resolving decls")
+    logger.info("start resolving decls")
     assert all(isinstance(d, PXDParser.BaseDecl) for d in decls)
 
     def filter_out(tt):
@@ -367,7 +368,7 @@ def _generate_inheritance_graph(class_decls, name_to_decl):
         for base_decl_str in cdcl.annotations.get("wrap-inherits", []):
             base = Types.CppType.from_string(base_decl_str)
             base_class = name_to_decl[base.base_type]
-            L.info("%s inherits %s" % (cdcl.name, base))
+            logger.info("%s inherits %s" % (cdcl.name, base))
             graph[cdcl].append((base_class, base.template_args))
     return graph
 
@@ -386,7 +387,7 @@ def _resolve_inheritance(cdcl, class_decls, inheritance_graph):
     that is: methods from super_classes and their super_classes.
     """
 
-    L.info("resolve_inheritance for %s" % cdcl.name)
+    logger.info("resolve_inheritance for %s" % cdcl.name)
 
     # first we recurses to all super classes:
     for super_cld, _ in inheritance_graph[cdcl]:
@@ -400,7 +401,7 @@ def _resolve_inheritance(cdcl, class_decls, inheritance_graph):
 
 def _add_inherited_methods(cdcl, super_cld, used_parameters):
 
-    L.info("add_inherited_methods for %s" % cdcl.name)
+    logger.info("add_inherited_methods for %s" % cdcl.name)
 
     super_targs = super_cld.template_parameters
     # template paremeer None behaves like []
@@ -419,9 +420,9 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     transformed_methods = dict((k, v) for (k, v) in transformed_methods.items()
                                if k != super_cld.name)  # remove constructors
     for method in transformed_methods:
-        L.info("attach to %s: %s" % (cdcl.name, method))
+        logger.info("attach to %s: %s" % (cdcl.name, method))
     cdcl.attach_base_methods(transformed_methods)
-    # L.info("")
+    # logger.info("")
 
 
 def _build_typedef_mapping(decls):
@@ -514,7 +515,7 @@ def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
 def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
     # one decl can produce multiple classes !
 
-    L.info("resolve class decl %s" % class_decl.name)
+    logger.info("resolve class decl %s" % class_decl.name)
 
     r = _parse_wrap_instances_comments(class_decl)
     resolved_classes = []
@@ -556,30 +557,30 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
 
 
 def _resolve_constructor(cinst_name, method_decl, instance_mapping, local_type_map):
-    L.info("resolve method decl: '%s'" % method_decl)
+    logger.info("resolve method decl: '%s'" % method_decl)
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
     result.name = cinst_name
-    # L.info("result             : '%s'" % result)
-    # L.info("")
+    # logger.info("result             : '%s'" % result)
+    # logger.info("")
     return result
 
 
 def _resolve_method(method_decl, instance_mapping, local_type_map):
-    L.info("resolve method decl: '%s'" % method_decl)
+    logger.info("resolve method decl: '%s'" % method_decl)
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedMethod)
-    # L.info("result             : '%s'" % result)
-    # L.info("")
+    # logger.info("result             : '%s'" % result)
+    # logger.info("")
     return result
 
 
 def _resolve_function(method_decl, instance_mapping, local_type_map):
-    L.info("resolve function decl: '%s'" % method_decl)
+    logger.info("resolve function decl: '%s'" % method_decl)
     result = _resolve_method_or_function(method_decl, instance_mapping,
                                          local_type_map, ResolvedFunction)
-    # L.info("result               : '%s'" % result)
-    # L.info("")
+    # logger.info("result               : '%s'" % result)
+    # logger.info("")
     return result
 
 
