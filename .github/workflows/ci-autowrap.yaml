@@ -1,4 +1,4 @@
-wname: build autowrap
+name: build autowrap
 
 on:
   push:
