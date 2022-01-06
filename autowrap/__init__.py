@@ -36,7 +36,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from .version import *
 
 import logging as L
-L.basicConfig(level=L.INFO)
+logger = L.getLogger(__name__)
+logger.setLevel(L.INFO)
 
 """
 The autowrap process consists of two steps:
@@ -46,9 +47,9 @@ The autowrap process consists of two steps:
 """
 
 
-def parse(files, root, num_processes=1):
+def parse(files, root, num_processes=1, cython_warn_level=1):
     import autowrap.DeclResolver
-    return DeclResolver.resolve_decls_from_files(files, root, num_processes)
+    return DeclResolver.resolve_decls_from_files(files, root, num_processes, cython_warn_level)
 
 
 def generate_code(decls, instance_map, target, debug=False, manual_code=None,
