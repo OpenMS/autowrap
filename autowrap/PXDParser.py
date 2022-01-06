@@ -121,6 +121,7 @@ def parse_line_annotations(node, lines):
         break
 
     for line in lines[start:end]:
+      try:
         __, __, comment = line.partition("#")
         if comment:
             key = None
