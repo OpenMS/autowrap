@@ -229,7 +229,7 @@ def resolve_decls_from_files_single_thread(pathes, root, cython_warn_level = 1):
         full_path = os.path.join(root, path)
         if k % 50 == 0: 
             logger.log(25, "parsing progress %s out of %s" % (k, len(pathes)))
-        decls.extend(PXDParser.parse_pxd_file(full_path, warn_level))
+        decls.extend(PXDParser.parse_pxd_file(full_path, cython_warn_level))
     return _resolve_decls(decls)
 
 def resolve_decls_from_files(pathes, root, num_processes = 1, cython_warn_level = 1):
