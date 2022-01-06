@@ -48,8 +48,8 @@ jobs:
           python -m pip install -U pip
       - name: Upgrade cython version
         run: |
-          python -m pip install Cython${CYTHON} "Cython~=${{ matrix.CYTHON }}"
-      - name: Python and Django versions
+          python -m pip install Cython${CYTHON} "Cython${{ matrix.CYTHON }}"
+      - name: run tests
         run: |
           python setup.py develop
           py.test tests/
