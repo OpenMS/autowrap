@@ -230,7 +230,7 @@ def _extract_type(base_type, decl):
                 tt = _extract_template_args(arg_node)
                 template_parameters.append(tt)
             else:
-                raise Exception("can not handle template arg_node %r" % arg_node)
+                raise Exception("can not handle template arg_node %r" % arg_node.pos[0].file_path +" line: %r" % arg_node.pos[1]+ " col: %r" % arg_node.pos[2])
 
         base_type = base_type.base_type_node
 
