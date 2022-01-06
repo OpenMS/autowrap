@@ -15,8 +15,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - CYTHON: "<=0.29.21"
-            python-version: "2.7"
+#          - CYTHON: "<=0.29.21"
+#            python-version: "2.7"
           - CYTHON: "<=0.29.21"          
             python-version: "3.6"
           - CYTHON: "<=0.29.21"
@@ -25,8 +25,8 @@ jobs:
             python-version: "3.8"
           - CYTHON: "<=0.29.21"          
             python-version: "3.9"
-          - CYTHON: ">0.29.21"
-            python-version: "2.7"
+#          - CYTHON: ">0.29.21"
+#            python-version: "2.7"
           - CYTHON: ">0.29.21"          
             python-version: "3.6"
           - CYTHON: ">0.29.21"
