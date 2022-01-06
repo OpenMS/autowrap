@@ -1,5 +1,6 @@
-# cython: language_level=2
-from libcpp.string cimport string as libcpp_string
+from libcpp.string  cimport string as libcpp_string
+from libcpp.string  cimport string as libcpp_utf8_string
+from libcpp.string  cimport string as libcpp_utf8_output_string
 from libcpp.vector cimport vector as libcpp_vector
 from libc.string cimport const_char
 
@@ -25,7 +26,7 @@ cdef extern from "minimal.hpp":
         int m_const # wrap-constant
 
         int get()
-        libcpp_string compute(libcpp_string)
+        libcpp_utf8_output_string compute(libcpp_utf8_string)
         Int compute(int number1, int number2) # wrap-doc:This method is essential for foobar
         int compute(Int number)
         float compute(float number)

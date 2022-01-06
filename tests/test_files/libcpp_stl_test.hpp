@@ -177,4 +177,10 @@ class LibCppSTLTest {
             boost::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
             return boost::static_pointer_cast<const IntWrapper>(ptr);
         }
+
+        std::pair<int, std::string> process_12()
+        {
+            boost::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
+            return boost::static_pointer_cast<const IntWrapper>(ptr);
+        }
 };
