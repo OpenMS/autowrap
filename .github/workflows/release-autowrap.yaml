@@ -31,7 +31,6 @@ jobs:
           python setup.py bdist_wheel
 
       - name: Publish package to PyPI
-        continue-on-error: true
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
@@ -49,6 +48,6 @@ jobs:
           draft: false
           prerelease: false
           release_name: ${{ steps.version.outputs.version }}
-          tag_name: ${{ github.ref }}
+          tag_name: release/${{ steps.version.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
