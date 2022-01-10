@@ -29,6 +29,8 @@ jobs:
       - name: Build wheel
         run: |
           python setup.py bdist_wheel
+          tree
+          pwd
 
   # Upload the wheels (the action only runs on ubuntu slaves)
   publish:
