@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      
+      - name: Install xmllint
+        run: sudo apt-get install -y tree
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -28,7 +31,7 @@ jobs:
 
       - name: Build wheel
         run: |
-          python setup.py bdist_wheel
+          python setup.py bdist_wheel && tree
 
   # Upload the wheels (the action only runs on ubuntu slaves)
   publish:
