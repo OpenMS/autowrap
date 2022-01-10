@@ -31,6 +31,7 @@ jobs:
           python setup.py bdist_wheel
 
       - name: Publish package to PyPI
+        continue-on-error: true
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
