@@ -1,0 +1,35 @@
+name: build autowrap
+
+on:
+  workflow-dispatch: # manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Upgrade pip version
+        run: |
+          python -m pip install -U pip
+
+      - name: Build wheel (not sure about exact command)
+        run: |
+          python setup.py bdist_wheel
+
+  # Upload the wheels (the action only runs on ubuntu slaves)
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Publish package to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_api_token_release }}
+        packages_dir: ${{ github.workspace }}/wheels
