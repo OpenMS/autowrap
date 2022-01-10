@@ -8,7 +8,7 @@ on:
   workflow_dispatch: # manual trigger
 
 jobs:
-  build:
+  build_publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -29,17 +29,29 @@ jobs:
       - name: Build wheel
         run: |
           python setup.py bdist_wheel
-          tree
-          pwd
 
-  # Upload the wheels (the action only runs on ubuntu slaves)
-  publish:
-    runs-on: ubuntu-latest
-    steps:
+      #- name: Publish package to PyPI
+      #  uses: pypa/gh-action-pypi-publish@master
+      #  with:
+      #    user: __token__
+      #    password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
+      #    packages_dir: ${{ github.workspace }}/dist
 
-    - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
-        packages_dir: ${{ github.workspace }}/dist
+      - name: version
+        run: python3 -c 'from autowrap.version import __version__ as v; print(\'%d.%d.%d\' % v)'
+      
+      #- name: version
+      #  run: echo "::set-output name=version::$(python3 -c 'from autowrap.version import __version__ as v; print(\'%d.%d.%d\' % v)')"
+      #  id: version
+        
+      #- name: Create github release
+      #  uses: actions/create-release@v1
+      #  id: create_release
+      #  with:
+      #    draft: false
+      #    prerelease: false
+      #    release_name: ${{ steps.version.outputs.version }}
+      #    tag_name: ${{ github.ref }}
+      #    body_path: CHANGELOG.md
+      #  env:
+      #    GITHUB_TOKEN: ${{ github.token }}
