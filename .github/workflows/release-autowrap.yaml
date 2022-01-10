@@ -30,28 +30,25 @@ jobs:
         run: |
           python setup.py bdist_wheel
 
-      #- name: Publish package to PyPI
-      #  uses: pypa/gh-action-pypi-publish@master
-      #  with:
-      #    user: __token__
-      #    password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
-      #    packages_dir: ${{ github.workspace }}/dist
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
+          packages_dir: ${{ github.workspace }}/dist
       
       - name: Parse version
         run: echo "::set-output name=version::$(python3 -c 'from autowrap.version import __version__ as v; print("%d.%d.%d" % v)')"
         id: version
         
-      - name: Print version
-        run: echo ${{ steps.version.outputs.version }}
-        
-      #- name: Create github release
-      #  uses: actions/create-release@v1
-      #  id: create_release
-      #  with:
-      #    draft: false
-      #    prerelease: false
-      #    release_name: ${{ steps.version.outputs.version }}
-      #    tag_name: ${{ github.ref }}
-      #    body_path: CHANGELOG.md
-      #  env:
-      #    GITHUB_TOKEN: ${{ github.token }}
+      - name: Create github release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
