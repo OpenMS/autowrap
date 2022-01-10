@@ -29,7 +29,6 @@ jobs:
       - name: Build wheel
         run: |
           python setup.py bdist_wheel
-          tree
 
   # Upload the wheels (the action only runs on ubuntu slaves)
   publish:
@@ -41,4 +40,4 @@ jobs:
       with:
         user: __token__
         password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
-        packages_dir: ${{ github.workspace }}
+        packages_dir: ${{ github.workspace }}/dist
