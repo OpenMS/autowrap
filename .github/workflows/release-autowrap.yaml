@@ -38,7 +38,7 @@ jobs:
       #    packages_dir: ${{ github.workspace }}/dist
 
       - name: version
-        run: python3 -c 'from autowrap.version import __version__ as v; print(\'%d.%d.%d\' % v)'
+        run: python3 -c 'from autowrap.version import __version__ as v; print("%d.%d.%d" % v)'
       
       #- name: version
       #  run: echo "::set-output name=version::$(python3 -c 'from autowrap.version import __version__ as v; print(\'%d.%d.%d\' % v)')"
