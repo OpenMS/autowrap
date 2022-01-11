@@ -41,6 +41,7 @@ import autowrap.PXDParser
 import autowrap.Utils
 import autowrap.Code
 import autowrap
+from Cython.Compiler.Version import version as cython_version
 
 import os
 import math
@@ -189,7 +190,9 @@ def test_templated():
     assert templated_o.xi[1].get() == 12
 
     # Test (wrap-attached) free functions = old way to wrap static functions (can only be called with class)
-    assert templated.computeEight() == 8
+    if int(str(cython_version).split(".")[0]) < 3:
+        assert templated.computeEight() == 8
+        assert templated_o.computeEight() == 8
     assert twrapped.Templated.computeEight() == 8
     assert twrapped.Templated_other.computeEight() == 8
 
