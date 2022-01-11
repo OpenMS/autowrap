@@ -1,6 +1,8 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
+import types
+
 import pytest
 
 __license__ = """
@@ -42,10 +44,7 @@ import autowrap
 
 import os
 import math
-import copy
 import sys
-
-from .utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
@@ -189,9 +188,16 @@ def test_templated():
     assert templated_o.xi[0].get() == 11
     assert templated_o.xi[1].get() == 12
 
-    # Test free functions
+    # Test (wrap-attached) free functions = old way to wrap static functions (can only be called with class)
+    assert templated.computeEight() == 8
+    assert twrapped.Templated.computeEight() == 8
+    assert twrapped.Templated_other.computeEight() == 8
+
+    # Test static functions (can be called with or without object)
     assert templated.computeSeven() == 7
     assert templated_o.computeSeven() == 7
+    assert twrapped.Templated.computeSeven() == 7
+    assert twrapped.Templated_other.computeSeven() == 7
 
 def test_gil_unlock():
 

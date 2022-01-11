@@ -183,7 +183,7 @@ def run_cython(inc_dirs, extra_opts, out, warn_level=1):
         import Cython.Compiler.Options
         directive_defaults = Cython.Compiler.Options.get_directive_defaults()
 
-
+    directive_defaults["binding"] = False
     directive_defaults["boundscheck"] = False
     directive_defaults["wraparound"] = False
     directive_defaults["language_level"] = sys.version_info.major

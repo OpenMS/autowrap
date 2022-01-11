@@ -179,10 +179,10 @@ class ResolvedClass(object):
         self.no_pxd_import = decl.annotations.get("no-pxd-import", False)
         self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", [])
         # fix previous code where we had a bool ... 
-        if self.wrap_manual_memory == True:
+        if self.wrap_manual_memory:
             self.wrap_manual_memory = ["__old-model"]
         else:
-            self.wrap_manual_memory == []
+            self.wrap_manual_memory = []
         assert( isinstance(self.wrap_manual_memory, list) )
         self.wrap_hash = decl.annotations.get("wrap-hash", [])
         self.local_map = local_map
@@ -202,9 +202,10 @@ class ResolvedMethod(object):
         "resolved" means that template parameters are resolved.
     """
 
-    def __init__(self, name, result_type, arguments, decl, instance_map,
+    def __init__(self, name, is_static, result_type, arguments, decl, instance_map,
                  local_map):
         self.name = name
+        self.is_static = is_static
         self.result_type = result_type
         self.arguments = arguments
         self.cpp_decl = decl
@@ -596,7 +597,8 @@ def _resolve_method_or_function(method_decl, instance_mapping, local_type_map,
         arg_type = _resolve_alias(arg_type, instance_mapping, local_type_map)
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
-    return clz(name, result_type, args, method_decl, instance_mapping, local_type_map)
+
+    return clz(name, method_decl.is_static, result_type, args, method_decl, instance_mapping, local_type_map)
 
 
 def _resolve_attribute(adecl, instance_mapping, type_map):

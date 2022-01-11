@@ -37,15 +37,18 @@ cdef extern from "templated.hpp":
         Templated[X] passs(Templated[X] v)
         bool operator==(Templated[X] other)
 
+        @staticmethod
+        int computeSeven() nogil except +
+
     cdef cppclass Y:
         Y()
         libcpp_vector[Templated[T]] passs(libcpp_vector[Templated[T]] v)
 
 cdef extern from "templated.hpp" namespace "Templated<T2>":
 
-    int computeSeven() nogil except + # wrap-attach:Templated_other
+    int computeEight() nogil except + # wrap-attach:Templated_other
 
 cdef extern from "templated.hpp" namespace "Templated<T>":
 
-    int computeSeven() nogil except + # wrap-attach:Templated
+    int computeEight() nogil except + # wrap-attach:Templated
 

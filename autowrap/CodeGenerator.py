@@ -39,10 +39,13 @@ import sys
 import re
 from collections import defaultdict
 
+import Cython.Compiler.Version
+
 from autowrap.ConversionProvider import setup_converter_registry
 from autowrap.DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
                                    ResolvedFunction)
 from autowrap.Types import CppType  # , printable
+from autowrap.version import version as autowrap_version
 import autowrap.Code as Code
 
 import logging as L
@@ -673,7 +676,7 @@ class CodeGenerator(object):
             checks.append((n, converter.type_check_expression(t, n)))
 
         # Step 1: create method decl statement
-        if not is_free_fun:
+        if not is_free_fun and not method.is_static:
             py_signature_parts.insert(0, "self")
 
         # Prepare docstring
@@ -683,11 +686,19 @@ class CodeGenerator(object):
             docstring += "\n" + " "*8 + extra_doc
 
         py_signature = ", ".join(py_signature_parts)
-        code.add("""
-                   |
-                   |def $py_name($py_signature):
-                   |    \"\"\"$docstring\"\"\"
-                   """, locals())
+        if method.is_static:
+            code.add("""
+                       |
+                       |@staticmethod
+                       |def $py_name($py_signature):
+                       |    \"\"\"$docstring\"\"\"
+                       """, locals())
+        else:
+            code.add("""
+                       |
+                       |def $py_name($py_signature):
+                       |    \"\"\"$docstring\"\"\"
+                       """, locals())
 
         # Step 2a: create code which convert python input args to c++ args of
         # wrapped method
@@ -789,7 +800,10 @@ class CodeGenerator(object):
         # call wrapped method and convert result value back to python
         cpp_name = method.cpp_decl.name
         call_args_str = ", ".join(call_args)
-        cy_call_str = "self.inst.get().%s(%s)" % (cpp_name, call_args_str)
+        if method.is_static:
+            cy_call_str = "%s.%s(%s)" % (str(self.cr.cython_type(cdcl.name)), cpp_name, call_args_str)
+        else:
+            cy_call_str = "self.inst.get().%s(%s)" % (cpp_name, call_args_str)
 
         res_t = method.result_type
         out_converter = self.cr.get(res_t)
@@ -1321,6 +1335,7 @@ class CodeGenerator(object):
         # signature which does not really specify the argument types. We have
         # to use a docstring for each method.
         code.add("""
+                   |#Generated with autowrap %s and Cython (Parser) %s
                    |#cython: c_string_encoding=ascii
                    |#cython: embedsignature=False
                    |from  libcpp.string  cimport string as libcpp_string
@@ -1334,7 +1349,7 @@ class CodeGenerator(object):
                    |from  libc.string cimport const_char
                    |from cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
-                   """)
+                   """ % ("%s.%s.%s" % autowrap_version, Cython.Compiler.Version.watermark))
         if self.include_refholder:
             code.add("""
                    |from  AutowrapRefHolder cimport AutowrapRefHolder

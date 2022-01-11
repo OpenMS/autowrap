@@ -33,8 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 from Cython.Compiler.CmdLine import parse_command_line
-from Cython.Compiler.Main import create_default_resultobj, CompilationSource
-from Cython.Compiler import Pipeline
+from Cython.Compiler.Main import create_default_resultobj, CompilationSource, Context
+from Cython.Compiler import Pipeline, FusedNode
 from Cython.Compiler.Scanning import FileSourceDescriptor
 from Cython.Compiler.Nodes import *
 from Cython.Compiler.ExprNodes import *
@@ -55,6 +55,14 @@ Methods in this module use Cythons Parser to build an Cython syntax tree
 from the annotated .pxd files and creates a represenation of the
 included classes and methods.
 """
+
+
+def _check_type_constness(type):
+    """ Regargless of Cython version, checks whether the passed Cython type is const """
+    try:
+        return isinstance(type, Nodes.CConstTypeNode)
+    except:
+        return isinstance(type, Nodes.CConstOrVolatileTypeNode) and type.is_const
 
 
 def parse_class_annotations(node, lines):
@@ -172,7 +180,7 @@ def _extract_template_args(node):
 def _extract_type(base_type, decl):
     """ extracts type information from node in parse_pxd_file tree """
 
-    type_is_const = isinstance(base_type, Nodes.CConstTypeNode)
+    type_is_const = _check_type_constness(base_type)
 
     # Complex const values, e.g. "const Int *" need to be reduced to base type
     # to get the correct name. Note: we will have to deal with const-ness first
@@ -200,7 +208,7 @@ def _extract_type(base_type, decl):
                 # Handle const template arguments which do not have a name
                 # themselves, only their base types have name attribute (see
                 # for example: shared_ptr<const Int>)
-                arg_is_const = isinstance(arg_node.base_type, Nodes.CConstTypeNode)
+                arg_is_const = _check_type_constness(arg_node.base_type)
                 if arg_is_const:
                     name = arg_node.base_type.base_type.name
                 else:
@@ -378,16 +386,17 @@ class CppAttributeDecl(BaseDecl):
 
 
 class CppMethodOrFunctionDecl(BaseDecl):
-    def __init__(self, result_type, name, arguments, annotations, pxd_path):
+    def __init__(self, result_type, name, arguments, is_static, annotations, pxd_path):
         super(CppMethodOrFunctionDecl, self).__init__(name, annotations, pxd_path)
         self.result_type = result_type
         self.arguments = arguments
+        self.is_static = is_static
 
     def transformed(self, typemap):
         result_type = self.result_type.transformed(typemap)
         args = [(n, t.transformed(typemap)) for n, t in self.arguments]
         return CppMethodOrFunctionDecl(
-            result_type, self.name, args, self.annotations, self.pxd_path
+            result_type, self.name, args, self.is_static, self.annotations, self.pxd_path
         )
 
     def matches(self, other):
@@ -412,7 +421,15 @@ class MethodOrAttributeDecl(object):
     def parseTree(cls, node, lines, pxd_path):
         annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
-            return None  # nested classes only can be delcared in pxd
+            return None  # nested classes only can be declared in pxd
+
+        is_static = False
+
+        if isinstance(node, CVarDefNode):
+            if node.decorators is not None:
+                for dec in node.decorators:
+                    if dec.decorator.name == 'staticmethod':
+                        is_static = True
 
         (decl,) = node.declarators
         result_type = _extract_type(node.base_type, decl)
@@ -448,10 +465,11 @@ class MethodOrAttributeDecl(object):
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname, tt))
 
-        return CppMethodOrFunctionDecl(result_type, name, args, annotations, pxd_path)
+        return CppMethodOrFunctionDecl(result_type, name, args, is_static, annotations, pxd_path)
 
     def __str__(self):
-        rv = str(self.result_type)
+        rv = "static" if self.is_static else ""
+        rv += str(self.result_type)
         rv += " " + self.name
         argl = [str(type_) + " " + str(name) for name, type_ in self.arguments]
         return rv + "(" + ", ".join(argl) + ")"
@@ -490,7 +508,10 @@ def parse_pxd_file(path, warn_level=1):
     source = CompilationSource(source_desc, name, os.getcwd())
     result = create_default_resultobj(source, options)
 
-    context = options.create_context()
+    try:  # Cython 0.X
+        context = options.create_context()
+    except:  # Cython 3.X
+        context = Context.from_options(options)
     pipeline = Pipeline.create_pyx_pipeline(context, options, result)
     context.setup_errors(options, result)
     root = pipeline[0](source)  # only parser
