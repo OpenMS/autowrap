@@ -1330,6 +1330,7 @@ class CodeGenerator(object):
                    |from  libcpp.vector  cimport vector as libcpp_vector
                    |from  libcpp.pair    cimport pair as libcpp_pair
                    |from  libcpp.map     cimport map  as libcpp_map
+                   |from  libcpp.utility cimport move  as libcpp_move
                    |from  libcpp cimport bool
                    |from  libc.string cimport const_char
                    |from cython.operator cimport dereference as deref,
@@ -1343,11 +1344,11 @@ class CodeGenerator(object):
                    """)
         if self.include_shared_ptr == "boost":
             code.add("""
-                   |from  smart_ptr cimport shared_ptr
+                   |from  smart_ptr cimport shared_ptr, make_shared
                    """)
         elif self.include_shared_ptr == "std":
             code.add("""
-                   |from libcpp.memory cimport shared_ptr
+                   |from libcpp.memory cimport shared_ptr, make_shared
                    """)
         if self.include_numpy:
             code.add("""

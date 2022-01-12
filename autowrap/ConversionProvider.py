@@ -193,7 +193,6 @@ class TypeConverterBase(object):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         raise NotImplementedError()
 
-
     def _codeForInstantiateObjectFromIter(self, cpp_type, it):
         """
         Code for new object instantation from iterator (double deref for iterator-ptr)
@@ -215,6 +214,65 @@ class TypeConverterBase(object):
             return string.Template("shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))").substitute(locals())
         else:
             return string.Template("shared_ptr[$cpp_type](new $cpp_type(deref($it)))").substitute(locals())
+
+    def _codeForMakeSharedPtrFromIter(self, cpp_type, it):
+        """
+        Code for creation of a shared_ptr from the same memory location as the iterator (double deref for iterator-ptr)
+        Note that if cpp_type is a pointer and the iterator therefore refers to
+        a STL object of std::vector< _FooObject* >, then we need the base type
+        to instantate a new object and dereference twice.
+        Example output:
+            make_shared[ _FooObject ] (*foo_iter)
+            make_shared[ _FooObject ] (**foo_iter_ptr)
+        """
+        tmp_cpp_type = cpp_type
+        if tmp_cpp_type.is_ref:
+            tmp_cpp_type = tmp_cpp_type.base_type
+
+        if tmp_cpp_type.is_ptr:
+            cpp_type_base = tmp_cpp_type.base_type
+            return string.Template("make_shared[$cpp_type_base](deref(deref($it)))").substitute(locals())
+        else:
+            return string.Template("make_shared[$cpp_type](deref($it))").substitute(locals())
+
+    def _codeForDerefFromIter(self, cpp_type, it):
+        """
+        Code for creation of correct dereferencing code from an iterator (i.e. double deref for iterator-ptr)
+        Note that if cpp_type is a pointer and the iterator therefore refers to
+        a STL object of std::vector< _FooObject* >, then we need the base type
+        to instantate a new object and dereference twice.
+        Example output:
+            *foo_iter
+            **foo_iter_ptr
+        """
+
+        tmp_cpp_type = cpp_type
+        if tmp_cpp_type.is_ref:
+            tmp_cpp_type = tmp_cpp_type.base_type
+
+        if tmp_cpp_type.is_ptr:
+            cpp_type_base = tmp_cpp_type.base_type
+            return string.Template("deref(deref($it))").substitute(locals())
+        else:
+            return string.Template("deref($it)").substitute(locals())
+
+    def _codeForPtrType(self, cpp_type):
+        """
+        Code for creation of a pointer type from the inner type
+        Example output:
+            foo *
+        """
+
+        tmp_cpp_type = cpp_type
+        if tmp_cpp_type.is_ref:
+            tmp_cpp_type = tmp_cpp_type.base_type
+
+        if tmp_cpp_type.is_ptr:
+            cpp_type_base = tmp_cpp_type.base_type
+            return string.Template("$cpp_type_base *").substitute(locals())
+        else:
+            return string.Template("$cpp_type *").substitute(locals())
+
 
 class VoidConverter(TypeConverterBase):
 
@@ -1066,11 +1124,15 @@ class StdVectorConverter(TypeConverterBase):
                 # If we are inside a recursion, we have to dereference the
                 # _previous_ iterator.
                 a[0]["temp_var_used"] = "deref(%s)" % it_prev
-                tp_add = "$it = $temp_var_used.begin()"
+                tp_add = """
+                |$it = $temp_var_used.begin()
+                """
             else:
-                tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
+                tp_add = """
+                |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
+                |cdef $ptrtype address_$item
+                """
                 btm_add = """
-                |$argument_var[:] = replace_$recursion_cnt
                 |del $temp_var
                 """
                 a[0]["temp_var_used"] = temp_var
@@ -1078,11 +1140,17 @@ class StdVectorConverter(TypeConverterBase):
             # Add cleanup code (loop through the temporary vector C++ and
             # add items to the python replace_n list).
             cleanup_code = Code().add(tp_add + """
-                |replace_$recursion_cnt = []
-                |while $it != $temp_var_used.end():
-                |    $item = $cy_tt.__new__($cy_tt)
-                |    $item.inst = $instantiation
-                |    replace_$recursion_cnt.append($item)
+                |oldlen = len($argument_var)
+                |tmpnewlen = $temp_var_used.size()
+                |newlen = max(oldlen, tmpnewlen)
+                |if newlen > oldlen: $argument_var.extend([$cy_tt.__new__($cy_tt) for i in range(0,tmpnewlen-oldlen)])
+                |else: del $argument_var[newlen:]
+                |for $item in $argument_var:
+                |    if $item.inst.get() != NULL:
+                |        address_$item = $item.inst.get()
+                |        address_$item[0] = libcpp_move($address)
+                |    else:
+                |        $item.inst = $make_shared
                 |    inc($it)
                 """ + btm_add, *a, **kw)
         else:
@@ -1110,8 +1178,12 @@ class StdVectorConverter(TypeConverterBase):
                 tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
                 a[0]["temp_var_used"] = temp_var
             cleanup_code = Code().add(tp_add + """
-                |replace_$recursion_cnt = []
-                |while $it != $temp_var_used.end():
+                |oldlen = len($argument_var)
+                |tmpnewlen = $temp_var_used.size()
+                |newlen = max(oldlen, tmpnewlen)
+                |if newlen > oldlen: $argument_var.extend([[] for i in range(0,tmpnewlen-oldlen)])
+                |else: del $argument_var[newlen:]
+                |for $item in $argument_var:
                 """, *a, **kw)
         else:
             if recursion_cnt == 0:
@@ -1133,7 +1205,7 @@ class StdVectorConverter(TypeConverterBase):
         # Now prepare the loop itself
         code = Code().add(code_top + """
                 |for $item in $argument_var:
-                |    $temp_var.push_back($do_deref($item.inst.get()))
+                |    $temp_var.push_back(libcpp_move($do_deref($item.inst.get())))
                 """, *a, **kw)
         return code
 
@@ -1212,7 +1284,6 @@ class StdVectorConverter(TypeConverterBase):
         #
         if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
             cleanup_code.add("""
-                |    replace_$recursion_cnt.append(replace_$recursion_cnt_next)
                 |    inc($it)
                              """, *a, **kw)
 
@@ -1225,7 +1296,6 @@ class StdVectorConverter(TypeConverterBase):
             cleanup_code.content.extend(bottommost_code_callback.content)
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 cleanup_code.add("""
-                    |$argument_var[:] = replace_$recursion_cnt
                     |del $temp_var
                                  """, *a, **kw)
         else:
@@ -1312,6 +1382,9 @@ class StdVectorConverter(TypeConverterBase):
                 do_deref = ""
 
             instantiation = self._codeForInstantiateObjectFromIter(inner, it)
+            make_shared = self._codeForMakeSharedPtrFromIter(inner, it)
+            address = self._codeForDerefFromIter(inner, it)
+            ptrtype = self._codeForPtrType(inner)
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(
                 cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
@@ -1498,7 +1571,7 @@ class StdStringConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type):
-        return "bytes"
+        return "str"
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
@@ -1507,7 +1580,7 @@ class StdStringConverter(TypeConverterBase):
         return code, call_as, cleanup
 
     def type_check_expression(self, cpp_type, argument_var):
-        return "isinstance(%s, bytes)" % argument_var
+        return "isinstance(%s, str)" % argument_var
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)

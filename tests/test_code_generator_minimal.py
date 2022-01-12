@@ -93,7 +93,7 @@ def test_minimal():
 
     minimal = wrapped.Minimal()
 
-    assert len(minimal.compute.__doc__) == 297
+    assert len(minimal.compute.__doc__) == 314
 
     assert len(minimal.run.__doc__) == 111
 
@@ -118,8 +118,8 @@ def test_minimal():
 
     assert minimal.compute(1, 2) == 3
     assert minimal.compute_int(4) == 5
-    assert minimal.compute(b"uwe") == b'ewu'
-    assert minimal.compute_str(b"emzed") == b"dezme"
+    assert minimal.compute("uwe") == 'ewu'
+    assert minimal.compute_str("emzed") == "dezme"
     assert minimal.pass_charptr(b"emzed") == b"emzed"
     assert minimal.pass_const_charptr(b"emzed") == b"emzed"
 
