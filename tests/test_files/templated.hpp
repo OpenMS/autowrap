@@ -104,6 +104,11 @@ class Templated {
             return 7;
         }
 
+        static int computeEight()
+        {
+            return 8;
+        }
+
 };
 
 

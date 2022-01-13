@@ -133,4 +133,3 @@ cdef extern from "libcpp_test.hpp":
         # int process40(AbstractBaseClass* in_)
         int process40(ABS_Impl1* in_)
         int process40(ABS_Impl2* in_)
-

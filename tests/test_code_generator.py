@@ -1,6 +1,8 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
+import types
+
 import pytest
 
 __license__ = """
@@ -39,23 +41,36 @@ import autowrap.PXDParser
 import autowrap.Utils
 import autowrap.Code
 import autowrap
-
+from Cython.Compiler.Version import version as cython_version
 import os
 import math
-import copy
 import sys
-
-from .utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
+def test_enums():
+    if int(cython_version[0]) < 3:
+        return
+    target = os.path.join(test_files, "enums.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code(["enums.pxd"],
+                                                    root=test_files, target=target, debug=True)
+
+    mod = autowrap.Utils.compile_and_import("enummodule", [target, ], include_dirs)
+
+    foo = mod.Foo()
+    myenumA = mod.Foo.MyEnum.A
+    myenum2A = mod.Foo.MyEnum2.A
+    assert (foo.enumToInt(myenumA) == 1)
+    with pytest.raises(AssertionError):
+        foo.enumToInt(myenum2A)
 
 def test_number_conv():
 
     target = os.path.join(test_files, "number_conv.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(["number_conv.pxd"],
-                                                    root=test_files, target=target,  debug=True)
+                                                    root=test_files, target=target, debug=True)
 
     mod = autowrap.Utils.compile_and_import("number_conv", [target, ], include_dirs)
 
@@ -189,9 +204,18 @@ def test_templated():
     assert templated_o.xi[0].get() == 11
     assert templated_o.xi[1].get() == 12
 
-    # Test free functions
+    # Test (wrap-attached) free functions = old way to wrap static functions (can only be called with class)
+    if int(str(cython_version).split(".")[0]) < 3:
+        assert templated.computeEight() == 8
+        assert templated_o.computeEight() == 8
+    assert twrapped.Templated.computeEight() == 8
+    assert twrapped.Templated_other.computeEight() == 8
+
+    # Test static functions (can be called with or without object)
     assert templated.computeSeven() == 7
     assert templated_o.computeSeven() == 7
+    assert twrapped.Templated.computeSeven() == 7
+    assert twrapped.Templated_other.computeSeven() == 7
 
 def test_gil_unlock():
 

@@ -39,7 +39,7 @@ cdef extern from "minimal.hpp":
         # it const in Cython will not affect the result!
         int run(Minimal & ref)
         # wrap-doc:
-        #  Test for Mulitline Comment
+        #  Test for Multiline Comment
         #    with indentation
         #  
         #  and empty line

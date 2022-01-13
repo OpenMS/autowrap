@@ -37,10 +37,10 @@ def expect_exception(fun):
             fun(*a, **kw)
         except Exception:
             if 0:
-                print("info: expected excption. here some more info:")
+                print("info: expected exception. here some more info:")
                 import traceback
                 traceback.print_exc()
-                print
+                print()
             pass
         else:
             assert False, "%s did not raise exception" % fun

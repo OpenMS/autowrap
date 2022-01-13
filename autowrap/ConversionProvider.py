@@ -338,19 +338,38 @@ class EnumConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type):
-        return "int"
+        if not self.enum.scoped:
+            return "int"
+        else:
+            return ""
 
     def type_check_expression(self, cpp_type, argument_var):
-        values = ", ".join(str(v) for (__, v) in self.enum.items)
-        return "%s in [%s]" % (argument_var, values)
+        if not self.enum.scoped:
+            values = ", ".join(str(v) for (__, v) in self.enum.items)
+            return "%s in [%s]" % (argument_var, values)
+        else:
+            if self.enum.cpp_decl.annotations.get("wrap-attach"):
+                if not self.enum.scoped:
+                    name = "__" + self.enum.name
+                else:
+                    name = "_Py" + self.enum.name
+            else:
+                name = self.enum.name
+            return "isinstance(%s, %s)" % (argument_var, name)
+
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
-        call_as = "(<_%s>%s)" % (cpp_type.base_type, argument_var)
+        if not self.enum.scoped:
+            call_as = "(<_%s>%s)" % (cpp_type.base_type, argument_var)
+        else:
+            # for scoped enums we use the python enum class. There you need to use value
+            call_as = "(<_%s>%s.value)" % (cpp_type.base_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+        # TODO check what to do for non-int scoped enums
         return "%s = <int>%s" % (output_py_var, input_cpp_var)
 
 

@@ -39,10 +39,13 @@ import sys
 import re
 from collections import defaultdict
 
+import Cython.Compiler.Version
+
 from autowrap.ConversionProvider import setup_converter_registry
 from autowrap.DeclResolver import (ResolvedClass, ResolvedEnum, ResolvedTypeDef,
                                    ResolvedFunction)
 from autowrap.Types import CppType  # , printable
+from autowrap.version import version as autowrap_version
 import autowrap.Code as Code
 
 import logging as L
@@ -164,6 +167,7 @@ class CodeGenerator(object):
 
         self.top_level_code = []
         self.top_level_pyx_code = []
+        self.enum_codes = defaultdict(list)
         self.class_codes = defaultdict(list)
         self.class_codes_extra = defaultdict(list)
         self.class_pxd_codes = defaultdict(list)
@@ -203,18 +207,18 @@ class CodeGenerator(object):
         self.create_foreign_cimports()
         self.create_includes()
 
-        def create_for(clz, method):
+        def create_for(clz, method, codes):
             for resolved in self.resolved:
                 if resolved.wrap_ignore:
                     continue
                 if isinstance(resolved, clz):
-                    method(resolved)
+                    method(resolved, codes)
 
         # first wrap classes, so that self.class_codes[..] is initialized
         # for attaching enums or static functions
-        create_for(ResolvedClass, self.create_wrapper_for_class)
-        create_for(ResolvedEnum, self.create_wrapper_for_enum)
-        create_for(ResolvedFunction, self.create_wrapper_for_free_function)
+        create_for(ResolvedClass, self.create_wrapper_for_class, self.class_codes)
+        create_for(ResolvedEnum, self.create_wrapper_for_enum, self.enum_codes)
+        create_for(ResolvedFunction, self.create_wrapper_for_free_function, self.class_codes)
 
         # resolve extra
         for clz, codes in self.class_codes_extra.items():
@@ -233,6 +237,12 @@ class CodeGenerator(object):
 
         pyx_code += " \n"
         names = set()
+        # Write enum codes first, since for scoped enums, this contains python classes
+        # that need to be present before usage.
+        for n, c in self.enum_codes.items():
+            pyx_code += c.render()
+            pyx_code += " \n"
+            names.add(n)
         for n, c in self.class_codes.items():
             pyx_code += c.render()
             pyx_code += " \n"
@@ -252,7 +262,12 @@ class CodeGenerator(object):
             pxd_code += " \n"
 
         if debug:
+            if self.write_pxd:
+                print("PXD:")
+            else:
+                print("PXD (will not be written):")
             print(pxd_code)
+            print("PYX:")
             print(pyx_code)
         with open(self.target_path, "w") as fp:
             fp.write(pyx_code)
@@ -305,10 +320,13 @@ class CodeGenerator(object):
 
         return iterators, non_iter_methods
 
-    def create_wrapper_for_enum(self, decl):
+    def create_wrapper_for_enum(self, decl, out_codes):
         self.wrapped_enums_cnt += 1
         if decl.cpp_decl.annotations.get("wrap-attach"):
-            name = "__" + decl.name
+            if not decl.scoped:
+                name = "__" + decl.name
+            else:
+                name = "_Py" + decl.name  # __ prefix in python are private members
         else:
             name = decl.name
         L.info("create wrapper for enum %s" % name)
@@ -320,29 +338,38 @@ class CodeGenerator(object):
                    |cdef class $name:
                    |  pass
                  """, name=name)
-        code.add("""
-                   |
-                   |cdef class $name:
-                 """, name=name)
-        for (name, value) in decl.items:
-            code.add("    $name = $value", name=name, value=value)
+
+        if not decl.scoped:
+            code.add("""
+                       |
+                       |cdef class $name:
+                     """, name=name)
+        else:  # for scoped enums we use the python enum class
+            code.add("""
+                       |
+                       |class $name(_PyEnum):
+                     """, name=name)
+        for (optname, value) in decl.items:
+            code.add("    $name = $value", name=optname, value=value)
 
         # Add mapping of int (enum) to the value of the enum (as string)
-        code.add("""
-                |
-                |    def getMapping(self):
-                |        return dict([ (v, k) for k, v in self.__class__.__dict__.items() if isinstance(v, int) ])""" )
+        if not decl.scoped:
+            code.add("""
+                    |
+                    |    def getMapping(self):
+                    |        return dict([ (v, k) for k, v in self.__class__.__dict__.items() if isinstance(v, int) ])""" )
 
-        self.class_codes[decl.name] = code
+        out_codes[decl.name] = code
         self.class_pxd_codes[decl.name] = enum_pxd_code
 
+        # Add an extra member to previously declared class code snippets
         for class_name in decl.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
             display_name = decl.cpp_decl.annotations.get("wrap-as", [decl.name])[0]
-            code.add("%s = %s" % (display_name, "__" + decl.name))
+            code.add("%s = %s" % (display_name, name))
             self.class_codes[class_name].add(code)
 
-    def create_wrapper_for_class(self, r_class):
+    def create_wrapper_for_class(self, r_class, out_codes):
         """Create Cython code for a single class
         
         Note that the cdef class definition and the member variables go into
@@ -452,7 +479,7 @@ class CodeGenerator(object):
                             """ % r_class.wrap_hash[0], locals())
 
         self.class_pxd_codes[cname] = class_pxd_code
-        self.class_codes[cname] = class_code
+        out_codes[cname] = class_code
 
         cons_created = False
 
@@ -673,7 +700,7 @@ class CodeGenerator(object):
             checks.append((n, converter.type_check_expression(t, n)))
 
         # Step 1: create method decl statement
-        if not is_free_fun:
+        if not is_free_fun and not method.is_static:
             py_signature_parts.insert(0, "self")
 
         # Prepare docstring
@@ -683,11 +710,19 @@ class CodeGenerator(object):
             docstring += "\n" + " "*8 + extra_doc
 
         py_signature = ", ".join(py_signature_parts)
-        code.add("""
-                   |
-                   |def $py_name($py_signature):
-                   |    \"\"\"$docstring\"\"\"
-                   """, locals())
+        if method.is_static:
+            code.add("""
+                       |
+                       |@staticmethod
+                       |def $py_name($py_signature):
+                       |    \"\"\"$docstring\"\"\"
+                       """, locals())
+        else:
+            code.add("""
+                       |
+                       |def $py_name($py_signature):
+                       |    \"\"\"$docstring\"\"\"
+                       """, locals())
 
         # Step 2a: create code which convert python input args to c++ args of
         # wrapped method
@@ -789,7 +824,10 @@ class CodeGenerator(object):
         # call wrapped method and convert result value back to python
         cpp_name = method.cpp_decl.name
         call_args_str = ", ".join(call_args)
-        cy_call_str = "self.inst.get().%s(%s)" % (cpp_name, call_args_str)
+        if method.is_static:
+            cy_call_str = "%s.%s(%s)" % (str(self.cr.cython_type(cdcl.name)), cpp_name, call_args_str)
+        else:
+            cy_call_str = "self.inst.get().%s(%s)" % (cpp_name, call_args_str)
 
         res_t = method.result_type
         out_converter = self.cr.get(res_t)
@@ -831,7 +869,7 @@ class CodeGenerator(object):
 
         return meth_code
 
-    def create_wrapper_for_free_function(self, decl):
+    def create_wrapper_for_free_function(self, decl, out_codes):
         L.info("create wrapper for free function %s" % decl.name)
         self.wrapped_methods_cnt += 1
         static_clz = decl.cpp_decl.annotations.get("wrap-attach")
@@ -841,7 +879,7 @@ class CodeGenerator(object):
             code = Code.Code()
             static_name = "__static_%s_%s" % (static_clz, decl.name) # name used to attach to class
             code.add("%s = %s" % (decl.name, static_name))
-            self.class_codes[static_clz].add(code)
+            out_codes[static_clz].add(code)
             orig_cpp_name = decl.cpp_decl.name # original cpp name (not displayname)
             code = self._create_wrapper_for_free_function(decl, static_name, orig_cpp_name)
 
@@ -1321,33 +1359,35 @@ class CodeGenerator(object):
         # signature which does not really specify the argument types. We have
         # to use a docstring for each method.
         code.add("""
+                   |#Generated with autowrap %s and Cython (Parser) %s
                    |#cython: c_string_encoding=ascii
                    |#cython: embedsignature=False
-                   |from  libcpp.string  cimport string as libcpp_string
-                   |from  libcpp.string  cimport string as libcpp_utf8_string
-                   |from  libcpp.string  cimport string as libcpp_utf8_output_string
-                   |from  libcpp.set     cimport set as libcpp_set
-                   |from  libcpp.vector  cimport vector as libcpp_vector
-                   |from  libcpp.pair    cimport pair as libcpp_pair
-                   |from  libcpp.map     cimport map  as libcpp_map
-                   |from  libcpp cimport bool
-                   |from  libc.string cimport const_char
-                   |from cython.operator cimport dereference as deref,
+                   |from  enum             import Enum as _PyEnum
+                   |from  libcpp.string   cimport string as libcpp_string
+                   |from  libcpp.string   cimport string as libcpp_utf8_string
+                   |from  libcpp.string   cimport string as libcpp_utf8_output_string
+                   |from  libcpp.set      cimport set as libcpp_set
+                   |from  libcpp.vector   cimport vector as libcpp_vector
+                   |from  libcpp.pair     cimport pair as libcpp_pair
+                   |from  libcpp.map      cimport map  as libcpp_map
+                   |from  libcpp          cimport bool
+                   |from  libc.string     cimport const_char
+                   |from  cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
-                   """)
+                   """ % ("%s.%s.%s" % autowrap_version, Cython.Compiler.Version.watermark))
         if self.include_refholder:
             code.add("""
-                   |from  AutowrapRefHolder cimport AutowrapRefHolder
-                   |from  AutowrapPtrHolder cimport AutowrapPtrHolder
+                   |from  AutowrapRefHolder      cimport AutowrapRefHolder
+                   |from  AutowrapPtrHolder      cimport AutowrapPtrHolder
                    |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
                    """)
         if self.include_shared_ptr == "boost":
             code.add("""
-                   |from  smart_ptr cimport shared_ptr
+                   |from  smart_ptr       cimport shared_ptr
                    """)
         elif self.include_shared_ptr == "std":
             code.add("""
-                   |from libcpp.memory cimport shared_ptr
+                   |from  libcpp.memory   cimport shared_ptr
                    """)
         if self.include_numpy:
             code.add("""
