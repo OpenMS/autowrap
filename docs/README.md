@@ -196,6 +196,12 @@ Example declaration for releasing the GIL (in the pxd):
 ```
     void Compile() nogil # wrap-with-no-gil
 ```
+
+Example for multiple wrap statements in a method directive:
+
+```
+    size_t countSomething(libcpp_vector[double] inpVec) nogil # wrap-attach:Counter wrap-as:count 
+```
     
 In addition you have to declare the function as nogil. For further details see 
 http://docs.cython.org/src/userguide/external_C_code.html
@@ -229,6 +235,29 @@ class is the same as the name of the C++ class.
 Additionally, TemplatedClass[U,V] gets additional methods from C[U] and from D without having to re-declare them.
 
 Finally, the object is hashable in Python (assuming it has a function `getName()` that returns a string).
+
+### Docstrings
+
+Docstrings can be added to classes and methods using the `wrap-doc` statement. Multi line docs are supported with
+empty lines and indentation. Note that every line of the docstring needs to begin with # and two spaces, even the empty lines.
+Methods still support single line doctrings directly after the declaration. However, if there is a multi line docstring it is
+taken with priority.
+
+```
+    cdef cppclass Counter:
+        # wrap-doc:
+        #  Multi line docstring for class
+        #    with indentation
+        #  
+        #  and empty line
+
+        size_t count(libcpp_vector[double] inpVec) # wrap-doc:Single line docstring that will be overwritten by multi line wrap-doc
+        # wrap-doc:
+        #  Multi line docstring for method
+        #    with indentation
+        #  
+        #  and empty line
+```
 
 Test examples
 -------------
