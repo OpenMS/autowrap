@@ -65,6 +65,26 @@ class LibCppTest {
             integer_vector_ptr(0) 
         {}
 
+        enum class MyEnum : int
+        {
+            A,B,C
+        };
+
+        enum class MyEnum2 : int
+        {
+            A,B,C
+        };
+
+        int enumToInt(MyEnum e)
+        {
+            switch(e)
+            {
+                case MyEnum::A : return 1;
+                case MyEnum::B : return 2;
+                case MyEnum::C : return 3;
+            }
+        }
+
         Int * integer_ptr;
         std::vector<Int> * integer_vector_ptr;
 

@@ -126,6 +126,7 @@ class ResolvedEnum(object):
 
     def __init__(self, decl):
         self.name = decl.name
+        self.scoped = decl.scoped
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
         self.cpp_decl = decl
         self.items = decl.items

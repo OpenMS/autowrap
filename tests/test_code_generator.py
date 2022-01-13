@@ -42,20 +42,33 @@ import autowrap.Utils
 import autowrap.Code
 import autowrap
 from Cython.Compiler.Version import version as cython_version
-
 import os
 import math
 import sys
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
+def test_foo():
+    target = os.path.join(test_files, "enums.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code(["enums.pxd"],
+                                                    root=test_files, target=target, debug=True)
+
+    mod = autowrap.Utils.compile_and_import("enummodule", [target, ], include_dirs)
+
+    foo = mod.Foo()
+    myenumA = mod.Foo.MyEnum.A
+    myenum2A = mod.Foo.MyEnum2.A
+    assert (foo.enumToInt(myenumA) == 1)
+    with pytest.raises(AssertionError):
+        foo.enumToInt(myenum2A)
 
 def test_number_conv():
 
     target = os.path.join(test_files, "number_conv.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(["number_conv.pxd"],
-                                                    root=test_files, target=target,  debug=True)
+                                                    root=test_files, target=target, debug=True)
 
     mod = autowrap.Utils.compile_and_import("number_conv", [target, ], include_dirs)
 

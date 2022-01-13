@@ -45,7 +45,7 @@ from autowrap.Types import CppType
 import os
 import sys
 
-# import logging as L
+from autowrap import logger
 
 from collections import defaultdict
 from .tools import OrderKeepingDictionary
@@ -283,8 +283,9 @@ class CTypeDefDecl(BaseDecl):
 
 
 class EnumDecl(BaseDecl):
-    def __init__(self, name, items, annotations, pxd_path):
+    def __init__(self, name, scoped, items, annotations, pxd_path):
         super(EnumDecl, self).__init__(name, annotations, pxd_path)
+        self.scoped = scoped
         self.items = items
         self.template_parameters = None
 
@@ -300,10 +301,11 @@ class EnumDecl(BaseDecl):
             items.append((item.name, current_value))
             current_value += 1
 
-        return cls(name, items, annotations, pxd_path)
+        return cls(name, node.scoped, items, annotations, pxd_path)
 
     def __str__(self):
         res = "EnumDecl %s : " % self.name
+        res += "scoped" if self.scoped else ""
         res += ", ".join("%s: %d" % (i, v) for (i, v) in self.items)
         return res
 
@@ -338,12 +340,24 @@ class CppClassDecl(BaseDecl):
         methods = OrderKeepingDictionary()
         attributes = []
         for att in node.attributes:
-            decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
+            if isinstance(att, CVarDefNode):
+                decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
+            elif isinstance(att, CEnumDefNode):
+                raise NameError("Nested enums currently not supported."
+                                " Please add them under a new cdef extern section with class namespace. E.g.: \n"
+                                "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                                "    cpdef enum class MyEnum 'Foo::MyEnum': \n"
+                                "      A,B,C")
+                #decl = EnumDecl.parseTree(att, lines, pxd_path)
+
             if decl is not None:
                 if isinstance(decl, CppMethodOrFunctionDecl):
                     methods.setdefault(decl.name, []).append(decl)
                 elif isinstance(decl, CppAttributeDecl):
                     attributes.append(decl)
+                elif isinstance(decl, EnumDecl):
+                    #attributes.append(decl)
+                    pass
 
         return cls(
             name, template_parameters, methods, attributes, class_annotations, pxd_path
@@ -419,17 +433,14 @@ class CppMethodOrFunctionDecl(BaseDecl):
 class MethodOrAttributeDecl(object):
     @classmethod
     def parseTree(cls, node, lines, pxd_path):
+        if isinstance(node, CEnumDefNode):
+           return EnumDecl.parseTree(node, lines, pxd_path)
+
         annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
             return None  # nested classes only can be declared in pxd
 
         is_static = False
-
-        if isinstance(node, CVarDefNode):
-            if node.decorators is not None:
-                for dec in node.decorators:
-                    if dec.decorator.name == 'staticmethod':
-                        is_static = True
 
         (decl,) = node.declarators
         result_type = _extract_type(node.base_type, decl)
@@ -438,13 +449,17 @@ class MethodOrAttributeDecl(object):
             # Handle regular declarations
             return CppAttributeDecl(decl.name, result_type, annotations, pxd_path)
 
-        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(
-            decl.base, CFuncDeclaratorNode
-        ):
+        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(decl.base, CFuncDeclaratorNode):
             # Handle raw pointer declarations (call with base name)
             return CppAttributeDecl(decl.base.name, result_type, annotations, pxd_path)
+
         if isinstance(decl.base, CFuncDeclaratorNode):
             decl = decl.base
+
+        if node.decorators is not None:
+            for dec in node.decorators:
+                if dec.decorator.name == 'staticmethod':
+                    is_static = True
 
         name = decl.base.name
         args = []
@@ -555,7 +570,8 @@ def parse_pxd_file(path, warn_level=1):
     for body in iter_bodies(root):
         handler = handlers.get(type(body))
         if handler is not None:
-            # L.info("parsed %s, handler=%s" % (body.__class__, handler.im_self))
+            #with open('log.txt', 'a') as f:
+            #    f.write("parsed %s, handler=%s \n" % (body.__class__, handler.__self__))
             result.append(handler(body, lines, path))
         else:
             for node in getattr(body, "stats", []):

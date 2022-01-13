@@ -188,6 +188,7 @@ def run_cython(inc_dirs, extra_opts, out, warn_level=1):
     directive_defaults["boundscheck"] = False
     directive_defaults["wraparound"] = False
     directive_defaults["language_level"] = sys.version_info.major
+
     options = dict(include_path=inc_dirs,
                    compiler_directives=directive_defaults,
                    cplus=True)

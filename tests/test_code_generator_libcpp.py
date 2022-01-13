@@ -110,6 +110,9 @@ def test_libcpp():
 
     t = libcpp.LibCppTest()
 
+    scopedenumclassval = libcpp.LibCppTest.MyEnum.A
+    assert(t.enumToInt(scopedenumclassval) == 1)
+
     assert t.twist([b"hi", 2]) == [2, b"hi"]
     li = [1]
     li2 = t.process(li)
