@@ -61,8 +61,6 @@ cdef extern from "libcpp_test.hpp":
         bool operator==(LibCppTest)
         bool operator!=(LibCppTest)
 
-        int enumToInt(MyEnum e)
-
         libcpp_vector[Int] * integer_vector_ptr
         Int * integer_ptr
 
@@ -135,11 +133,3 @@ cdef extern from "libcpp_test.hpp":
         # int process40(AbstractBaseClass* in_)
         int process40(ABS_Impl1* in_)
         int process40(ABS_Impl2* in_)
-
-cdef extern from "libcpp_test.hpp" namespace "LibCppTest":
-    cpdef enum class MyEnum(int) :
-        # wrap-attach:
-        #  LibCppTest
-        A,
-        B,
-        C,

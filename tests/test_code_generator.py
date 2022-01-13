@@ -48,7 +48,9 @@ import sys
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
-def test_foo():
+def test_enums():
+    if int(cython_version[0]) < 3:
+        return
     target = os.path.join(test_files, "enums.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(["enums.pxd"],
