@@ -293,6 +293,10 @@ class EnumDecl(BaseDecl):
     def parseTree(cls, node, lines, pxd_path):
         name = node.name
         items = []
+        try:
+            scoped = node.scoped
+        except:
+            scoped = False
         annotations = parse_class_annotations(node, lines)
         current_value = 0
         for item in node.items:
@@ -301,7 +305,7 @@ class EnumDecl(BaseDecl):
             items.append((item.name, current_value))
             current_value += 1
 
-        return cls(name, node.scoped, items, annotations, pxd_path)
+        return cls(name, scoped, items, annotations, pxd_path)
 
     def __str__(self):
         res = "EnumDecl %s : " % self.name
