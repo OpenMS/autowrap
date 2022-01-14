@@ -167,10 +167,10 @@ class CodeGenerator(object):
 
         self.top_level_code = []
         self.top_level_pyx_code = []
-        self.enum_codes = defaultdict(list)
-        self.class_codes = defaultdict(list)
+        self.enum_codes = defaultdict(lambda: Code.Code())
+        self.class_codes = defaultdict(lambda: Code.Code())
         self.class_codes_extra = defaultdict(list)
-        self.class_pxd_codes = defaultdict(list)
+        self.class_pxd_codes = defaultdict(lambda: Code.Code())
         self.wrapped_enums_cnt = 0
         self.wrapped_classes_cnt = 0
         self.wrapped_methods_cnt = 0
