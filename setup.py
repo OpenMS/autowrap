@@ -1,6 +1,5 @@
 # encoding: utf-8
-# the following  import fixes/avoids some nostests issue
-# see
+# the following  import fixes/avoids some nosetests issue
 
 try:
     import multiprocessing
@@ -9,15 +8,16 @@ except ImportError:
 
 from setuptools import find_packages, setup
 
-
-VERSION = (0, 22, 6)
-# DO NOT FORGET TO BUMP THE VERSION IN version.py !!!!!!!!!!!!!!!!!!!
-
+versionfile = "autowrap/version.py"
+try:
+    execfile(versionfile)
+except:
+    exec(open(versionfile).read())
 
 setup(
     name="autowrap",
-    version="%d.%d.%d" % VERSION,
-    maintainer="Uwe Schmitt",
+    version="%d.%d.%d" % __version__,
+    maintainer="The OpenMS team and Uwe Schmitt",
     maintainer_email="uschmitt@mineway.de",
     license="http://opensource.org/licenses/BSD-3-Clause",
     platforms=["any"],
