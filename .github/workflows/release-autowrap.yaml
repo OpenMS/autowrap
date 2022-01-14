@@ -6,6 +6,10 @@ name: release autowrap
 
 on:
   workflow_dispatch: # manual trigger
+    inputs:
+      next_version:
+        description: 'Next version (empty = minor bump)'
+        default: ''
 
 jobs:
   build_publish:
@@ -52,3 +56,19 @@ jobs:
           body_path: CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          
+      - name: Setup things for new cycle
+        id: setup_new
+        run: |
+          NEXT_VER=${{ github.event.inputs.next_version }}
+          OLD_VER=${{ steps.version.outputs.version }}
+          [ -z "$NEXT_VER" ] && NEXT_VER=$(echo $OLD_VER | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g') || true
+          echo "\n" >> HISTORY.md
+          cat CHANGELOG.md >> HISTORY.md
+          rm CHANGELOG.md && echo "autowrap $NEXT_VER" > CHANGELOG.md
+          sed -i "s/.*__version__.*/__version__ = \(${OLD_VER//./, }\)/g" autowrap/version.py
+          
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: New release cycle
+          file_pattern: CHANGELOG.md HISTORY.md autowrap/version.py
