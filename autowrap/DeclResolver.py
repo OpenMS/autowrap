@@ -183,6 +183,7 @@ class ResolvedClass(object):
         # Note that we need the explicit True and False here since we do not want to overwrite
         #  non-empty lists that we might get from the line above! And non-empty lists implicitly
         #  evaluate to True.
+        # TODO test this in test suite or drop backwards compatibility. It has been years.
         if self.wrap_manual_memory == True:
             self.wrap_manual_memory = ["__old-model"]
         elif self.wrap_manual_memory == False:
