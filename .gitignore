@@ -33,9 +33,14 @@ pip-log.txt
 
 htmlcov
 
+# generated py extensions
 tests/test_files/gil_testing_wrapper.pyx
 tests/test_files/libcpp_stl_test.pyx
 tests/test_files/libcpp_utf8_string_test.pyx
 tests/test_files/libcpp_utf8_output_string_test.pyx
 tests/test_files/number_conv.pyx
+tests/test_files/enums.pyx
+
+# generated typestubs
+tests/test_files/*.pyi
 

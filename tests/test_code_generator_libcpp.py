@@ -176,9 +176,6 @@ def test_libcpp():
     assert list(out.items()) == [(1, 2.0)]
 
     out = t.process13(libcpp.EEE.A, 2)
-    print (list(out.items()))
-    print ([(libcpp.EEE.A, 2)])
-    print (list(out.items()) == [(libcpp.EEE.A, 2)])
     assert list(out.items()) == [(libcpp.EEE.A, 2)]
 
     out = t.process14(libcpp.EEE.A, 3)

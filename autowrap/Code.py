@@ -65,7 +65,7 @@ class Code(object):
         if a:  # if dict given
             kw.update(a[0])
         if "self" in kw:
-            del kw["self"]  # self causes problems in substitude call below
+            del kw["self"]  # self causes problems in substitute call below
         if isinstance(what, basestring):
             # print repr(what)
             try:

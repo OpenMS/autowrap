@@ -173,7 +173,7 @@ class CppType(object):
         ptr = "*" if self.is_ptr else ""
         ref = "&" if self.is_ref else ""
         if ptr and ref:
-            raise NotImplementedError("can not handel ref and ptr together")
+            raise NotImplementedError("can not handle ref and ptr together")
         if self.template_args is not None:
             inner = "[%s]" % (",".join(t.toString(withConst) for t in self.template_args))
         else:

@@ -245,7 +245,8 @@ def test_minimal():
     assert m2[1] == 2
     assert m2[2] == 3
 
-    with pytest.raises(OverflowError):
+    # Was OverflowError, but now we check positivity for unsigned ints
+    with pytest.raises(AssertionError):
         m2[-1]
 
     with pytest.raises(IndexError):
