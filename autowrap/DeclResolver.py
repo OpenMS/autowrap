@@ -309,12 +309,13 @@ def _resolve_decls(decls):
     for e in enum_decls:
         enum_mapping[e.name] = Types.CppType(e.name, enum_items=e.items)
 
-    # register class aliases
+    # register class aliases, e.g. instantiated template classes
     instance_mapping = _parse_all_wrap_instances_comments(class_decls)
+
     # remove local targ mappings:
     instance_mapping = dict((k, v0) for (k, (v0, v1)) in instance_mapping.items())
 
-    # resolve  typedefs in class aliase values
+    # resolve typedefs in class alias values
     instance_mapping = dict((k, v.transformed(typedef_mapping)) for (k, v) in
                             instance_mapping.items())
 

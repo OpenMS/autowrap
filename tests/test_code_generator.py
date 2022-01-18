@@ -59,11 +59,11 @@ def test_enums():
     mod = autowrap.Utils.compile_and_import("enummodule", [target, ], include_dirs)
 
     foo = mod.Foo()
-    myenumA = mod.Foo.MyEnum.A
-    myenum2A = mod.Foo.MyEnum2.A
-    assert (foo.enumToInt(myenumA) == 1)
+    myenum_a = mod.Foo.MyEnum.A
+    myenum2_a = mod.Foo.MyEnum2.A
+    assert (foo.enumToInt(myenum_a) == 1)
     with pytest.raises(AssertionError):
-        foo.enumToInt(myenum2A)
+        foo.enumToInt(myenum2_a)
 
 def test_number_conv():
 

@@ -137,6 +137,9 @@ class CodeGenerator(object):
         self.resolved.extend(sorted(self.classes, key=lambda d: d.name))
 
         self.instance_mapping = instance_mapping
+        for td in self.typedefs:
+            self.instance_mapping[td.name] = td.type_
+
         self.allDecl = allDecl
 
         ## Step 2: get classes of complete project (includes other modules)
@@ -172,6 +175,7 @@ class CodeGenerator(object):
         self.class_codes = defaultdict(lambda: Code.Code())
         self.class_codes_extra = defaultdict(list)
         self.class_pxd_codes = defaultdict(lambda: Code.Code())
+        self.top_level_typestub_code = []
         self.typestub_codes = defaultdict(lambda: Code.Code())
         self.wrapped_enums_cnt = 0
         self.wrapped_classes_cnt = 0
@@ -263,10 +267,12 @@ class CodeGenerator(object):
             pxd_code += c.render()
             pxd_code += " \n"
 
-        pyi_code = "from typing import overload, Any, List, Dict, Tuple, Set, Sequence\n"
+        pyi_code = "from typing import overload, Any, List, Dict, Tuple, Set, Sequence\n\n"
+        pyi_code += "\n".join(ci.render() for ci in self.top_level_typestub_code)
+        pyi_code += "\n\n"
         for n, c in self.typestub_codes.items():
             pyi_code += c.render()
-            pyi_code += " \n"
+            pyi_code += " \n\n"
 
         with open(self.target_pyi_path, "w") as fp:
             fp.write(pyi_code)
@@ -438,7 +444,9 @@ class CodeGenerator(object):
                                 |    $shared_ptr_inst
                                 |
                                 """, locals())
-                shared_ptr_inst = "# see .pxd file for cdef of inst ptr" # do not implement in pyx file, only in pxd file
+
+                # do not implement in pyx file, only in pxd file
+                shared_ptr_inst = "# see .pxd file for cdef of inst ptr"
 
             if len(r_class.wrap_manual_memory) != 0:
                 class_code.add("""
@@ -536,7 +544,6 @@ class CodeGenerator(object):
         extra_methods_code = self.manual_code.get(cname)
         if extra_methods_code:
             class_code.add(extra_methods_code)
-
 
         for class_name in r_class.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
@@ -717,9 +724,6 @@ class CodeGenerator(object):
         """
         args = augment_arg_names(method)
 
-        if method.name == "process7":
-            print("FOO")
-
         # Step 0: collect conversion data for input args and call
         # input_conversion for more sophisticated conversion code (e.g. std::vector<Obj>)
         py_signature_parts = []
@@ -778,11 +782,21 @@ class CodeGenerator(object):
             return_type = "-> " + return_type + ":"
         else:
             return_type = ":"
-        stub.add("""
+
+        if method.is_static:
+            stub.add("""
+                       |
+                       |@staticmethod
+                       |def $py_name($py_typing_signature) $return_type
+                       |    ...
+                       """, locals())
+        else:
+            stub.add("""
                        |
                        |def $py_name($py_typing_signature) $return_type
                        |    ...
                        """, locals())
+
 
         # Step 2a: create code which convert python input args to c++ args of
         # wrapped method
@@ -885,8 +899,8 @@ class CodeGenerator(object):
         meth_code = Code.Code()
 
         call_args, cleanups, in_types, stubs = self._create_fun_decl_and_input_conversion(meth_code,
-                                                                                   py_name,
-                                                                                   method)
+                                                                                          py_name,
+                                                                                          method)
 
         # call wrapped method and convert result value back to python
         cpp_name = method.cpp_decl.name
@@ -944,14 +958,20 @@ class CodeGenerator(object):
             code, typestub = self._create_wrapper_for_free_function(decl)
         else:
             code = Code.Code()
-            static_name = "__static_%s_%s" % (static_clz, decl.name) # name used to attach to class
+            stub = Code.Code()
+            static_name = "__static_%s_%s" % (static_clz, decl.name)  # name used to attach to class
             code.add("%s = %s" % (decl.name, static_name))
+            stub.add("""
+                    |
+                    |%s: %s
+                     """ % (decl.name, static_name))
             out_codes[static_clz].add(code)
-            orig_cpp_name = decl.cpp_decl.name # original cpp name (not displayname)
+            self.typestub_codes[static_clz].add(stub)
+            orig_cpp_name = decl.cpp_decl.name  # original cpp name (not displayname)
             code, typestub = self._create_wrapper_for_free_function(decl, static_name, orig_cpp_name)
 
         self.top_level_pyx_code.append(code)
-        self.typestub_codes["toplevelfreefunctions"].add(typestub)
+        self.top_level_typestub_code.append(typestub)
 
     def _create_wrapper_for_free_function(self, decl, name=None, orig_cpp_name=None):
         if name is None:

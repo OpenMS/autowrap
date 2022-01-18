@@ -3,6 +3,7 @@ from libcpp cimport bool
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector
 
+
 cdef extern from "templated.hpp":
 
     cdef cppclass T:
@@ -22,6 +23,9 @@ cdef extern from "templated.hpp":
         # wrap-instances:
         #   Templated := Templated[T]
         #   Templated_other := Templated[T2]
+
+        #Does not work, see below
+        #Templated_vec := Templated[libcpp_vector[T]]
 
         X _x
         float f # wrap-as:f_att

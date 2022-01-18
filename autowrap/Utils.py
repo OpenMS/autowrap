@@ -56,13 +56,10 @@ setup(cmdclass = {'build_ext' : build_ext},
       package_data = {
             '': ['py.typed', '*.pyi'],
       },
-      packages = ['.'],
-      include_package_data=True
+      packages = ['.']
      )
 
 """
-
-
 
 
 def compile_and_import(name, source_files, include_dirs=None, **kws):
@@ -83,10 +80,12 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("tempdir=", tempdir)
         print("\n")
     for source_file in source_files:
+        if source_file[-4:] != ".pyx" and source_file[-4:] != ".cpp":
+            raise NameError("Expected pyx and/or cpp files as source files for compilation.")
         shutil.copy(source_file, tempdir)
         stub = source_file[:-4]+".pyi"
         if os.path.exists(stub):
-            shutil.copy(stub, tempdir)
+            shutil.copy(stub, os.path.join(tempdir, name+".pyi"))
 
     compile_args = []
     link_args = []
@@ -101,7 +100,6 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     if sys.platform != "win32":
         compile_args += ["-Wno-unused-but-set-variable"]
 
-        
     include_dirs = [os.path.abspath(d) for d in include_dirs]
     source_files = [os.path.basename(f) for f in source_files]
     setup_code = template % locals()

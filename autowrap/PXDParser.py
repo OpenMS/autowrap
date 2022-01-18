@@ -173,7 +173,7 @@ def _extract_template_args(node):
     elif isinstance(node.index, NameNode):
         args = [CppType(node.index.name)]
     else:
-        raise Exception("can not handle node %s in template arg decl" % node.index)
+        raise Exception("Can not handle node %s in template argument declaration" % node.index)
     return CppType(name, args)
 
 
@@ -238,7 +238,8 @@ def _extract_type(base_type, decl):
                 tt = _extract_template_args(arg_node)
                 template_parameters.append(tt)
             else:
-                raise Exception("can not handle template arg_node %r" % arg_node.pos[0].file_path +" line: %r" % arg_node.pos[1]+ " col: %r" % arg_node.pos[2])
+                raise Exception("Can not handle template argument node (arg_node) %r" % arg_node.pos[0].file_path +
+                                " line: %r" % arg_node.pos[1] + " col: %r" % arg_node.pos[2])
 
         base_type = base_type.base_type_node
 
@@ -344,22 +345,31 @@ class CppClassDecl(BaseDecl):
         methods = OrderKeepingDictionary()
         attributes = []
         for att in node.attributes:
-            if isinstance(att, CVarDefNode):
+            decl = None
+            if isinstance(att, CVarDefNode):  # attribute or member function
                 decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
             elif isinstance(att, CEnumDefNode):
-                raise NameError("Nested enums currently not supported."
-                                " Please add them under a new cdef extern section with class namespace. E.g.: \n"
-                                "cdef extern from 'foo.hpp' namespace 'Foo': \n"
-                                "    cpdef enum class MyEnum 'Foo::MyEnum': \n"
-                                "      A,B,C")
+                logger.warning("Nested enums currently not supported by autowrap. Skipping its wrap."
+                               " Please add them under a new cdef extern section with class namespace. E.g.: \n"
+                               "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                               "    cpdef enum class MyEnum 'Foo::MyEnum': \n"
+                               "      # wrap-attach: Foo \n"
+                               "      A,B,C")
+                # TODO we might be able to support it with the following
                 #decl = EnumDecl.parseTree(att, lines, pxd_path)
-
+            elif isinstance(att, CClassDefNode):
+                logger.warning("Nested classes are currently not supported by autowrap. Skipping its wrap."
+                                " Try to add them under a new cdef extern section with class namespace. E.g.: \n"
+                                "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                                "    cpdef cppclass MyClass 'Foo::MyClass': \n"
+                                "      ...")
             if decl is not None:
                 if isinstance(decl, CppMethodOrFunctionDecl):
                     methods.setdefault(decl.name, []).append(decl)
                 elif isinstance(decl, CppAttributeDecl):
                     attributes.append(decl)
                 elif isinstance(decl, EnumDecl):
+                    # Should not happen since we currently forbid it in the logic above
                     #attributes.append(decl)
                     pass
 
@@ -555,7 +565,7 @@ def parse_pxd_file(path, warn_level=1):
             body = tree.body.body
             yield body
         else:
-            raise Exception("parse_pxd_file failed: no valied .pxd file !")
+            raise Exception("parse_pxd_file failed: no valid .pxd file !")
 
     lines = open(path).readlines()
 

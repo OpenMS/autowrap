@@ -114,7 +114,7 @@ class ConverterRegistry(object):
         rv = [conv for conv in self.lookup[cpp_type.base_type]
               if conv.matches(cpp_type)]
         if len(rv) < 1:
-            raise Exception("no converter for %s" % cpp_type)
+            raise Exception("no converter for %s in: %s" % (cpp_type, str(self.lookup)))
 
         # always take the latest converter which allows overwriting existing
         # standard converters (externally)!
@@ -211,14 +211,14 @@ class TypeConverterBase(object):
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         raise NotImplementedError()
 
-
-    def _codeForInstantiateObjectFromIter(self, cpp_type, it):
+    @staticmethod
+    def _code_for_instantiate_object_from_iter(cpp_type, it):
         """
-        Code for new object instantation from iterator (double deref for iterator-ptr)
+        Code for new object instantiation from iterator (double deref for iterator-ptr)
 
         Note that if cpp_type is a pointer and the iterator therefore refers to
-        a STL object of std::vector< _FooObject* >, then we need the base type
-        to instantate a new object and dereference twice.
+        an STL object of std::vector< _FooObject* >, then we need the base type
+        to instantiate a new object and dereference twice.
 
         Example output:
             shared_ptr[ _FooObject ] (new _FooObject (*foo_iter)  )
@@ -233,6 +233,7 @@ class TypeConverterBase(object):
             return string.Template("shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))").substitute(locals())
         else:
             return string.Template("shared_ptr[$cpp_type](new $cpp_type(deref($it)))").substitute(locals())
+
 
 class VoidConverter(TypeConverterBase):
 
@@ -271,12 +272,12 @@ class IntegerConverter(TypeConverterBase):
 
     """
     wraps long and int. "long" base_type is converted to "int" by the
-    cython parser !
+    cython parser!
     """
 
     def get_base_types(self):
         return ("int", "bool", "long", "int32_t", "ptrdiff_t", "int64_t",
-                "uint32_t", "uint64_t", "size_t")
+                "long int", "uint32_t", "uint64_t", "size_t")
 
     def matches(self, cpp_type):
         return not cpp_type.is_ptr
@@ -303,12 +304,12 @@ class IntegerConverter(TypeConverterBase):
 class UnsignedIntegerConverter(TypeConverterBase):
 
     """
-    wraps long and int. "long" base_type is converted to "int" by the
-    cython parser !
+    wraps unsigned long and int. "long" base_type is converted to "int" by the
+    cython parser!
     """
 
     def get_base_types(self):
-        return ("ptrdiff_t", "unsigned int", "unsigned long"
+        return ("unsigned int", "unsigned long", "ptrdiff_t",
                 "uint32_t", "uint64_t", "size_t")
 
     def matches(self, cpp_type):
@@ -550,7 +551,7 @@ class TypeToWrapConverter(TypeConverterBase):
         return cpp_type.base_type
 
     def matching_python_type_full(self, cpp_type):
-        # TODO check what happens with ptr/ref types and typedefs
+        # TODO double-check what happens with ptr/ref types and typedefs
         return cpp_type.base_type
 
     def type_check_expression(self, cpp_type, argument_var):
@@ -1075,7 +1076,7 @@ class StdSetConverter(TypeConverterBase):
                 """, locals())
             if cpp_type.is_ref and not cpp_type.is_const:
 
-                instantiation = self._codeForInstantiateObjectFromIter(inner, it)
+                instantiation = self._code_for_instantiate_object_from_iter(inner, it)
                 cleanup_code = Code().add("""
                     |replace = set()
                     |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
@@ -1133,7 +1134,7 @@ class StdSetConverter(TypeConverterBase):
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
 
-            instantiation = self._codeForInstantiateObjectFromIter(inner, it)
+            instantiation = self._code_for_instantiate_object_from_iter(inner, it)
             code = Code().add("""
                 |$output_py_var = set()
                 |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
@@ -1166,11 +1167,11 @@ class StdVectorConverter(TypeConverterBase):
 
     def matching_python_type_full(self, cpp_type):
         tt, = cpp_type.template_args
-        try: # TODO if the template type is a typedef we currently have a problem
+        try:
             inner_conv = self.converters.get(tt)
             return "List[%s]" % inner_conv.matching_python_type_full(tt)
-        except:
-            return "Any"
+        except Exception:
+            return "List[Any]"
 
     def type_check_expression(self, cpp_type, arg_var):
         tt, = cpp_type.template_args
@@ -1371,7 +1372,7 @@ class StdVectorConverter(TypeConverterBase):
         std::vector< std::vector< T > > which is detected since the template
         argument of tt itself is not None).
         """
-        # If we are inside a recursion, we expect the toplmost and bottom most code to be present...
+        # If we are inside a recursion, we expect the top-most and bottom most code to be present...
         if recursion_cnt > 1:
             assert topmost_code is not None
             assert bottommost_code is not None
@@ -1385,7 +1386,6 @@ class StdVectorConverter(TypeConverterBase):
             it_prev = mangle("it_" + argument_var[:-4])
 
         base_type = tt.base_type
-        inner = self.converters.cython_type(tt)
         cy_tt = tt.base_type
 
         # Prepare the code that should be at the very outer level of the
@@ -1397,7 +1397,9 @@ class StdVectorConverter(TypeConverterBase):
             + = new libcpp_vector[$inner]()
         """
 
-        contains_classes_to_wrap = tt.template_args is not None and \
+        # If the inner type is templated and contains a class to wrap by us
+        # TODO describe what "to wrap" means. Also typedefs to them etc.?
+        inner_contains_classes_to_wrap = tt.template_args is not None and \
             len(set(self.converters.names_of_wrapper_classes).intersection(
                 set(tt.all_occuring_base_types()))) > 0
 
@@ -1442,7 +1444,7 @@ class StdVectorConverter(TypeConverterBase):
             if inner.is_ptr:
                 do_deref = ""
 
-            instantiation = self._codeForInstantiateObjectFromIter(inner, it)
+            instantiation = self._code_for_instantiate_object_from_iter(inner, it)
             code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
             cleanup_code = self._prepare_nonrecursive_cleanup(
                 cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
@@ -1474,7 +1476,7 @@ class StdVectorConverter(TypeConverterBase):
 
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 item2 = "%s_rec_b" % argument_var
-                instantiation = self._codeForInstantiateObjectFromIter(inner, it)
+                instantiation = self._code_for_instantiate_object_from_iter(inner, it)
                 cleanup_code = Code().add("""
                     |# gather results
                     |replace = list()
@@ -1492,15 +1494,18 @@ class StdVectorConverter(TypeConverterBase):
 
             return code, "%s" % temp_var, cleanup_code
 
-        elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
-            len(set(self.converters.names_of_wrapper_classes).intersection(
-                set(tt.all_occuring_base_types()))) > 0:
-                # Only if the std::vector contains a class that we need to wrap somewhere,
-                # we cannot do it ...
+        elif inner_contains_classes_to_wrap and tt.base_type != "libcpp_vector":
+            # Only if the template argument which is neither a class-to-wrap nor a std::vector
+            # again is a template of something that anywhere in the template hierarchy contains a
+            # class-to-wrap (see CppType.allOccuringBaseTypes), we cannot do it yet.
+            # We would probably need to call the input_coversion code generation methods
+            # of the according ConversionProviders here.
+            # If the inner rest of the template is a pure libcpp_pair<int,int> for example,
+            # cython can do it with a simple assignment automatically. See final else-case.
             raise Exception(
                 "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
 
-        elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
+        elif inner_contains_classes_to_wrap and tt.base_type == "libcpp_vector":
             # Case 4: We wrap a std::vector<> with a base type that contains
             #         further nested std::vector<> inside
             #         -> deal with recursion
@@ -1577,7 +1582,7 @@ class StdVectorConverter(TypeConverterBase):
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
 
-            instantiation = self._codeForInstantiateObjectFromIter(inner, it)
+            instantiation = self._code_for_instantiate_object_from_iter(inner, it)
             code = Code().add("""
                 |$output_py_var = []
                 |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
@@ -1589,6 +1594,8 @@ class StdVectorConverter(TypeConverterBase):
                 |   inc($it)
                 """, locals())
             return code
+
+        # TODO recursion missing for outputting list[list[list..[X]]..]
 
         elif tt.base_type == "shared_ptr" \
                 and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
