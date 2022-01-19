@@ -52,12 +52,14 @@ ext = Extension("%(name)s", sources = %(source_files)s, language="c++",
 setup(cmdclass = {'build_ext' : build_ext},
       name="%(name)s",
       version="0.0.1",
-      ext_modules = [ext]
+      ext_modules = [ext],
+      package_data = {
+            '': ['py.typed', '*.pyi'],
+      },
+      packages = ['.']
      )
 
 """
-
-
 
 
 def compile_and_import(name, source_files, include_dirs=None, **kws):
@@ -78,7 +80,12 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("tempdir=", tempdir)
         print("\n")
     for source_file in source_files:
+        if source_file[-4:] != ".pyx" and source_file[-4:] != ".cpp":
+            raise NameError("Expected pyx and/or cpp files as source files for compilation.")
         shutil.copy(source_file, tempdir)
+        stub = source_file[:-4]+".pyi"
+        if os.path.exists(stub):
+            shutil.copy(stub, os.path.join(tempdir, name+".pyi"))
 
     compile_args = []
     link_args = []
@@ -93,7 +100,6 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     if sys.platform != "win32":
         compile_args += ["-Wno-unused-but-set-variable"]
 
-        
     include_dirs = [os.path.abspath(d) for d in include_dirs]
     source_files = [os.path.basename(f) for f in source_files]
     setup_code = template % locals()
@@ -108,6 +114,9 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
     os.chdir(tempdir)
     with open("setup.py", "w") as fp:
         fp.write(setup_code)
+
+    # module folder needs to have a py.typed file to recognize type stubs
+    open("py.typed", 'a').close()
 
     import sys
     sys.path.insert(0, tempdir)

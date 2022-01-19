@@ -157,17 +157,17 @@ def test_libcpp():
     out = t.process8(in_)
     assert in_ == out[::-1]
 
-    in_ = set((1, 2))
+    in_ = {1, 2}
     out = t.process9(in_)
     assert sorted(out) == [1, 2, 42]
     assert sorted(in_) == [1, 2, 42]
 
-    in_ = set((libcpp.EEE.A, libcpp.EEE.B))
+    in_ = {libcpp.EEE.A, libcpp.EEE.B}
     out = t.process10(in_)
     assert sorted(out) == sorted(in_)
     assert sorted(in_) == sorted(in_)
 
-    in_ = set((t2,))
+    in_ = {t2}
     out = t.process11(in_)
     assert sorted(x.gett() for x in in_) == [12, 42]
     assert sorted(x.gett() for x in out) == [12, 42]
@@ -176,9 +176,6 @@ def test_libcpp():
     assert list(out.items()) == [(1, 2.0)]
 
     out = t.process13(libcpp.EEE.A, 2)
-    print (list(out.items()))
-    print ([(libcpp.EEE.A, 2)])
-    print (list(out.items()) == [(libcpp.EEE.A, 2)])
     assert list(out.items()) == [(libcpp.EEE.A, 2)]
 
     out = t.process14(libcpp.EEE.A, 3)
@@ -402,13 +399,13 @@ def test_libcpp():
     # Use in dict/set
     # For this to work, the class needs to have __hash__ and __richcmp__ which
     # are wrapped by "wrap-hash" and operator== and operator!=
-    tset = set([libcpp.LibCppTest(), libcpp.LibCppTest()])
+    tset = {libcpp.LibCppTest(), libcpp.LibCppTest()}
     assert len(tset) == 1, len(tset)
     t1 = libcpp.LibCppTest(1)
     t2 = libcpp.LibCppTest(2)
-    tset = set([t1, t1])
+    tset = {t1, t1}
     assert len(tset) == 1
-    tset = set([t1, t2])
+    tset = {t1, t2}
     assert len(tset) == 2
 
     tdict = {t1 : "a", t2 : "b"}
