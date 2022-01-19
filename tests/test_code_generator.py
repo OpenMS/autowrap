@@ -48,6 +48,19 @@ import sys
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
+
+def test_iteratorwrapper():
+    target = os.path.join(test_files, "iteratorwrapper.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code(["iteratorwrapper.pxd"],
+                                                    root=test_files, target=target, debug=True)
+
+    mod = autowrap.Utils.compile_and_import("iteratorwrappermodule", [target, ], include_dirs)
+
+    foo = mod.ProcessingSoftware()
+    assert (foo.assigned_scores[1].get().name == b'eval')
+
+
 def test_enums():
     if int(cython_version[0]) < 3:
         return

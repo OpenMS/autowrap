@@ -355,34 +355,35 @@ class CppClassDecl(BaseDecl):
         class_annotations = parse_class_annotations(node, lines)
         methods = OrderKeepingDictionary()
         attributes = []
-        for att in node.attributes:
-            decl = None
-            if isinstance(att, CVarDefNode):  # attribute or member function
-                decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
-            elif isinstance(att, CEnumDefNode):
-                logger.warning("Nested enums currently not supported by autowrap. Skipping its wrap."
-                               " Please add them under a new cdef extern section with class namespace. E.g.: \n"
-                               "cdef extern from 'foo.hpp' namespace 'Foo': \n"
-                               "    cpdef enum class MyEnum 'Foo::MyEnum': \n"
-                               "      # wrap-attach: Foo \n"
-                               "      A,B,C")
-                # TODO we might be able to support it with the following
-                #decl = EnumDecl.parseTree(att, lines, pxd_path)
-            elif isinstance(att, CClassDefNode):
-                logger.warning("Nested classes are currently not supported by autowrap. Skipping its wrap."
-                                " Try to add them under a new cdef extern section with class namespace. E.g.: \n"
-                                "cdef extern from 'foo.hpp' namespace 'Foo': \n"
-                                "    cpdef cppclass MyClass 'Foo::MyClass': \n"
-                                "      ...")
-            if decl is not None:
-                if isinstance(decl, CppMethodOrFunctionDecl):
-                    methods.setdefault(decl.name, []).append(decl)
-                elif isinstance(decl, CppAttributeDecl):
-                    attributes.append(decl)
-                elif isinstance(decl, EnumDecl):
-                    # Should not happen since we currently forbid it in the logic above
-                    #attributes.append(decl)
-                    pass
+        if node.attributes is not None:
+            for att in node.attributes:
+                decl = None
+                if isinstance(att, CVarDefNode):  # attribute or member function
+                    decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
+                elif isinstance(att, CEnumDefNode):
+                    logger.warning("Nested enums currently not supported by autowrap. Skipping its wrap."
+                                   " Please add them under a new cdef extern section with class namespace. E.g.: \n"
+                                   "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                                   "    cpdef enum class MyEnum 'Foo::MyEnum': \n"
+                                   "      # wrap-attach: Foo \n"
+                                   "      A,B,C")
+                    # TODO we might be able to support it with the following
+                    #decl = EnumDecl.parseTree(att, lines, pxd_path)
+                elif isinstance(att, CClassDefNode):
+                    logger.warning("Nested classes are currently not supported by autowrap. Skipping its wrap."
+                                    " Try to add them under a new cdef extern section with class namespace. E.g.: \n"
+                                    "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                                    "    cpdef cppclass MyClass 'Foo::MyClass': \n"
+                                    "      ...")
+                if decl is not None:
+                    if isinstance(decl, CppMethodOrFunctionDecl):
+                        methods.setdefault(decl.name, []).append(decl)
+                    elif isinstance(decl, CppAttributeDecl):
+                        attributes.append(decl)
+                    elif isinstance(decl, EnumDecl):
+                        # Should not happen since we currently forbid it in the logic above
+                        #attributes.append(decl)
+                        pass
 
         return cls(
             name, template_parameters, methods, attributes, class_annotations, pxd_path
