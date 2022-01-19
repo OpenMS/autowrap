@@ -119,6 +119,13 @@ class Y  {
         {
             return x;
         };
+
+};
+
+class Z  {
+
+    public:
+        std::vector<std::vector<T>::iterator> assigned_scores{};
 };
 
 

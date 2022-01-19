@@ -189,6 +189,12 @@ def _extract_type(base_type, decl):
         base_type = base_type.base_type
 
     template_parameters = None
+    nested_type = ""
+    if isinstance(base_type, CNestedBaseTypeNode):
+        if isinstance(base_type.base_type, TemplatedTypeNode):
+            nested_type = base_type.name
+            base_type = base_type.base_type
+            #TODO this only supports one level of nestedness (e.g. for libcpp_vector[T].iterator)
     if isinstance(base_type, TemplatedTypeNode):
         template_parameters = []
         for arg_node in base_type.positional_args:
@@ -248,14 +254,19 @@ def _extract_type(base_type, decl):
     is_unsigned = hasattr(base_type, "signed") and not base_type.signed
     is_long = hasattr(base_type, "longness") and base_type.longness
 
+    typename = base_type.name
+    if nested_type:
+        typename += "." + nested_type
+
     return CppType(
-        base_type.name,
+        typename,
         template_parameters,
         is_ptr,
         is_ref,
         is_unsigned,
         is_long,
         is_const=type_is_const,
+        nested=nested_type,
     )
 
 

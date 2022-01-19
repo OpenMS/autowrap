@@ -41,7 +41,7 @@ class CppType(object):
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
     def __init__(self, base_type, template_args=None, is_ptr=False, is_ref=False,
-                 is_unsigned=False, is_long=False, enum_items=None, is_const=False):
+                 is_unsigned=False, is_long=False, enum_items=None, is_const=False, nested=""):
         # L.info("Create new type %s with args %s and const %s" % (base_type, template_args, is_const))
         self.base_type = "void" if base_type is None else base_type
         self.is_ptr = is_ptr
@@ -50,6 +50,7 @@ class CppType(object):
         self.is_long = is_long
         self.is_const = is_const
         self.is_enum = enum_items is not None
+        self.nested = nested
         self.enum_items = enum_items
         self.template_args = template_args and tuple(template_args)
         self.topmost_is_ref = False
@@ -86,10 +87,10 @@ class CppType(object):
         aliased_t = typemap.get(self.base_type)
         if aliased_t is not None:
             if self.template_args is not None:
-                if aliased_t.template_args is not None:
-                    map_ = printable(typemap, "\n    ")
-                    m = "invalid transform of %s with:\n    %s" % (self, map_)
-                    raise Exception(m)
+                #if aliased_t.template_args is not None:
+                #    map_ = printable(typemap, "\n    ")
+                #    m = "invalid transform of %s with:\n    %s" % (self, map_)
+                #    raise Exception(m)
                 self._overwrite_base_type(aliased_t)
             else:
                 self._overwrite_base_type(aliased_t)
@@ -136,6 +137,9 @@ class CppType(object):
         self.is_unsigned = self.is_unsigned or other.is_unsigned
         self.is_long = self.is_long or other.is_long
         self.is_enum = self.is_enum or other.is_enum
+        self.nested = other.nested
+        # TODO currently this works but I am not sure about all implications,
+        #  and what this function actually tries to do
 
     def __hash__(self):
         """ for using Types as dict keys """
@@ -174,11 +178,15 @@ class CppType(object):
         ref = "&" if self.is_ref else ""
         if ptr and ref:
             raise NotImplementedError("can not handle ref and ptr together")
+        nested = ""
+        if self.nested:
+            self.base_type = self.base_type.replace("." + self.nested, "")
+            nested = "." + self.nested
         if self.template_args is not None:
             inner = "[%s]" % (",".join(t.toString(withConst) for t in self.template_args))
         else:
             inner = ""
-        result = "%s%s%s %s%s %s" % (const_, unsigned, long_, self.base_type, inner,
+        result = "%s%s%s %s%s%s %s" % (const_, unsigned, long_, self.base_type, inner, nested,
                                     ptr or ref)
         result = result.replace("  ", " ")
         return result.strip()  # if unsigned is "" or ptr is "" and ref is ""

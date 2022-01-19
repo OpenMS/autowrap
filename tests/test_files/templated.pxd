@@ -12,6 +12,8 @@ cdef extern from "templated.hpp":
         T(T) # wrap-ignore
         int get()
 
+    ctypedef libcpp_vector[T].iterator Ref
+
     cdef cppclass T2:
         T2() 
         T2(int)
@@ -47,6 +49,15 @@ cdef extern from "templated.hpp":
     cdef cppclass Y:
         Y()
         libcpp_vector[Templated[T]] passs(libcpp_vector[Templated[T]] v)
+
+    cdef cppclass Z:
+        Z()
+        libcpp_vector[Ref] assigned_scores # wrap-ignore
+
+        # Does not work since substituting the template in Templated would result in a
+        # vec[vec[T]] for the xi member. And __get__ calls output_conversion, which cannot
+        # handle recursion at all (not even for vectors only)
+        #libcpp_vector[Templated[T]] passs(libcpp_vector[Templated[libcpp_vector[T]]] v)
 
 cdef extern from "templated.hpp" namespace "Templated<T2>":
 

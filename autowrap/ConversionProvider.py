@@ -83,6 +83,7 @@ class ConverterRegistry(object):
         self.names_of_wrapper_classes += ["const %s" % k for k in instance_mapping.keys()]
         self.names_of_classes_to_wrap = names_of_classes_to_wrap
         self.names_of_enums_to_wrap = names_of_enums_to_wrap
+        self.names_of_builtin = dict([(("libcpp_vector","iterator"), "unsigned int")])
 
         self.process_and_set_type_mapping(instance_mapping)
 
@@ -1434,9 +1435,13 @@ class StdVectorConverter(TypeConverterBase):
             # Case 2: We wrap a std::vector<> with a base type we need to wrap
             item = "item%s" % arg_num
 
+            tmpl_base_type = base_type
+            if tt.template_args is not None:
+                tmpl_base_type = inner.toString(withConst=False)
+
             # Add cdef of the base type to the toplevel code
             code_top += """
-                |cdef $base_type $item
+                |cdef $tmpl_base_type $item
             """
 
             # Only dereference for non-ptr types
@@ -1455,6 +1460,8 @@ class StdVectorConverter(TypeConverterBase):
                 call_fragment = "deref(%s)" % temp_var
 
             return code, call_fragment, cleanup_code
+
+        #elif (tt.base_type, tt.nested) in self.converters.names_of_builtin:
 
         elif tt.template_args is not None and tt.base_type == "shared_ptr" \
                 and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
@@ -1505,10 +1512,12 @@ class StdVectorConverter(TypeConverterBase):
             raise Exception(
                 "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
 
-        elif inner_contains_classes_to_wrap and tt.base_type == "libcpp_vector":
+        elif inner_contains_classes_to_wrap and tt.base_type == "libcpp_vector" \
+            and tt.nested != "iterator":
             # Case 4: We wrap a std::vector<> with a base type that contains
             #         further nested std::vector<> inside
             #         -> deal with recursion
+            # Unless the type is actually vector<T>.iterator, which is kind of a built-in type that cython might handle
             item = "%s_rec" % argument_var
 
             # A) Prepare the pre-call
