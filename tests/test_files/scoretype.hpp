@@ -60,14 +60,19 @@ struct ScoreType
 typedef std::set<ScoreType>::iterator SetIter;
 typedef std::set<ScoreType> ScoreTypes;
 typedef IteratorWrapper<std::set<ScoreType>::iterator, ScoreType> ScoreTypeRef;
+typedef CrazyBoostIteratorWrapper<ScoreType> BoostContainerScoreTypeRef;
 
 
 struct ProcessingSoftware
 {
   ScoreTypes s = {ScoreType(true, "comet"), ScoreType(false, "msgf"), ScoreType(false,"eval")};
-  std::vector<ScoreTypeRef> assigned_scores = {ScoreTypeRef(s.find(ScoreType(true,"comet"))), ScoreTypeRef(s.find(ScoreType(false,"eval")))};
-  ScoreTypeRef getFirst()
-  {
-    return s.begin();
-  }
+
+  std::vector<ScoreTypeRef> assigned_scores =
+    {ScoreTypeRef(s.find(ScoreType(true,"comet"))), ScoreTypeRef(s.find(ScoreType(false,"eval")))};
+
+  std::vector<BoostContainerScoreTypeRef> assigned_scores_boost =
+    {
+        BoostContainerScoreTypeRef(s.find(ScoreType(true,"comet"))),
+        BoostContainerScoreTypeRef(s.find(ScoreType(false,"eval")))
+    };
 };

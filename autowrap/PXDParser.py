@@ -91,13 +91,13 @@ def _parse_multiline_annotations(lines):
                 line = next(it).strip()
                 while line.startswith("#  "):
                     if key == "wrap-doc":
-                        value = line[3:].rstrip() # rstrip to keep indentation in docs
+                        value = line[3:].rstrip()  # rstrip to keep indentation in docs
                     else:
                         value = line[1:].strip()
-                    if (key == "wrap-doc" or value): # don't add empty non wrap-doc values
+                    if (key == "wrap-doc" or value):  # don't add empty non wrap-doc values
                         result[key].append(value)
                     try:
-                        line = next(it).lstrip() # lstrip to keep empty lines in docs
+                        line = next(it).lstrip()  # lstrip to keep empty lines in docs
                     except StopIteration:
                         break
             else:

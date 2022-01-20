@@ -8,6 +8,10 @@ cdef extern from "enums.hpp":
 cdef extern from "enums.hpp" namespace "Foo":
 
     cpdef enum class MyEnum "Foo::MyEnum":
+        # wrap-doc:
+        #  MyEnum2
+        #  is cool
+        #
         # wrap-attach:
         #  Foo
         A
@@ -15,6 +19,9 @@ cdef extern from "enums.hpp" namespace "Foo":
         C
 
     cpdef enum class MyEnum2 "Foo::MyEnum2":
+        # wrap-doc:
+        #  MyEnum2
+        #
         # wrap-attach:
         #  Foo
         A

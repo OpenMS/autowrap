@@ -60,6 +60,9 @@ def test_iteratorwrapper():
     foo = mod.ProcessingSoftware()
     assert (foo.assigned_scores[1].get().name == b'eval')
 
+    bar = mod.ProcessingSoftware()
+    assert (bar.assigned_scores_boost[1].get().name == b'eval')
+
 
 def test_enums():
     if int(cython_version[0]) < 3:

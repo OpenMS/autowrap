@@ -14,6 +14,13 @@ cdef extern from "iteratorwrapper.hpp":
         IteratorWrapper(IteratorWrapper[I,V])
         V get()
 
+    cdef cppclass CrazyBoostIteratorWrapper[V]:
+        # wrap-instances:
+        #  SomeBoostContainerRef := CrazyBoostIteratorWrapper[ScoreType]
+        CrazyBoostIteratorWrapper()
+        CrazyBoostIteratorWrapper(CrazyBoostIteratorWrapper[V])
+        V get()
+
 
 cdef extern from "scoretype.hpp":
     ctypedef libcpp_set[ScoreType].iterator SetIter
@@ -28,4 +35,5 @@ cdef extern from "scoretype.hpp":
     cdef cppclass ProcessingSoftware:
         ProcessingSoftware()
         libcpp_vector[IteratorWrapper[SetIter, ScoreType]] assigned_scores
+        libcpp_vector[CrazyBoostIteratorWrapper[ScoreType]] assigned_scores_boost
 

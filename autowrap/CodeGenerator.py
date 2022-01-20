@@ -345,6 +345,10 @@ class CodeGenerator(object):
                 name = "_Py" + decl.name  # __ prefix in python are private members
         else:
             name = decl.name
+
+        doc = decl.cpp_decl.annotations.get("wrap-doc", [])
+        if doc:
+            doc = '"""\n    ' + '\n    '.join(doc) + '\n    """'
         L.info("create wrapper for enum %s" % name)
         code = Code.Code()
         enum_pxd_code = Code.Code()
@@ -359,12 +363,14 @@ class CodeGenerator(object):
             code.add("""
                        |
                        |cdef class $name:
-                     """, name=name)
+                       |    $doc
+                     """, name=name, doc=doc)
         else:  # for scoped enums we use the python enum class
             code.add("""
                        |
                        |class $name(_PyEnum):
-                     """, name=name)
+                       |    $doc
+                     """, name=name, doc=doc)
         for (optname, value) in decl.items:
             code.add("    $name = $value", name=optname, value=value)
 
