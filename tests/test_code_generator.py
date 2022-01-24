@@ -59,6 +59,8 @@ def test_enums():
     mod = autowrap.Utils.compile_and_import("enummodule", [target, ], include_dirs)
 
     foo = mod.Foo()
+    my_enum = mod.Foo.MyEnum
+    assert "Testing Enum documentation." in my_enum.__doc__
     myenum_a = mod.Foo.MyEnum.A
     myenum2_a = mod.Foo.MyEnum2.A
     assert (foo.enumToInt(myenum_a) == 1)

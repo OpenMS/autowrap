@@ -10,6 +10,9 @@ cdef extern from "enums.hpp" namespace "Foo":
     cpdef enum class MyEnum "Foo::MyEnum":
         # wrap-attach:
         #  Foo
+        #
+        # wrap-doc:
+        #  Testing Enum documentation.
         A
         B
         C
