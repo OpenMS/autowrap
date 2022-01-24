@@ -63,6 +63,17 @@ def test_iteratorwrapper():
     bar = mod.ProcessingSoftware()
     assert (bar.assigned_scores_boost[1].get().name == b'eval')
 
+def test_namespaces():
+    target = os.path.join(test_files, "namespaces.pyx")
+
+    include_dirs = autowrap.parse_and_generate_code(["namespaces.pxd"],
+                                                    root=test_files, target=target, debug=True)
+
+    mod = autowrap.Utils.compile_and_import("namespacesmodule", [target, ], include_dirs)
+
+    fooa = mod.A.Foo()
+    foob = mod.B.Foo()
+
 
 def test_enums():
     if int(cython_version[0]) < 3:

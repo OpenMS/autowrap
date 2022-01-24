@@ -7,7 +7,7 @@ from libcpp cimport bool
 
 cdef extern from "iteratorwrapper.hpp":
 
-    cdef cppclass IteratorWrapper[I,V]:
+    cdef cppclass IteratorWrapper[I,V](I):
         # wrap-instances:
         #  ScoreTypeRef := IteratorWrapper[SetIter, ScoreType]
         IteratorWrapper()
