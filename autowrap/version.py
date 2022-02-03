@@ -34,4 +34,4 @@ __version__ = (0, 22, 7)
 
 
 # for compatibility with older version:
-version = __version__
+__version__ = (0, 22, 7)
