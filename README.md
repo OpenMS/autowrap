@@ -1,4 +1,4 @@
-autowrap [![build autowrap](https://github.com/OpenMS/autowrap/actions/workflows/ci-autowrap.yaml/badge.svg)](https://github.com/OpenMS/autowrap/actions/workflows/ci-autowrap.yaml)
+autowrap [![build autowrap](https://github.com/OpenMS/autowrap/actions/workflows/ci-autowrap.yaml/badge.svg)](https://github.com/OpenMS/autowrap/actions/workflows/ci-autowrap.yaml) | [![Conda Version](https://img.shields.io/conda/vn/conda-forge/autowrap.svg)](https://anaconda.org/conda-forge/autowrap)
 ========
 
 
