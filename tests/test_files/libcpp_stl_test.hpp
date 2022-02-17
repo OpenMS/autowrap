@@ -177,4 +177,24 @@ class LibCppSTLTest {
             boost::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
             return boost::static_pointer_cast<const IntWrapper>(ptr);
         }
+
+        int process_12_map(std::map<std::string, IntWrapper >& in)
+        {
+            if (!in.empty())
+            {
+                in.begin()->second.i_ += 10;
+                return in.begin()->second.i_;
+            }
+            return -1;
+        }
+
+        int process_13_map(std::map<IntWrapper, std::vector<int> >& in)
+        {
+            if (!in.empty() && !in.begin()->second.empty())
+            {
+                in.begin()->second[0] += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
+        }
 };
