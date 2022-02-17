@@ -194,4 +194,15 @@ def test_stl_libcpp():
     assert list(map_inp.values())[0][0] == 6 + 10
     assert list(map_inp.values())[0][1] == 2
 
-
+    # Part 8
+    # Test std::map< Widget, Widget2 >
+    vec_wrapper = libcpp_stl.IntVecWrapper()
+    vec_wrapper.push_back(6)
+    vec_wrapper.push_back(2)
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    map_inp = { i2 : vec_wrapper }
+    assert t.process_14_map(map_inp) == 2
+    assert len(map_inp) == 1
+    assert list(map_inp.values())[0][0] == 6 + 10
+    assert list(map_inp.values())[0][1] == 2

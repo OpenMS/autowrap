@@ -197,4 +197,14 @@ class LibCppSTLTest {
             }
             return -1;
         }
+
+        int process_14_map(std::map<IntWrapper, IntVecWrapper>& in)
+        {
+            if (!in.empty() && !in.begin()->second.iv_.empty())
+            {
+                in.begin()->second.iv_[0] += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
+        }
 };

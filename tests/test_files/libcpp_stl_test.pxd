@@ -15,6 +15,7 @@ cdef extern from "libcpp_stl_test.hpp":
 
     cdef cppclass IntVecWrapper:
         IntVecWrapper()
+        IntVecWrapper(IntVecWrapper&)
         libcpp_vector[int] iv_
 
         int& operator[](size_t index)
@@ -56,3 +57,4 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_12_map(libcpp_map[libcpp_string, IntWrapper ]& in_)
         int process_13_map(libcpp_map[IntWrapper, libcpp_vector[int] ]& in_)
 
+        int process_14_map(libcpp_map[IntWrapper, IntVecWrapper]& in_)

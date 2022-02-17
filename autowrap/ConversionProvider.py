@@ -665,10 +665,6 @@ class StdMapConverter(TypeConverterBase):
 
         py_tt_key = tt_key
 
-        if (not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes) \
-           and (not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes):
-            raise Exception("Converter can not handle wrapped classes as keys and values in map")
-
         value_conv_code = ""
         value_conv_cleanup = ""
         key_conv_code = ""
@@ -766,6 +762,7 @@ class StdMapConverter(TypeConverterBase):
 
             key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
 
+            ## add code for key that is wrapped
             if tt_key.base_type in self.converters.names_of_wrapper_classes \
               and not tt_value.base_type in self.converters.names_of_wrapper_classes:
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
@@ -785,6 +782,7 @@ class StdMapConverter(TypeConverterBase):
                     |$argument_var.update(replace)
                     |del $temp_var
                     """, locals())
+            ## add code for value that is wrapped
             elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes\
                     and not tt_key.base_type in self.converters.names_of_wrapper_classes:
                 cy_tt = tt_value.base_type
@@ -797,6 +795,29 @@ class StdMapConverter(TypeConverterBase):
                     |   $item = $cy_tt.__new__($cy_tt)
                     |   $item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
                     |   replace[$key_conv] = $item
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """, locals())
+            ## add code for value AND key that is wrapped
+            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes\
+                    and tt_key.base_type in self.converters.names_of_wrapper_classes:
+                value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
+                cy_tt = tt_value.base_type
+                item_val = mangle("itemv_" + argument_var)
+                item_key = mangle("itemk_" + argument_var)
+                cleanup_code = Code().add("""
+                    |replace = dict()
+                    |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
+                    |cdef $py_tt_key $item_key
+                    |cdef $cy_tt $item_val
+                    |while $it != $temp_var.end():
+                    |   $item_key = $py_tt_key.__new__($py_tt_key)
+                    |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                    |   $item_val = $cy_tt.__new__($cy_tt)
+                    |   $item_val.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
+                    |   replace[$item_key] = $item_val
                     |   inc($it)
                     |$argument_var.clear()
                     |$argument_var.update(replace)
