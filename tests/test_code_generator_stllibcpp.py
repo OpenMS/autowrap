@@ -175,3 +175,34 @@ def test_stl_libcpp():
     const_res = t.process_11_const()
     const_res.i_ == 42
 
+    # Part 6
+    # Test std::map< string, IntWrapper >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    map_inp = { b"test" : i2 }
+    assert t.process_12_map(map_inp) == 2 + 10
+    assert len(map_inp) == 1
+    assert list(map_inp.values())[0].i_ == 2 + 10
+
+    # Part 7
+    # Test std::map< Widget, vector<int> >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    map_inp = { i2 : [6, 2] }
+    assert t.process_13_map(map_inp) == 2
+    assert len(map_inp) == 1
+    assert list(map_inp.values())[0][0] == 6 + 10
+    assert list(map_inp.values())[0][1] == 2
+
+    # Part 8
+    # Test std::map< Widget, Widget2 >
+    vec_wrapper = libcpp_stl.IntVecWrapper()
+    vec_wrapper.push_back(6)
+    vec_wrapper.push_back(2)
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    map_inp = { i2 : vec_wrapper }
+    assert t.process_14_map(map_inp) == 2
+    assert len(map_inp) == 1
+    assert list(map_inp.values())[0][0] == 6 + 10
+    assert list(map_inp.values())[0][1] == 2
