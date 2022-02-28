@@ -3,7 +3,7 @@ from libcpp.vector cimport vector as libcpp_vector
 cdef extern from "vec_holder.hpp":
     cdef cppclass VecHolder:
         # wrap-buffer-protocol:
-        #    data_.data(),float,size
+        #    data_.data(),float,size()
         #
         libcpp_vector[float] data_
 

@@ -511,9 +511,9 @@ class CodeGenerator(object):
 
         if "wrap-buffer-protocol" in r_class.cpp_decl.annotations:
             buffer_parts = r_class.cpp_decl.annotations['wrap-buffer-protocol'][0].split(",")
-            buffer_source = buffer_parts[0]
+            buffer_sourcer = buffer_parts[0]
             buffer_type = buffer_parts[1]
-            buffer_size_method = buffer_parts[2]
+            buffer_sizer = buffer_parts[2]
             buffer_code = {
                 "char": 'c',
                 "signed char": "b",
@@ -542,12 +542,12 @@ class CodeGenerator(object):
                                 |    cdef Py_ssize_t _buffer_protocol_stride[1]
                                 |
                                 |    def __getbuffer__(self, Py_buffer *buffer, int flags):
-                                |        cdef size_t size = self.inst.get().{buffer_size_method}()
+                                |        cdef size_t size = self.inst.get().{buffer_sizer}
                                 |        # Prepare flat buffer for exporting
                                 |        self._buffer_protocol_shape[0] = size
                                 |        self._buffer_protocol_stride[0] = <Py_ssize_t>sizeof({buffer_type})
                                 |
-                                |        buffer.buf = <char *>(self.inst.get().{buffer_source})
+                                |        buffer.buf = <char *>(self.inst.get().{buffer_sourcer})
                                 |        buffer.format = '{buffer_code}'
                                 |        buffer.internal = NULL
                                 |        buffer.itemsize = sizeof({buffer_type})
