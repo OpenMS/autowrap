@@ -149,7 +149,7 @@ class CodeGenerator(object):
         self.all_classes = self.classes
         self.all_resolved = self.resolved
         if len(allDecl) > 0:
-            
+
             self.all_typedefs = []
             self.all_enums = []
             self.all_functions = []
@@ -395,7 +395,7 @@ class CodeGenerator(object):
 
     def create_wrapper_for_class(self, r_class, out_codes):
         """Create Cython code for a single class
-        
+
         Note that the cdef class definition and the member variables go into
         the .pxd file while the Python-level implementation goes into the .pyx
         file. This allows us to cimport these classes later across modules.
@@ -508,6 +508,61 @@ class CodeGenerator(object):
                             |      return hash(deref(self.inst.get()).%s )
                             |
                             """ % r_class.wrap_hash[0], locals())
+
+        if "wrap-buffer-protocol" in r_class.cpp_decl.annotations:
+            buffer_parts = r_class.cpp_decl.annotations['wrap-buffer-protocol'][0].split(",")
+            buffer_source = buffer_parts[0]
+            buffer_type = buffer_parts[1]
+            buffer_size_method = buffer_parts[2]
+            buffer_code = {
+                "char": 'c',
+                "signed char": "b",
+                "unsigned char": "B",
+                "bool": "?",
+                "short": "h",
+                "unsigned short": "H",
+                "int": "i",
+                "unsigned int": "I",
+                "long": "l",
+                "unsigned long": "L",
+                "long long": "q",
+                "unsigned long long": "Q",
+                "ssize_t": "n",
+                "size_t": "N",
+                "float": "f",
+                "double": "d",
+                "char[]": "s",
+                "char[]": "p",
+                "void*": "P",
+
+            }[buffer_type]
+            class_code.add("""
+                                |
+                                |    cdef Py_ssize_t _buffer_protocol_shape[1]
+                                |    cdef Py_ssize_t _buffer_protocol_stride[1]
+                                |
+                                |    def __getbuffer__(self, Py_buffer *buffer, int flags):
+                                |        cdef size_t size = self.inst.get().{buffer_size_method}()
+                                |        # Prepare flat buffer for exporting
+                                |        self._buffer_protocol_shape[0] = size
+                                |        self._buffer_protocol_stride[0] = <Py_ssize_t>sizeof({buffer_type})
+                                |
+                                |        buffer.buf = <char *>(self.inst.get().{buffer_source})
+                                |        buffer.format = '{buffer_code}'
+                                |        buffer.internal = NULL
+                                |        buffer.itemsize = sizeof({buffer_type})
+                                |        buffer.len = size
+                                |        buffer.ndim = 1
+                                |        buffer.obj = self
+                                |        buffer.readonly = False
+                                |        buffer.shape = self._buffer_protocol_shape
+                                |        buffer.strides = self._buffer_protocol_stride
+                                |        buffer.suboffsets = NULL
+                                |
+                                |    def __releasebuffer__(self, Py_buffer *buffer):
+                                |        pass
+                                |
+                                """.format(**locals()))
 
         self.class_pxd_codes[cname] = class_pxd_code
         out_codes[cname] = class_code
@@ -1388,7 +1443,7 @@ class CodeGenerator(object):
         we may be using in this compilation unit. Since we are passing objects
         as arguments quite frequently, we need to know about all other wrapped
         classes and we need to cimport them.
-        
+
         E.g. if we have module1 containing classA, classB and want to access it
         through the pxd header, then we need to add:
 
@@ -1408,7 +1463,7 @@ class CodeGenerator(object):
                 for resolved in self.allDecl[module]["decls"]:
 
                     # We need to import classes and enums that could be used in
-                    # the Cython code in the current module 
+                    # the Cython code in the current module
 
                     # use Cython name, which correctly imports template classes (instead of C name)
                     name = resolved.name
@@ -1431,7 +1486,7 @@ class CodeGenerator(object):
                             else:
                                 code.add("from $mname cimport $name", locals())
 
-            else: 
+            else:
                 L.info("Skip imports from self (own module %s)" % module)
 
         self.top_level_code.append(code)
@@ -1467,6 +1522,7 @@ class CodeGenerator(object):
                    |#cython: c_string_encoding=ascii
                    |#cython: embedsignature=False
                    |from  enum             import Enum as _PyEnum
+                   |from cpython cimport Py_buffer
                    |from  libcpp.string   cimport string as libcpp_string
                    |from  libcpp.string   cimport string as libcpp_utf8_string
                    |from  libcpp.string   cimport string as libcpp_utf8_output_string

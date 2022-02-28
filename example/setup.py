@@ -11,9 +11,15 @@ ext = Extension("py_int_holder",
                 include_dirs = [include_dir, data_dir],
                )
 
+ext2 = Extension("py_vec_holder",
+                sources = ['py_vec_holder.cpp'],
+                language="c++",
+                include_dirs = [include_dir, data_dir],
+               )
+
 setup(cmdclass={'build_ext':build_ext},
       name="py_int_holder",
       version="0.0.1",
-      ext_modules = [ext]
+      ext_modules = [ext, ext2]
      )
 
