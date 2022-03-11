@@ -128,6 +128,21 @@ def test_shared_ptr():
     assert h1.count() == 1
     assert h1.size() == 4
 
+
+def test_inherited():
+
+    target = os.path.join(test_files, "inherited.pyx")
+    include_dirs = autowrap.parse_and_generate_code(["inherited.pxd"],
+                                                    root=test_files, target=target, debug=True)
+
+    mod = autowrap.Utils.compile_and_import("inheritedmodule", [target, ], include_dirs)
+    print(mod.__name__)
+    i = mod.InheritedInt()
+    assert i.foo() == 1
+    assert i.bar() == 0
+    assert i.getBase() == 1
+    assert i.getBaseZ() == 0
+
 def test_templated():
 
     target = os.path.join(test_files, "templated_wrapper.pyx")
