@@ -66,6 +66,11 @@ def test_enums():
         include_dirs,
     )
 
+    assert mod.Foo.MyEnum
+    assert mod.Foo.MyEnum.B
+    assert mod.Foo2.MyEnum
+    assert mod.Foo2.MyEnum.D
+
     foo = mod.Foo()
     my_enum = mod.Foo.MyEnum
     assert "Testing Enum documentation." in my_enum.__doc__
