@@ -263,6 +263,13 @@ def test_minimal():
     m1 = m1 + m1
     assert m1 == wrapped.Minimal(2)
 
+    # operator sub
+    assert wrapped.Minimal(5) - wrapped.Minimal(2) == wrapped.Minimal(3)
+
+    m1 = wrapped.Minimal(1)
+    m1 = m1 - m1
+    assert m1 == wrapped.Minimal(0)
+
     # operator mult
     assert wrapped.Minimal(5) * wrapped.Minimal(2) == wrapped.Minimal(10)
 
