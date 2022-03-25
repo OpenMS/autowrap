@@ -690,6 +690,10 @@ class CodeGenerator(object):
                 assert len(methods) == 1, "overloaded operator+ not supported"
                 code = self.create_special_add_method(cdcl, methods[0])
                 return [code], Code.Code()
+            elif op == "-":
+                assert len(methods) == 1, "overloaded operator- not supported"
+                code = self.create_special_add_method(cdcl, methods[0])
+                return [code], Code.Code()
             elif op == "*":
                 assert len(methods) == 1, "overloaded operator* not supported"
                 code = self.create_special_mul_method(cdcl, methods[0])
