@@ -700,7 +700,7 @@ class CodeGenerator(object):
                 return [code], Code.Code()
             elif op == "/":
                 assert len(methods) == 1, "overloaded operator/ not supported"
-                code = self.create_special_div_method(cdcl, methods[0])
+                code = self.create_special_truediv_method(cdcl, methods[0])
                 return [code], Code.Code()
             elif op == "+=":
                 assert len(methods) == 1, "overloaded operator+= not supported"
@@ -1143,7 +1143,7 @@ class CodeGenerator(object):
         """, locals())
         return code
         
-    def create_special_div_method(self, cdcl, mdcl):
+    def create_special_truediv_method(self, cdcl, mdcl):
         L.info("   create wrapper for operator/")
         assert len(mdcl.arguments) == 1, "operator/ has wrong signature"
         (__, t), = mdcl.arguments
@@ -1154,7 +1154,7 @@ class CodeGenerator(object):
         code = Code.Code()
         code.add("""
         |
-        |def __div__($name self, $name other not None):
+        |def __truediv__($name self, $name other not None):
         |    cdef $cy_t  * this = self.inst.get()
         |    cdef $cy_t * that = other.inst.get()
         |    cdef $cy_t divided = deref(this) / deref(that)
