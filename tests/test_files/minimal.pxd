@@ -82,6 +82,8 @@ cdef extern from "minimal.hpp":
 
         Minimal operator+(Minimal)
         Minimal operator*(Minimal)
+        Minimal operator-(Minimal)
+
         # cython does not support declaration of operator+= yet
         Minimal iadd(Minimal) # wrap-as:operator+=
 
