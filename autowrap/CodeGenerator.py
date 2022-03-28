@@ -698,6 +698,10 @@ class CodeGenerator(object):
                 assert len(methods) == 1, "overloaded operator* not supported"
                 code = self.create_special_mul_method(cdcl, methods[0])
                 return [code], Code.Code()
+            elif op == "/":
+                assert len(methods) == 1, "overloaded operator/ not supported"
+                code = self.create_special_truediv_method(cdcl, methods[0])
+                return [code], Code.Code()
             elif op == "+=":
                 assert len(methods) == 1, "overloaded operator+= not supported"
                 code = self.create_special_iadd_method(cdcl, methods[0])
@@ -1135,6 +1139,27 @@ class CodeGenerator(object):
         |    cdef $cy_t multiplied = deref(this) * deref(that)
         |    cdef $name result = $name.__new__($name)
         |    result.inst = shared_ptr[$cy_t](new $cy_t(multiplied))
+        |    return result
+        """, locals())
+        return code
+        
+    def create_special_truediv_method(self, cdcl, mdcl):
+        L.info("   create wrapper for operator/")
+        assert len(mdcl.arguments) == 1, "operator/ has wrong signature"
+        (__, t), = mdcl.arguments
+        name = cdcl.name
+        assert t.base_type == name, "can only divide with myself"
+        assert mdcl.result_type.base_type == name, "can only return same type"
+        cy_t = self.cr.cython_type(t)
+        code = Code.Code()
+        code.add("""
+        |
+        |def __truediv__($name self, $name other not None):
+        |    cdef $cy_t  * this = self.inst.get()
+        |    cdef $cy_t * that = other.inst.get()
+        |    cdef $cy_t divided = deref(this) / deref(that)
+        |    cdef $name result = $name.__new__($name)
+        |    result.inst = shared_ptr[$cy_t](new $cy_t(divided))
         |    return result
         """, locals())
         return code

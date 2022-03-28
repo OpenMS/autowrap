@@ -279,4 +279,11 @@ def test_minimal():
     assert m1 == wrapped.Minimal(9)
     assert m2 == wrapped.Minimal(81)
 
+    # operator div
+    assert wrapped.Minimal(10) / wrapped.Minimal(2) == wrapped.Minimal(5)
+
+    m1 = wrapped.Minimal(3)
+    m1 = m1 / m1
+    assert m1 == wrapped.Minimal(1)
+
 
