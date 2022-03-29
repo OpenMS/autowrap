@@ -188,7 +188,7 @@ class TypeConverterBase(object):
         :param cpp_type: cpp type
         :return: python equivalent for static typing
         """
-        return ""
+        return "Any"
         #raise NotImplementedError()
 
     def type_check_expression(self, cpp_type, argument_var):
