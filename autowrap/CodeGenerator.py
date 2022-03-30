@@ -706,6 +706,19 @@ class CodeGenerator(object):
                 assert len(methods) == 1, "overloaded operator+= not supported"
                 code = self.create_special_iadd_method(cdcl, methods[0])
                 return [code], Code.Code()
+            elif op == "-=":
+                assert len(methods) == 1, "overloaded operator-= not supported"
+                code = self.create_special_isub_method(cdcl, methods[0])
+                return [code], Code.Code()
+            elif op == "*=":
+                assert len(methods) == 1, "overloaded operator*= not supported"
+                code = self.create_special_imul_method(cdcl, methods[0])
+                return [code], Code.Code()
+            elif op == "/=":
+                assert len(methods) == 1, "overloaded operator/= not supported"
+                code = self.create_special_itruediv_method(cdcl, methods[0])
+                return [code], Code.Code()
+            
 
         if len(methods) == 1:
             code, typestubs = self.create_wrapper_for_nonoverloaded_method(cdcl, py_name, methods[0])
@@ -1228,6 +1241,90 @@ class CodeGenerator(object):
         tl.add("""
                 |cdef extern from "autowrap_tools.hpp":
                 |    void _iadd($cy_t *, $cy_t *)
+                """, locals())
+
+        self.top_level_code.append(tl)
+
+        return code
+
+    def create_special_isub_method(self, cdcl, mdcl):
+        L.info("   create wrapper for operator-")
+        assert len(mdcl.arguments) == 1, "operator- has wrong signature"
+        (__, t), = mdcl.arguments
+        name = cdcl.name
+        assert t.base_type == name, "can only subtract to myself"
+        assert mdcl.result_type.base_type == name, "can only return same type"
+        cy_t = self.cr.cython_type(t)
+        code = Code.Code()
+        code.add("""
+        |
+        |def __isub__($name self, $name other not None):
+        |    cdef $cy_t * this = self.inst.get()
+        |    cdef $cy_t * that = other.inst.get()
+        |    _isub(this, that)
+        |    return self
+        """, locals())
+
+        tl = Code.Code()
+        tl.add("""
+                |cdef extern from "autowrap_tools.hpp":
+                |    void _isub($cy_t *, $cy_t *)
+                """, locals())
+
+        self.top_level_code.append(tl)
+
+        return code
+
+    def create_special_imul_method(self, cdcl, mdcl):
+        L.info("   create wrapper for operator*")
+        assert len(mdcl.arguments) == 1, "operator* has wrong signature"
+        (__, t), = mdcl.arguments
+        name = cdcl.name
+        assert t.base_type == name, "can only multiply to myself"
+        assert mdcl.result_type.base_type == name, "can only return same type"
+        cy_t = self.cr.cython_type(t)
+        code = Code.Code()
+        code.add("""
+        |
+        |def __imul__($name self, $name other not None):
+        |    cdef $cy_t * this = self.inst.get()
+        |    cdef $cy_t * that = other.inst.get()
+        |    _imul(this, that)
+        |    return self
+        """, locals())
+
+        tl = Code.Code()
+        tl.add("""
+                |cdef extern from "autowrap_tools.hpp":
+                |    void _imul($cy_t *, $cy_t *)
+                """, locals())
+
+        self.top_level_code.append(tl)
+
+        return code
+    
+    def create_special_itruediv_method(self, cdcl, mdcl):
+        L.info("   create wrapper for operator/")
+        assert len(mdcl.arguments) == 1, "operator/ has wrong signature"
+        (__, t), = mdcl.arguments
+        name = cdcl.name
+        assert t.base_type == name, "can only divide to myself"
+        assert mdcl.result_type.base_type == name, "can only return same type"
+        cy_t = self.cr.cython_type(t)
+        code = Code.Code()
+        code.add("""
+        |
+        |def __itruediv__($name self, $name other not None):
+        |    cdef $cy_t * this = self.inst.get()
+        |    cdef $cy_t * that = other.inst.get()
+        |    _itruediv(this, that)
+        |    return self
+        """, locals())
+
+        tl = Code.Code()
+        tl.add("""
+                |cdef extern from "autowrap_tools.hpp":
+                |    void _itruediv($cy_t *, $cy_t *)
                 """, locals())
 
         self.top_level_code.append(tl)

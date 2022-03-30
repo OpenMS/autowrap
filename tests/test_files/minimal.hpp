@@ -112,6 +112,16 @@ class Minimal {
             this->_i = this->_i * that._i;
             return *this;
         }
+        Minimal operator-=(Minimal that)
+        {
+            this->_i = this->_i - that._i;
+            return *this;
+        }
+        Minimal operator/=(Minimal that)
+        {
+            this->_i = this->_i / that._i;
+            return *this;
+        }
 
 };
 

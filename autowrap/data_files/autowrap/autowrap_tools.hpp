@@ -9,6 +9,21 @@ template<class A> void _iadd(A * a1, const A * a2)
     (*a1) += (*a2);
 }
 
+template<class A> void _isub(A * a1, const A * a2)
+{
+    (*a1) -= (*a2);
+}
+
+template<class A> void _imul(A * a1, const A * a2)
+{
+    (*a1) *= (*a2);
+}
+
+template<class A> void _itruediv(A * a1, const A * a2)
+{
+    (*a1) /= (*a2);
+}
+
 namespace autowrap {
 
     template <class X>
