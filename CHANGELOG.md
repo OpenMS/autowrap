@@ -1,2 +1,3 @@
 autowrap 0.22.8
- - added feature for unordered_map
+- Added support for missing operators '-', '/', '-=', '*=', '/='
+- Added feature for unordered_map
