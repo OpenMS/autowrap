@@ -2,6 +2,7 @@
 #include <string>
 #include <utility>
 #include <map>
+#include <unordered_map>
 #include <boost/shared_ptr.hpp>
 
 
