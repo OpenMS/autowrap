@@ -2,6 +2,7 @@
 #include <string>
 #include <utility>
 #include <map>
+#include <unordered_map>
 #include <boost/shared_ptr.hpp>
 
 
@@ -396,5 +397,89 @@ class LibCppTest {
         int process40(AbstractBaseClass* in)
         {
             return in->get();
+        }
+
+        std::unordered_map<int,float> process41(int i, float f) 
+        {
+            std::unordered_map<int,float> un_map;
+            un_map[i] = f;
+            return un_map;
+        }
+
+        std::unordered_map<EEE, int> process42(EEE e, int i) 
+        {
+            std::unordered_map<EEE,int> un_map;
+            un_map[e] = i;
+            return un_map;
+        }
+
+        std::unordered_map<int, EEE> process43(EEE e, int i) 
+        {
+            std::unordered_map<int, EEE> un_map;
+            un_map[i] = e;
+            return un_map;
+        }
+
+        std::unordered_map<long int, LibCppTest> process44(int i) 
+        {
+            std::unordered_map<long int, LibCppTest> un_map;
+            un_map[i] = LibCppTest(i);
+            return un_map;
+        }
+
+        float process45(std::unordered_map<int, float> in)
+        {
+            return in[42];
+
+        }
+        float process46(std::unordered_map<EEE, float> in)
+        {
+            return in[A];
+
+        }
+
+        int process47(std::unordered_map<int, LibCppTest> in)
+        {
+            return in[23].get();
+        }
+
+        void  process48(std::unordered_map<int, LibCppTest> & in)
+        {
+            LibCppTest v(12);
+            in[23] = v;
+        }
+
+        void  process49(std::unordered_map<int, float> & in)
+        {
+            in[23] = 42.0;
+        }
+
+        void  process50(std::unordered_map<int, float> & in, std::unordered_map<int,int> & arg2)
+        {
+            in[1] = (float) arg2[42];
+        }
+
+        void  process501(std::unordered_map<int, float> & in, std::unordered_map<std::string, std::vector<int> > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0];
+        }
+
+        void  process502(std::unordered_map<int, float> & in, std::unordered_map<std::string, std::vector< std::vector<int> > > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0][0];
+        }
+
+        void  process503(std::unordered_map<int, float> & in, std::unordered_map<std::string, std::vector< std::vector<Int> > > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0][0].i_;
+        }
+
+        void  process504(std::unordered_map<int, float> & in, std::unordered_map<std::string, std::vector< std::pair<int, int> > > & arg2)
+        {
+            std::string test_str("42");
+            in[1] = (float) arg2[test_str][0].first;
         }
 };

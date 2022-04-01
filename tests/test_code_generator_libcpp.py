@@ -380,6 +380,52 @@ def test_libcpp():
     assert i1.get() == 1
     assert i2.get() == 4
 
+    out = t.process41(1, 2.0)
+    assert list(out.items()) == [(1, 2.0)]
+
+    out = t.process42(libcpp.EEE.A, 2)
+    assert list(out.items()) == [(libcpp.EEE.A, 2)]
+
+    out = t.process43(libcpp.EEE.A, 3)
+    assert list(out.items()) == [(3, libcpp.EEE.A)]
+
+    out = t.process44(12)
+    (k, v),  = out.items()
+    assert k == 12
+    assert v.gett() == 12
+
+    assert t.process45({42: 2.0, 12: 1.0}) == 2.0
+
+    assert t.process46({libcpp.EEE.A: 2.0, libcpp.EEE.B: 1.0}) == 2.0
+
+    assert t.process47({23: t, 12: t2}) == t.gett()
+
+    dd = dict()
+    t.process48(dd)
+    assert len(dd) == 1
+    assert list(dd.keys()) == [23]
+    assert list(dd.values())[0].gett() == 12
+
+    dd = dict()
+    t.process49(dd)
+    assert list(dd.items()) == [(23, 42.0)]
+
+    d1 = dict()
+    t.process50(d1, {42: 11})
+    assert d1.get(1) == 11
+
+    d1 = dict()
+    t.process501(d1, {b"42": [11, 6]})
+    assert d1.get(1) == 11
+
+    d2 = dict()
+    t.process502(d2, {b"42": [ [11, 6], [2] , [8] ]})
+    assert d2.get(1) == 11
+
+    d3 = dict()
+    t.process504(d3, {b"42": [ [11, 6], [2, 8] ]})
+    assert d3.get(1) == 11
+
     # Testing unsafe call
     i1 = libcpp.ABS_Impl1(__createUnsafeObject__=True)
     i2 = libcpp.ABS_Impl2(__createUnsafeObject__=True)
