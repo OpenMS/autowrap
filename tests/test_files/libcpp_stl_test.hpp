@@ -2,6 +2,8 @@
 #include <string>
 #include <utility>
 #include <map>
+#include <unordered_map>
+#include <set>
 #include <boost/shared_ptr.hpp>
 
 class IntWrapper {
@@ -51,6 +53,18 @@ class MapWrapper {
       MapWrapper(const MapWrapper& other) 
       {
         map_ = other.map_;
+      }
+};
+
+class UnorderedMapWrapper {
+
+    public:
+      std::unordered_map<int, double> un_map_;
+
+      UnorderedMapWrapper() {}
+      UnorderedMapWrapper(const UnorderedMapWrapper& other) 
+      {
+        un_map_ = other.un_map_;
       }
 };
 
@@ -199,6 +213,71 @@ class LibCppSTLTest {
         }
 
         int process_14_map(std::map<IntWrapper, IntVecWrapper>& in)
+        {
+            if (!in.empty() && !in.begin()->second.iv_.empty())
+            {
+                in.begin()->second.iv_[0] += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
+        }
+        int process_15_unordered_map(std::unordered_map<IntWrapper, int>& in)
+        {
+            if (!in.empty() )
+            {
+                in.begin()->second += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
+        }
+
+        // std::unordered_map<IntWrapper, int> process_16_unordered_map(int in_)
+        // {
+        //     std::unordered_map<IntWrapper, int> res;
+        //     IntWrapper wr(in_);
+        //     res[wr] = in_ + 10;
+        //     return res;
+        // }
+
+        int process_17_unordered_map(std::unordered_map<int, IntWrapper>& in)
+        {
+            if (!in.empty() )
+            {
+                in.begin()->second.i_ += 10;
+                return in.begin()->first;
+            }
+            return -1;
+        }
+
+        std::unordered_map<int, IntWrapper> process_18_unordered_map(int in_)
+        {
+            std::unordered_map<int, IntWrapper> res;
+            IntWrapper wr(in_);
+            res[in_ + 10] = wr;
+            return res;
+        }
+
+        int process_19_unordered_map(std::unordered_map<std::string, IntWrapper >& in)
+        {
+            if (!in.empty())
+            {
+                in.begin()->second.i_ += 10;
+                return in.begin()->second.i_;
+            }
+            return -1;
+        }
+
+        int process_20_unordered_map(std::unordered_map<IntWrapper, std::vector<int> >& in)
+        {
+            if (!in.empty() && !in.begin()->second.empty())
+            {
+                in.begin()->second[0] += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
+        }
+
+        int process_21_unordered_map(std::unordered_map<IntWrapper, IntVecWrapper>& in)
         {
             if (!in.empty() && !in.begin()->second.iv_.empty())
             {

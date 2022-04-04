@@ -4,7 +4,8 @@ from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
 from libcpp cimport bool
 from libcpp.pair  cimport pair  as libcpp_pair 
-from libcpp.map  cimport map  as libcpp_map 
+from libcpp.map  cimport map  as libcpp_map
+from libcpp.unordered_map cimport unordered_map as libcpp_unordered_map
 from smart_ptr cimport shared_ptr
 
 ctypedef unsigned int UInt
@@ -133,3 +134,23 @@ cdef extern from "libcpp_test.hpp":
         # int process40(AbstractBaseClass* in_)
         int process40(ABS_Impl1* in_)
         int process40(ABS_Impl2* in_)
+
+        libcpp_unordered_map[int, float] process41(int i, float f)
+        libcpp_unordered_map[EEE, int] process42(EEE e, int i)
+        libcpp_unordered_map[int, EEE] process43(EEE e, int i)
+
+        libcpp_unordered_map[long int, LibCppTest] process44(int ii)
+
+        float process45(libcpp_unordered_map[int, float] in_)
+        float process46(libcpp_unordered_map[EEE, float] in_)
+
+        int process47(libcpp_unordered_map[int, LibCppTest] in_)
+
+        void  process48(libcpp_unordered_map[int, LibCppTest] & in_)
+        void  process49(libcpp_unordered_map[int, float] & in_)
+
+        void  process50(libcpp_unordered_map[int, float] & in_, libcpp_unordered_map[int,int] & arg2)
+        void  process501(libcpp_unordered_map[int, float] & in_, libcpp_unordered_map[libcpp_string, libcpp_vector[int] ] & arg2)
+        void  process502(libcpp_unordered_map[int, float] & in_, libcpp_unordered_map[libcpp_string, libcpp_vector[ libcpp_vector[int] ] ] & arg2)
+        # void  process503(libcpp_unordered_map[int, float] & in_, libcpp_unordered_map[libcpp_string, libcpp_vector[ libcpp_vector[Int] ] ] & arg2)
+        void  process504(libcpp_unordered_map[int, float] & in_, libcpp_unordered_map[libcpp_string, libcpp_vector[ libcpp_pair[int, int] ] ] & arg2)

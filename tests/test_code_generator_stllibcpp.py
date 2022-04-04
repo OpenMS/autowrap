@@ -74,6 +74,15 @@ def test_stl_libcpp():
     assert len(m1.map_) == 1
     assert len(m2.map_) == 2
 
+    u1 = libcpp_stl.UnorderedMapWrapper()
+    u1.un_map_ = {3 : 8.0}
+    u2 = libcpp_stl.UnorderedMapWrapper(u1)
+    u2.un_map_ = {3 : 8.0, 7 : 9.0}
+
+    assert len(u1.un_map_) == 1
+    assert len(u2.un_map_) == 2
+
+
     # Test wrapping of operator[]
     vec_wrapper = libcpp_stl.IntVecWrapper()
     vec_wrapper.push_back(5)
@@ -206,3 +215,63 @@ def test_stl_libcpp():
     assert len(map_inp) == 1
     assert list(map_inp.values())[0][0] == 6 + 10
     assert list(map_inp.values())[0][1] == 2
+
+    # Part 9
+    # Test std::unordered_map< Widget, int >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    un_map_inp = {i2 : 5}
+    assert t.process_15_unordered_map(un_map_inp) == 2
+    assert len(un_map_inp) == 1
+    assert list(un_map_inp.values())[0] == 5 + 10
+
+    # res = t.process_16_unordered_map(5)
+    # assert len(res) == 1
+    # assert list(res.keys())[0].i_ == 5
+    # assert list(res.values())[0] == 5 + 10
+
+    # Part 10
+    # Test std::unordered_map< int, Widget >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    un_map_inp = { 5: i2 }
+    assert t.process_17_unordered_map(un_map_inp) == 5
+    assert len(un_map_inp) == 1
+    assert list(un_map_inp.values())[0].i_ == 2 + 10
+
+    res = t.process_18_unordered_map(5)
+    assert len(res) == 1
+    assert list(res.values())[0].i_ == 5
+    assert list(res.keys())[0] == 5 + 10
+
+    # Part 11
+    # Test std::unordered_map< string, IntWrapper >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    un_map_inp = { b"test" : i2 }
+    assert t.process_19_unordered_map(un_map_inp) == 2 + 10
+    assert len(un_map_inp) == 1
+    assert list(un_map_inp.values())[0].i_ == 2 + 10
+
+    # Part 12
+    # Test std::unordered_map< Widget, vector<int> >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    un_map_inp = { i2 : [6, 2] }
+    assert t.process_20_unordered_map(un_map_inp) == 2
+    assert len(un_map_inp) == 1
+    assert list(un_map_inp.values())[0][0] == 6 + 10
+    assert list(un_map_inp.values())[0][1] == 2
+
+    # Part 13
+    # Test std::unordered_map< Widget, Widget2 >
+    vec_wrapper = libcpp_stl.IntVecWrapper()
+    vec_wrapper.push_back(6)
+    vec_wrapper.push_back(2)
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    un_map_inp = { i2 : vec_wrapper }
+    assert t.process_21_unordered_map(un_map_inp) == 2
+    assert len(un_map_inp) == 1
+    assert list(un_map_inp.values())[0][0] == 6 + 10
+    assert list(un_map_inp.values())[0][1] == 2

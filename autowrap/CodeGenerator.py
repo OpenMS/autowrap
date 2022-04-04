@@ -1621,6 +1621,7 @@ class CodeGenerator(object):
                    |from  libcpp.vector   cimport vector as libcpp_vector
                    |from  libcpp.pair     cimport pair as libcpp_pair
                    |from  libcpp.map      cimport map  as libcpp_map
+                   |from  libcpp.unordered_map      cimport unordered_map  as libcpp_unordered_map
                    |from  libcpp          cimport bool
                    |from  libc.string     cimport const_char
                    |from  cython.operator cimport dereference as deref,
