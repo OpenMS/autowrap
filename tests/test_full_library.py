@@ -100,7 +100,7 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
         link_args += ["-stdlib=libc++"]
     
     if sys.platform == "linux" or sys.platform == "linux2":
-        compile_args += ["-std=c++11"]
+        compile_args += ["-std=c11"]
     
     if sys.platform != "win32":
         compile_args += ["-Wno-unused-but-set-variable"]
