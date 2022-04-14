@@ -267,7 +267,7 @@ class CodeGenerator(object):
             pxd_code += c.render()
             pxd_code += " \n"
 
-        pyi_code = "from typing import overload, Any, List, Dict, Tuple, Set, Sequence\n\n"
+        pyi_code = "from typing import overload, Any, List, Dict, Tuple, Set, Sequence, Union \n\n"
         pyi_code += "\n".join(ci.render() for ci in self.top_level_typestub_code)
         pyi_code += "\n\n"
         for n, c in self.typestub_codes.items():
