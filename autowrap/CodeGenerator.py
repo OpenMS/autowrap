@@ -149,7 +149,7 @@ class CodeGenerator(object):
         self.all_classes = self.classes
         self.all_resolved = self.resolved
         if len(allDecl) > 0:
-            
+
             self.all_typedefs = []
             self.all_enums = []
             self.all_functions = []
@@ -191,6 +191,7 @@ class CodeGenerator(object):
 
         pxd_dirs = set()
         for inst in self.all_classes + self.all_enums + self.all_functions + self.all_typedefs:
+            # Could this not simply be `for inst in self.all_resolved:` ?
             pxd_path = os.path.abspath(inst.cpp_decl.pxd_path)
             pxd_dir = os.path.dirname(pxd_path)
             pxd_dirs.add(pxd_dir)
@@ -395,7 +396,7 @@ class CodeGenerator(object):
 
     def create_wrapper_for_class(self, r_class, out_codes):
         """Create Cython code for a single class
-        
+
         Note that the cdef class definition and the member variables go into
         the .pxd file while the Python-level implementation goes into the .pyx
         file. This allows us to cimport these classes later across modules.
@@ -718,7 +719,7 @@ class CodeGenerator(object):
                 assert len(methods) == 1, "overloaded operator/= not supported"
                 code = self.create_special_itruediv_method(cdcl, methods[0])
                 return [code], Code.Code()
-            
+
 
         if len(methods) == 1:
             code, typestubs = self.create_wrapper_for_nonoverloaded_method(cdcl, py_name, methods[0])
@@ -1155,7 +1156,7 @@ class CodeGenerator(object):
         |    return result
         """, locals())
         return code
-        
+
     def create_special_truediv_method(self, cdcl, mdcl):
         L.info("   create wrapper for operator/")
         assert len(mdcl.arguments) == 1, "operator/ has wrong signature"
@@ -1197,7 +1198,7 @@ class CodeGenerator(object):
         |    return result
         """, locals())
         return code
-    
+
     def create_special_sub_method(self, cdcl, mdcl):
         L.info("   create wrapper for operator-")
         assert len(mdcl.arguments) == 1, "operator- has wrong signature"
@@ -1302,7 +1303,7 @@ class CodeGenerator(object):
         self.top_level_code.append(tl)
 
         return code
-    
+
     def create_special_itruediv_method(self, cdcl, mdcl):
         L.info("   create wrapper for operator/")
         assert len(mdcl.arguments) == 1, "operator/ has wrong signature"
@@ -1535,7 +1536,7 @@ class CodeGenerator(object):
         we may be using in this compilation unit. Since we are passing objects
         as arguments quite frequently, we need to know about all other wrapped
         classes and we need to cimport them.
-        
+
         E.g. if we have module1 containing classA, classB and want to access it
         through the pxd header, then we need to add:
 
@@ -1555,7 +1556,7 @@ class CodeGenerator(object):
                 for resolved in self.allDecl[module]["decls"]:
 
                     # We need to import classes and enums that could be used in
-                    # the Cython code in the current module 
+                    # the Cython code in the current module
 
                     # use Cython name, which correctly imports template classes (instead of C name)
                     name = resolved.name
@@ -1578,7 +1579,7 @@ class CodeGenerator(object):
                             else:
                                 code.add("from $mname cimport $name", locals())
 
-            else: 
+            else:
                 L.info("Skip imports from self (own module %s)" % module)
 
         self.top_level_code.append(code)
