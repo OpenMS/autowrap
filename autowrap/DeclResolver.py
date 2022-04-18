@@ -79,7 +79,7 @@ __doc__ = """
         - wrap-manual-memory: will allow the user to provide manual memory
                               management of self.inst, therefore the class will
                               not provide the automated __dealloc__ and inst
-                              attribute (but their presence is still expected). 
+                              attribute (but their presence is still expected).
                               This is useful if you cannot use the shared-ptr
                               approach to store a reference to the C++ class
                               (as with singletons for example).
@@ -229,23 +229,24 @@ class ResolvedFunction(ResolvedMethod):
 
     pass
 
+def resolve_decls_from_files(paths, root, num_processes = 1, cython_warn_level = 1):
+    if num_processes > 1:
+        return resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_warn_level)
+    else:
+        return resolve_decls_from_files_single_thread(paths, root, cython_warn_level)
 
-def resolve_decls_from_files_single_thread(pathes, root, cython_warn_level = 1):
+
+def resolve_decls_from_files_single_thread(paths, root, cython_warn_level = 1):
     decls = []
-    for k, path in enumerate(pathes):
+    for k, path in enumerate(paths):
         full_path = os.path.join(root, path)
-        if k % 50 == 0: 
-            logger.log(25, "parsing progress %s out of %s" % (k, len(pathes)))
+        if k % 50 == 0:
+            logger.log(25, "parsing progress %s out of %s" % (k, len(paths)))
         decls.extend(PXDParser.parse_pxd_file(full_path, cython_warn_level))
     return _resolve_decls(decls)
 
-def resolve_decls_from_files(pathes, root, num_processes = 1, cython_warn_level = 1):
-    if num_processes > 1:
-        return resolve_decls_from_files_multi_thread(pathes, root, num_processes, cython_warn_level)
-    else:
-        return resolve_decls_from_files_single_thread(pathes, root, cython_warn_level)
 
-def resolve_decls_from_files_multi_thread(pathes, root, num_processes, cython_warn_level = 1):
+def resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_warn_level = 1):
     """Perform parsing with multiple threads
 
     This function distributes the work on `num_processes` processes and each
@@ -257,20 +258,20 @@ def resolve_decls_from_files_multi_thread(pathes, root, num_processes, cython_wa
 
     CONCURRENT_FILES_PER_CORE = 10
     pool = mp.Pool(processes=num_processes)
-    full_pathes = [os.path.join(root, path) for path in pathes]
+    full_paths = [os.path.join(root, path) for path in paths]
 
     decls = []
-    while len(full_pathes) > 0:
-        n_work = len(full_pathes)
+    while len(full_paths) > 0:
+        n_work = len(full_paths)
         remaining = max(0, n_work - num_processes * CONCURRENT_FILES_PER_CORE)
-        args = [full_pathes.pop() for k in range(n_work - remaining)]
-        logger.log(25, "parsing progress %s out of %s with %s processes" % (len(pathes)-remaining, len(pathes), num_processes))
+        args = [full_paths.pop() for k in range(n_work - remaining)]
+        logger.log(25, "parsing progress %s out of %s with %s processes" % (len(paths)-remaining, len(paths), num_processes))
         parse_pxd_file_warn = partial(PXDParser.parse_pxd_file, warn_level = cython_warn_level)
         res = pool.map(parse_pxd_file_warn, args)
         for r in res:
             decls.extend(r)
 
-    return _resolve_decls(decls)  
+    return _resolve_decls(decls)
 
 
 def resolve_decls_from_string(pxd_in_a_string):
@@ -280,7 +281,7 @@ def resolve_decls_from_string(pxd_in_a_string):
 def _resolve_decls(decls):
     """
     input:
-        class_decls ist list of instances of PXDParser.BaseDecl.
+        class_decls is a list of instances of PXDParser.BaseDecl.
         (contains annotations
           - about instance names for template parameterized classes
           - about inheritance of methods from other classes in class_decls

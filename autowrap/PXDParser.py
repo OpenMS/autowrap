@@ -150,7 +150,7 @@ def parse_line_annotations(node, lines):
                     result[key] += value
       except Exception as e:
         raise ValueError("Cannot parse '{}'".format(line)) from e
-    
+
     # check for multi line annotations after method declaration
     additional_annotations = _parse_multiline_annotations(lines[end:])
     # add multi line doc string to result (overwrites single line wrap-doc, if exists)
