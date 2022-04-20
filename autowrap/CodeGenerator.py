@@ -691,9 +691,9 @@ class CodeGenerator(object):
                 return codes, Code.Code()
             elif op == "[]":
                 assert len(methods) == 1, "overloaded operator[] not supported"
-                code_get, typestub = self.create_special_getitem_method(methods[0])
-                code_set, typestub = self.create_special_setitem_method(methods[0])
-                return [code_get, code_set], typestub
+                code_get, typestub_get = self.create_special_getitem_method(methods[0])
+                code_set, typestub_set = self.create_special_setitem_method(methods[0])
+                return [code_get, code_set], typestub_get.add(typestub_set)
             elif op == "+":
                 assert len(methods) == 1, "overloaded operator+ not supported"
                 code, stubs = self.create_special_op_method("add", "+", cdcl, methods[0])
@@ -1476,7 +1476,7 @@ class CodeGenerator(object):
         res_t = mdcl.result_type
         if not res_t.is_ref:
             L.info("   skip set wrapper for operator[] since return value is not a reference")
-            return Code.Code()
+            return Code.Code(), Code.Code()
 
         res_t_base = res_t.base_type
 
