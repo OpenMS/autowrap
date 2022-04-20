@@ -1528,7 +1528,7 @@ class CodeGenerator(object):
                  |    $cy_call_str = $call_as
                  """, locals())
 
-        return meth_code
+        return meth_code, stub_code
 
     ## TODO return generated stubs as well. Figure out if we can return a list of stubs
     def create_cast_methods(self, mdecls):
