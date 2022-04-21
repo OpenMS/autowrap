@@ -84,9 +84,9 @@ def fixed_include_dirs(include_boost):
     autowrap_internal = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
 
     if not include_boost:
-      return [autowrap_internal]
+        return [autowrap_internal]
     else:
-      return [boost, data, autowrap_internal]
+        return [boost, data, autowrap_internal]
 
 
 class CodeGenerator(object):
@@ -109,9 +109,9 @@ class CodeGenerator(object):
 
         self.manual_code = manual_code
         self.extra_cimports = extra_cimports
-        self.include_shared_ptr=shared_ptr
-        self.include_refholder=True
-        self.include_numpy=False
+        self.include_shared_ptr = shared_ptr
+        self.include_refholder = True
+        self.include_numpy = False
         self.add_relative = add_relative
 
         self.target_path = os.path.abspath(pyx_target_path)
@@ -124,7 +124,7 @@ class CodeGenerator(object):
         # will simply write a single pyx file.
         self.write_pxd = len(allDecl) > 0
 
-        ## Step 1: get all classes of current module
+        # Step 1: get all classes of current module
         self.classes = [d for d in resolved if isinstance(d, ResolvedClass)]
         self.enums = [d for d in resolved if isinstance(d, ResolvedEnum)]
         self.functions = [d for d in resolved if isinstance(d, ResolvedFunction)]
@@ -142,7 +142,7 @@ class CodeGenerator(object):
 
         self.allDecl = allDecl
 
-        ## Step 2: get classes of complete project (includes other modules)
+        # Step 2: get classes of complete project (includes other modules)
         self.all_typedefs = self.typedefs
         self.all_enums = self.enums
         self.all_functions = self.functions
@@ -319,7 +319,7 @@ class CodeGenerator(object):
         end_names = set(end_iterators.keys())
         common_names = begin_names & end_names
         if begin_names != end_names:
-            # TODO: diesen fall testen
+            # TODO: test this case
             raise Exception("iter declarations not balanced")
 
         for py_name in common_names:
@@ -547,12 +547,14 @@ class CodeGenerator(object):
             has_ops[ops] = has_op
 
         if any(v for v in has_ops.values()):
-            code = self.create_special_cmp_method(r_class, has_ops)
+            code, stubs = self.create_special_cmp_method(r_class, has_ops)
             class_code.add(code)
+            typestub_code.add(stubs)
 
-        codes = self._create_iter_methods(iterators, r_class.instance_map, r_class.local_map)
-        for ci in codes:
+        codes, stub_codes = self._create_iter_methods(iterators, r_class.instance_map, r_class.local_map)
+        for ci, si in zip(codes, stub_codes):
             class_code.add(ci)
+            typestub_code.add(si)
 
         extra_methods_code = self.manual_code.get(cname)
         if extra_methods_code:
@@ -569,11 +571,16 @@ class CodeGenerator(object):
     def _create_iter_methods(self, iterators, instance_mapping, local_mapping):
         """
         Create Iterator methods using the Python yield keyword
+        TODO: parse doc string. Difficult, since annotation of an iterator function is divided into
+          two directives: wrap-iter-begin and wrap-iter-end
+        TODO: allow iterators that decrease? Not urgent since it usually can be modelled by reverse_iterators, see test
         """
         codes = []
+        stub_codes = []
         for name, (begin_decl, end_decl, res_type) in iterators.items():
             L.info("   create wrapper for iter %s" % name)
             meth_code = Code.Code()
+            stub_code = Code.Code()
             begin_name = begin_decl.name
             end_name = end_decl.name
 
@@ -597,9 +604,14 @@ class CodeGenerator(object):
                             |        yield out
                             |        inc(it)
                             """, locals())
-
+            stub_code.add("""
+                            |
+                            |def $name(self) -> $base_type:
+                            |   ...
+                            """, locals())
             codes.append(meth_code)
-        return codes
+            stub_codes.append(stub_code)
+        return codes, stub_codes
 
     def _create_overloaded_method_decl(self, py_name, dispatched_m_names, methods, use_return, use_kwargs=False):
 
@@ -643,7 +655,12 @@ class CodeGenerator(object):
             else:
                 return_type = ":"
 
-            docstring = method.cpp_decl.annotations.get("wrap-doc", "")
+            # Prepare docstring for typestubs (TODO only prepare once?)
+            docstring = "Cython signature: %s" % method
+            extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
+            if len(extra_doc) > 0:
+                docstring += "\n" + " " * 8 + extra_doc
+
             typestub_code.add("""
                           |
                           |@overload
@@ -693,7 +710,8 @@ class CodeGenerator(object):
                 assert len(methods) == 1, "overloaded operator[] not supported"
                 code_get, typestub_get = self.create_special_getitem_method(methods[0])
                 code_set, typestub_set = self.create_special_setitem_method(methods[0])
-                return [code_get, code_set], typestub_get.add(typestub_set)
+                typestub_get.extend(typestub_set)
+                return [code_get, code_set], typestub_get
             elif op == "+":
                 assert len(methods) == 1, "overloaded operator+ not supported"
                 code, stubs = self.create_special_op_method("add", "+", cdcl, methods[0])
@@ -727,15 +745,14 @@ class CodeGenerator(object):
                 code, stubs = self.create_special_iop_method("itruediv", "/=", cdcl, methods[0])
                 return [code], stubs
 
-
         if len(methods) == 1:
             code, typestubs = self.create_wrapper_for_nonoverloaded_method(cdcl, py_name, methods[0])
             return [code], typestubs
         else:
             # TODO: what happens if two distinct c++ types as float, double
-            # map to the same python type ??
-            # -> 1) detection
-            # -> 2) force method renaming
+            #   map to the same python type ??
+            #    -> 1) detection
+            #    -> 2) force method renaming
             codes = []
             dispatched_m_names = []
             for (i, method) in enumerate(methods):
@@ -1298,7 +1315,7 @@ class CodeGenerator(object):
             docstring += "\n" + " "*8 + extra_doc
 
         stub_code.add("""
-                     |def __setitem__(self, key: Union[int, long], value: $res_t_typing ) -> None:
+                     |def __setitem__(self, key: int, value: $res_t_typing ) -> None:
                      |    \"\"\"$docstring\"\"\"
                      |    ...
                      """, locals())
@@ -1309,7 +1326,7 @@ class CodeGenerator(object):
         meth_code.add("""
                      |def __setitem__(self, key, $res_t_base value):
                      |    \"\"\"$docstring\"\"\"
-                     |    assert isinstance(key, (int, long)), 'arg index wrong type'
+                     |    assert isinstance(key, int), 'arg index wrong type'
                      |
                      |    cdef long _idx = $call_arg
                      |    if _idx < 0:
@@ -1376,6 +1393,8 @@ class CodeGenerator(object):
     def create_special_cmp_method(self, cdcl, ops):
         L.info("   create wrapper __richcmp__")
         meth_code = Code.Code()
+        stub_code = Code.Code()
+
         name = cdcl.name
         op_code_map = {'<': 0,
                        '==': 2,
@@ -1391,11 +1410,17 @@ class CodeGenerator(object):
            |def __richcmp__(self, other, op):
            |    if op not in $implemented_op_codes:
            |       op_str = $inv_op_code_map[op]
-           |       raise Exception("comparions operator %s not implemented" % op_str)
+           |       raise NotImplementedError("Comparison operator %s not implemented" % op_str)
            |    if not isinstance(other, $name):
-           |        return False
+           |       raise NotImplementedError("Comparison currently only allowed with objects of the same type.
+           + Use isinstance and define yourself.")
            |    cdef $name other_casted = other
            |    cdef $name self_casted = self
+           """, locals())
+        stub_code.add("""
+           |
+           |def __richcmp__(self, other: $name, op: int) -> Any:
+           |    ...
            """, locals())
 
         for op in implemented_op_codes:
@@ -1404,7 +1429,7 @@ class CodeGenerator(object):
                             |        return deref(self_casted.inst.get())
                             + $op_sign deref(other_casted.inst.get())""",
                           locals())
-        return meth_code
+        return meth_code, stub_code
 
     def create_special_copy_method(self, class_decl):
         L.info("   create wrapper __copy__")

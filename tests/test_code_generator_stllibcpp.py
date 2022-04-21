@@ -173,7 +173,7 @@ def test_stl_libcpp():
 
     # Test shared_ptr < const Widget >
     const_res = t.process_11_const()
-    const_res.i_ == 42
+    assert const_res.i_ == 42
 
     # Part 6
     # Test std::map< string, IntWrapper >

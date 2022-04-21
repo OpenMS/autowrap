@@ -65,7 +65,7 @@ def generate_code(decls, instance_map, target, debug=False, manual_code=None,
                                       allDecl=allDecl,
                                       add_relative=add_relative,
                                       shared_ptr=shared_ptr)
-    gen.include_numpy=include_numpy
+    gen.include_numpy = include_numpy
     gen.create_pyx_file(debug)
     includes = gen.get_include_dirs(include_boost)
     print("Autowrap has wrapped %s classes, %s methods and %s enums" % (

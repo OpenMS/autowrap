@@ -74,6 +74,9 @@ class Minimal {
         std::vector<Minimal>::iterator begin();
         std::vector<Minimal>::iterator end();
 
+        std::vector<Minimal>::reverse_iterator rbegin();
+        std::vector<Minimal>::reverse_iterator rend();
+
         Minimal create() const;
 
         Minimal & getRef();
