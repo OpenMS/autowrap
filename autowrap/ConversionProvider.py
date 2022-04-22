@@ -289,7 +289,7 @@ class IntegerConverter(TypeConverterBase):
         return "int"
 
     def type_check_expression(self, cpp_type, argument_var):
-        return "isinstance(%s, (int, long))" % (argument_var,)
+        return "isinstance(%s, int)" % (argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""
@@ -322,7 +322,7 @@ class UnsignedIntegerConverter(TypeConverterBase):
         return "int"
 
     def type_check_expression(self, cpp_type, argument_var):
-        return "isinstance(%s, (int, long)) and %s >= 0" % (argument_var, argument_var,)
+        return "isinstance(%s, int) and %s >= 0" % (argument_var, argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
         code = ""

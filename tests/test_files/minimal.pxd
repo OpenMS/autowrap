@@ -54,12 +54,15 @@ cdef extern from "minimal.hpp":
         unsigned int test_special_converter(unsigned int)
 
         void setVector(libcpp_vector[Minimal]) # wrap-doc:Sets vector
-        libcpp_vector[Minimal] getVector()# wrap-doc:Gets vector
+        libcpp_vector[Minimal] getVector() # wrap-doc:Gets vector
 
         int test2Lists(const libcpp_vector[Minimal]&, libcpp_vector[int])
 
         libcpp_vector[Minimal].iterator begin() # wrap-iter-begin:__iter__(Minimal)
         libcpp_vector[Minimal].iterator end()   # wrap-iter-end:__iter__(Minimal)
+
+        libcpp_vector[Minimal].reverse_iterator rbegin() # wrap-iter-begin:__reversed__(Minimal)
+        libcpp_vector[Minimal].reverse_iterator rend()   # wrap-iter-end:__reversed__(Minimal)
 
         int operator()(Minimal) # wrap-cast:toInt
 

@@ -200,6 +200,15 @@ std::vector<Minimal>::iterator Minimal::end()
     return this->_mi.end();
 }
 
+std::vector<Minimal>::reverse_iterator Minimal::rbegin()
+{
+    return this->_mi.rbegin();
+}
+std::vector<Minimal>::reverse_iterator Minimal::rend()
+{
+    return this->_mi.rend();
+}
+
 long int Minimal::run_static(long int i, bool)
 {
     return i*4;

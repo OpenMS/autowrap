@@ -84,9 +84,9 @@ def fixed_include_dirs(include_boost):
     autowrap_internal = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
 
     if not include_boost:
-      return [autowrap_internal]
+        return [autowrap_internal]
     else:
-      return [boost, data, autowrap_internal]
+        return [boost, data, autowrap_internal]
 
 
 class CodeGenerator(object):
@@ -109,9 +109,9 @@ class CodeGenerator(object):
 
         self.manual_code = manual_code
         self.extra_cimports = extra_cimports
-        self.include_shared_ptr=shared_ptr
-        self.include_refholder=True
-        self.include_numpy=False
+        self.include_shared_ptr = shared_ptr
+        self.include_refholder = True
+        self.include_numpy = False
         self.add_relative = add_relative
 
         self.target_path = os.path.abspath(pyx_target_path)
@@ -124,7 +124,7 @@ class CodeGenerator(object):
         # will simply write a single pyx file.
         self.write_pxd = len(allDecl) > 0
 
-        ## Step 1: get all classes of current module
+        # Step 1: get all classes of current module
         self.classes = [d for d in resolved if isinstance(d, ResolvedClass)]
         self.enums = [d for d in resolved if isinstance(d, ResolvedEnum)]
         self.functions = [d for d in resolved if isinstance(d, ResolvedFunction)]
@@ -142,7 +142,7 @@ class CodeGenerator(object):
 
         self.allDecl = allDecl
 
-        ## Step 2: get classes of complete project (includes other modules)
+        # Step 2: get classes of complete project (includes other modules)
         self.all_typedefs = self.typedefs
         self.all_enums = self.enums
         self.all_functions = self.functions
@@ -224,7 +224,7 @@ class CodeGenerator(object):
         # first wrap classes, so that self.class_codes[..] is initialized
         # for attaching enums or static functions
         create_for(ResolvedClass, self.create_wrapper_for_class, self.class_codes)
-        create_for(ResolvedEnum, self.create_wrapper_for_enum, self.enum_codes)
+        create_for(ResolvedEnum, self.create_wrapper_for_enum, (self.enum_codes, self.typestub_codes))
         create_for(ResolvedFunction, self.create_wrapper_for_free_function, self.class_codes)
 
         # resolve extra
@@ -269,6 +269,7 @@ class CodeGenerator(object):
             pxd_code += " \n"
 
         pyi_code = "from typing import overload, Any, List, Dict, Tuple, Set, Sequence, Union \n\n"
+        pyi_code += "from enum import Enum as _PyEnum\n\n"
         pyi_code += "\n".join(ci.render() for ci in self.top_level_typestub_code)
         pyi_code += "\n\n"
         for n, c in self.typestub_codes.items():
@@ -319,7 +320,7 @@ class CodeGenerator(object):
         end_names = set(end_iterators.keys())
         common_names = begin_names & end_names
         if begin_names != end_names:
-            # TODO: diesen fall testen
+            # TODO: test this case
             raise Exception("iter declarations not balanced")
 
         for py_name in common_names:
@@ -337,7 +338,8 @@ class CodeGenerator(object):
 
         return iterators, non_iter_methods
 
-    def create_wrapper_for_enum(self, decl, out_codes):
+    def create_wrapper_for_enum(self, decl, out_codes_and_stub_codes):
+        out_codes, out_stub_codes = out_codes_and_stub_codes
         self.wrapped_enums_cnt += 1
         if decl.cpp_decl.annotations.get("wrap-attach"):
             if not decl.scoped:
@@ -347,12 +349,13 @@ class CodeGenerator(object):
         else:
             name = decl.name
 
-        doc = decl.cpp_decl.annotations.get("wrap-doc", [])
+        doc = decl.cpp_decl.annotations.get("wrap-doc", "")
         if doc:
             doc = '"""\n    ' + '\n    '.join(doc) + '\n    """'
 
         L.info("create wrapper for enum %s" % name)
         code = Code.Code()
+        stub_code = Code.Code()
         enum_pxd_code = Code.Code()
 
         enum_pxd_code.add("""
@@ -367,31 +370,57 @@ class CodeGenerator(object):
                        |cdef class $name:
                        |    $doc
                      """, name=name, doc=doc)
+            stub_code.add("""
+                       |
+                       |class $name:
+                       |    $doc
+                     """, name=name, doc=doc)
         else:  # for scoped enums we use the python enum class
+            # TODO check if we somehow can use an extension class (cdef or cpdef). Should be faster.
+            #  see https://groups.google.com/g/cython-users/c/PpwhyIzqGyA
+            #  and https://github.com/cython/cython/pull/3221
             code.add("""
                        |
                        |class $name(_PyEnum):
                        |    $doc
                      """, name=name, doc=doc)
+
+            stub_code.add("""
+                       |
+                       |class $name(_PyEnum):
+                       |    $doc
+                     """, name=name, doc=doc)
+
         for (optname, value) in decl.items:
             code.add("    $name = $value", name=optname, value=value)
+            stub_code.add("    $name : int", name=optname, value=value)
 
         # Add mapping of int (enum) to the value of the enum (as string)
         if not decl.scoped:
             code.add("""
                     |
                     |    def getMapping(self):
-                    |        return dict([ (v, k) for k, v in self.__class__.__dict__.items() if isinstance(v, int) ])""" )
+                    |        return dict([ (v, k) for k, v in self.__class__.__dict__.items()
+                    +if isinstance(v, int) ])""")
+            stub_code.add("""
+                        |
+                        |    def getMapping(self) -> Dict[int, str]:
+                        |       ...
+                        """)
 
         # TODO check if we need to add an import or custom type to type stubs for enums
         out_codes[decl.name] = code
+        out_stub_codes[decl.name] = stub_code
         self.class_pxd_codes[decl.name] = enum_pxd_code
 
         # Add an extra member to previously declared class code snippets
         for class_name in decl.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
+            stub_code = Code.Code()
             display_name = decl.cpp_decl.annotations.get("wrap-as", [decl.name])[0]
             code.add("%s = %s" % (display_name, name))
+            stub_code.add("%s : %s" % (display_name, name))
+            self.typestub_codes[class_name].add(stub_code)
             self.class_codes[class_name].add(code)
 
     def create_wrapper_for_class(self, r_class, out_codes):
@@ -422,11 +451,7 @@ class CodeGenerator(object):
         class_pxd_code = Code.Code()
         class_code = Code.Code()
         typestub_code = Code.Code()
-        self.typestub_codes[cname] = typestub_code
-        typestub_code.add("""
-                            |
-                            |class $pyname:
-                            """, locals())
+
         # Class documentation (multi-line)
         docstring = "Cython implementation of %s\n" % cy_type
         docstring += special_class_doc % locals()
@@ -436,6 +461,15 @@ class CodeGenerator(object):
         extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", "")
         for extra_doc_line in extra_doc:
             docstring += "\n    " + extra_doc_line
+
+        self.typestub_codes[cname] = typestub_code
+        typestub_code.add("""
+                        |
+                        |class $pyname:
+                        |    \"\"\"
+                        |    $docstring
+                        |    \"\"\"
+                        """, locals())
 
         if r_class.methods:
             shared_ptr_inst = "cdef shared_ptr[%s] inst" % cy_type
@@ -542,12 +576,14 @@ class CodeGenerator(object):
             has_ops[ops] = has_op
 
         if any(v for v in has_ops.values()):
-            code = self.create_special_cmp_method(r_class, has_ops)
+            code, stubs = self.create_special_cmp_method(r_class, has_ops)
             class_code.add(code)
+            typestub_code.add(stubs)
 
-        codes = self._create_iter_methods(iterators, r_class.instance_map, r_class.local_map)
-        for ci in codes:
+        codes, stub_codes = self._create_iter_methods(iterators, r_class.instance_map, r_class.local_map)
+        for ci, si in zip(codes, stub_codes):
             class_code.add(ci)
+            typestub_code.add(si)
 
         extra_methods_code = self.manual_code.get(cname)
         if extra_methods_code:
@@ -564,11 +600,16 @@ class CodeGenerator(object):
     def _create_iter_methods(self, iterators, instance_mapping, local_mapping):
         """
         Create Iterator methods using the Python yield keyword
+        TODO: parse doc string. Difficult, since annotation of an iterator function is divided into
+          two directives: wrap-iter-begin and wrap-iter-end
+        TODO: allow iterators that decrease? Not urgent since it usually can be modelled by reverse_iterators, see test
         """
         codes = []
+        stub_codes = []
         for name, (begin_decl, end_decl, res_type) in iterators.items():
             L.info("   create wrapper for iter %s" % name)
             meth_code = Code.Code()
+            stub_code = Code.Code()
             begin_name = begin_decl.name
             end_name = end_decl.name
 
@@ -592,9 +633,14 @@ class CodeGenerator(object):
                             |        yield out
                             |        inc(it)
                             """, locals())
-
+            stub_code.add("""
+                            |
+                            |def $name(self) -> $base_type:
+                            |   ...
+                            """, locals())
             codes.append(meth_code)
-        return codes
+            stub_codes.append(stub_code)
+        return codes, stub_codes
 
     def _create_overloaded_method_decl(self, py_name, dispatched_m_names, methods, use_return, use_kwargs=False):
 
@@ -638,10 +684,17 @@ class CodeGenerator(object):
             else:
                 return_type = ":"
 
+            # Prepare docstring for typestubs (TODO only prepare once?)
+            docstring = "Cython signature: %s" % method
+            extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
+            if len(extra_doc) > 0:
+                docstring += "\n" + " " * 8 + extra_doc
+
             typestub_code.add("""
                           |
                           |@overload
                           |def $py_name(self, $args_typestub_str) $return_type
+                          |    \"\"\"$docstring\"\"\"
                           |    ...
                         """, locals())
 
@@ -684,51 +737,51 @@ class CodeGenerator(object):
                 return codes, Code.Code()
             elif op == "[]":
                 assert len(methods) == 1, "overloaded operator[] not supported"
-                code_get = self.create_special_getitem_method(methods[0])
-                code_set = self.create_special_setitem_method(methods[0])
-                return [code_get, code_set], Code.Code()
+                code_get, typestub_get = self.create_special_getitem_method(methods[0])
+                code_set, typestub_set = self.create_special_setitem_method(methods[0])
+                typestub_get.extend(typestub_set)
+                return [code_get, code_set], typestub_get
             elif op == "+":
                 assert len(methods) == 1, "overloaded operator+ not supported"
-                code = self.create_special_add_method(cdcl, methods[0])
-                return [code], Code.Code()
+                code, stubs = self.create_special_op_method("add", "+", cdcl, methods[0])
+                return [code], stubs
             elif op == "-":
                 assert len(methods) == 1, "overloaded operator- not supported"
-                code = self.create_special_sub_method(cdcl, methods[0])
-                return [code], Code.Code()
+                code, stubs = self.create_special_op_method("sub", "-", cdcl, methods[0])
+                return [code], stubs
             elif op == "*":
                 assert len(methods) == 1, "overloaded operator* not supported"
-                code = self.create_special_mul_method(cdcl, methods[0])
-                return [code], Code.Code()
+                code, stubs = self.create_special_op_method("mul", "*", cdcl, methods[0])
+                return [code], stubs
             elif op == "/":
                 assert len(methods) == 1, "overloaded operator/ not supported"
-                code = self.create_special_truediv_method(cdcl, methods[0])
-                return [code], Code.Code()
+                code, stubs = self.create_special_op_method("truediv", "/", cdcl, methods[0])
+                return [code], stubs
             elif op == "+=":
                 assert len(methods) == 1, "overloaded operator+= not supported"
-                code = self.create_special_iadd_method(cdcl, methods[0])
-                return [code], Code.Code()
+                code, stubs = self.create_special_iop_method("iadd", "+=", cdcl, methods[0])
+                return [code], stubs
             elif op == "-=":
                 assert len(methods) == 1, "overloaded operator-= not supported"
-                code = self.create_special_isub_method(cdcl, methods[0])
-                return [code], Code.Code()
+                code, stubs = self.create_special_iop_method("isub", "-=", cdcl, methods[0])
+                return [code], stubs
             elif op == "*=":
                 assert len(methods) == 1, "overloaded operator*= not supported"
-                code = self.create_special_imul_method(cdcl, methods[0])
-                return [code], Code.Code()
+                code, stubs = self.create_special_iop_method("imul", "*=", cdcl, methods[0])
+                return [code], stubs
             elif op == "/=":
                 assert len(methods) == 1, "overloaded operator/= not supported"
-                code = self.create_special_itruediv_method(cdcl, methods[0])
-                return [code], Code.Code()
-
+                code, stubs = self.create_special_iop_method("itruediv", "/=", cdcl, methods[0])
+                return [code], stubs
 
         if len(methods) == 1:
             code, typestubs = self.create_wrapper_for_nonoverloaded_method(cdcl, py_name, methods[0])
             return [code], typestubs
         else:
             # TODO: what happens if two distinct c++ types as float, double
-            # map to the same python type ??
-            # -> 1) detection
-            # -> 2) force method renaming
+            #   map to the same python type ??
+            #    -> 1) detection
+            #    -> 2) force method renaming
             codes = []
             dispatched_m_names = []
             for (i, method) in enumerate(methods):
@@ -817,17 +870,19 @@ class CodeGenerator(object):
                        |
                        |@staticmethod
                        |def $py_name($py_typing_signature) $return_type
+                       |    \"\"\"$docstring\"\"\"
                        |    ...
                        """, locals())
         else:
             stub.add("""
                        |
                        |def $py_name($py_typing_signature) $return_type
+                       |    \"\"\"$docstring\"\"\"
                        |    ...
                        """, locals())
 
 
-        # Step 2a: create code which convert python input args to c++ args of
+        # Step 2a: create code which converts python input args to c++ args of
         # wrapped method
         for n, check in checks:
             code.add("    assert %s, 'arg %s wrong type'" % (check, n))
@@ -873,7 +928,7 @@ class CodeGenerator(object):
                 |    def __set__(self, $py_type $name):
                 """, locals())
 
-            # TODO: add mit indent level
+            # TODO: add with indent level
             indented = Code.Code()
             indented.add(conv_code)
             code.add(indented)
@@ -1088,7 +1143,9 @@ class CodeGenerator(object):
             for (i, constructor) in enumerate(real_constructors):
                 dispatched_cons_name = "_init_%d" % i
                 dispatched_cons_names.append(dispatched_cons_name)
-                # TODO check if we need the stub
+                # we don't need to generate the individual stubs here since
+                # _create_overloaded_method_decl will do it with the correct name __init__
+                # outside of the for loop
                 code, _ = self.create_wrapper_for_nonoverloaded_constructor(class_decl,
                                                                          dispatched_cons_name,
                                                                          constructor)
@@ -1136,202 +1193,73 @@ class CodeGenerator(object):
 
         return cons_code, stub_code
 
-    def create_special_mul_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator*")
-        assert len(mdcl.arguments) == 1, "operator* has wrong signature"
-        (__, t), = mdcl.arguments
-        name = cdcl.name
-        assert t.base_type == name, "can only multiply with myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cython_type(t)
-        code = Code.Code()
-        code.add("""
-        |
-        |def __mul__($name self, $name other not None):
-        |    cdef $cy_t * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    cdef $cy_t multiplied = deref(this) * deref(that)
-        |    cdef $name result = $name.__new__($name)
-        |    result.inst = shared_ptr[$cy_t](new $cy_t(multiplied))
-        |    return result
-        """, locals())
-        return code
 
-    def create_special_truediv_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator/")
-        assert len(mdcl.arguments) == 1, "operator/ has wrong signature"
+    def create_special_op_method(self, pyname, symbol, cdcl, mdcl):
+        L.info(f"   create wrapper for operator{symbol}")
+        assert len(mdcl.arguments) == 1, f"operator{symbol} has wrong signature"
         (__, t), = mdcl.arguments
         name = cdcl.name
-        assert t.base_type == name, "can only divide with myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
+        assert t.base_type == name, f"can only apply operator{symbol} to object of same type"
+        assert mdcl.result_type.base_type == name, f"can only return same type for operator{symbol}"
         cy_t = self.cr.cython_type(t)
         code = Code.Code()
-        code.add("""
+        ## TODO use make_shared instead of new if C++11 available
+        code.add(f"""
         |
-        |def __truediv__($name self, $name other not None):
-        |    cdef $cy_t  * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    cdef $cy_t divided = deref(this) / deref(that)
-        |    cdef $name result = $name.__new__($name)
-        |    result.inst = shared_ptr[$cy_t](new $cy_t(divided))
+        |def __{pyname}__({name} self, {name} other not None):
+        |    cdef {cy_t} * this = self.inst.get()
+        |    cdef {cy_t} * that = other.inst.get()
+        |    cdef {cy_t} applied = deref(this) {symbol} deref(that)
+        |    cdef {name} result = {name}.__new__({name})
+        |    result.inst = shared_ptr[{cy_t}](new {cy_t}(applied))
         |    return result
-        """, locals())
-        return code
+        """)
+        stubs = Code.Code()
+        stubs.add(f"""
+        |
+        |def __{pyname}__(self: {name}, other: {name}) -> {name}:
+        |    ...
+        """)
 
-    def create_special_add_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator+")
-        assert len(mdcl.arguments) == 1, "operator+ has wrong signature"
+        return code, stubs
+
+
+    def create_special_iop_method(self, pyname, symbol, cdcl, mdcl):
+        L.info(f"   create wrapper for operator{symbol}")
+        assert len(mdcl.arguments) == 1, f"operator{symbol} has wrong signature"
         (__, t), = mdcl.arguments
         name = cdcl.name
-        assert t.base_type == name, "can only add to myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
+        assert t.base_type == name, f"can only apply operator{symbol} to object of same type"
+        assert mdcl.result_type.base_type == name, f"can only return same type for operator{symbol}"
         cy_t = self.cr.cython_type(t)
         code = Code.Code()
-        code.add("""
+        code.add(f"""
         |
-        |def __add__($name self, $name other not None):
-        |    cdef $cy_t  * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    cdef $cy_t added = deref(this) + deref(that)
-        |    cdef $name result = $name.__new__($name)
-        |    result.inst = shared_ptr[$cy_t](new $cy_t(added))
-        |    return result
-        """, locals())
-        return code
-
-    def create_special_sub_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator-")
-        assert len(mdcl.arguments) == 1, "operator- has wrong signature"
-        (__, t), = mdcl.arguments
-        name = cdcl.name
-        assert t.base_type == name, "can only subtract to myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cython_type(t)
-        code = Code.Code()
-        code.add("""
-        |
-        |def __sub__($name self, $name other not None):
-        |    cdef $cy_t  * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    cdef $cy_t subtracted = deref(this) - deref(that)
-        |    cdef $name result = $name.__new__($name)
-        |    result.inst = shared_ptr[$cy_t](new $cy_t(subtracted))
-        |    return result
-        """, locals())
-        return code
-
-    def create_special_iadd_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator+")
-        assert len(mdcl.arguments) == 1, "operator+ has wrong signature"
-        (__, t), = mdcl.arguments
-        name = cdcl.name
-        assert t.base_type == name, "can only add to myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cython_type(t)
-        code = Code.Code()
-        code.add("""
-        |
-        |def __iadd__($name self, $name other not None):
-        |    cdef $cy_t * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    _iadd(this, that)
+        |def __{pyname}__({name} self, {name} other not None):
+        |    cdef {cy_t} * this = self.inst.get()
+        |    cdef {cy_t} * that = other.inst.get()
+        |    _{pyname}(this, that)
         |    return self
-        """, locals())
+        """)
+
+        stubs = Code.Code()
+        stubs.add(f"""
+        |
+        |def __{pyname}__(self: {name}, other: {name}) -> {name}:
+        |    ...
+        """)
 
         tl = Code.Code()
-        tl.add("""
+        tl.add(f"""
                 |cdef extern from "autowrap_tools.hpp":
-                |    void _iadd($cy_t *, $cy_t *)
-                """, locals())
+                |    void _{pyname}({cy_t} *, {cy_t} *)
+                """)
 
         self.top_level_code.append(tl)
 
-        return code
+        return code, stubs
 
-    def create_special_isub_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator-")
-        assert len(mdcl.arguments) == 1, "operator- has wrong signature"
-        (__, t), = mdcl.arguments
-        name = cdcl.name
-        assert t.base_type == name, "can only subtract to myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cython_type(t)
-        code = Code.Code()
-        code.add("""
-        |
-        |def __isub__($name self, $name other not None):
-        |    cdef $cy_t * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    _isub(this, that)
-        |    return self
-        """, locals())
-
-        tl = Code.Code()
-        tl.add("""
-                |cdef extern from "autowrap_tools.hpp":
-                |    void _isub($cy_t *, $cy_t *)
-                """, locals())
-
-        self.top_level_code.append(tl)
-
-        return code
-
-    def create_special_imul_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator*")
-        assert len(mdcl.arguments) == 1, "operator* has wrong signature"
-        (__, t), = mdcl.arguments
-        name = cdcl.name
-        assert t.base_type == name, "can only multiply to myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cython_type(t)
-        code = Code.Code()
-        code.add("""
-        |
-        |def __imul__($name self, $name other not None):
-        |    cdef $cy_t * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    _imul(this, that)
-        |    return self
-        """, locals())
-
-        tl = Code.Code()
-        tl.add("""
-                |cdef extern from "autowrap_tools.hpp":
-                |    void _imul($cy_t *, $cy_t *)
-                """, locals())
-
-        self.top_level_code.append(tl)
-
-        return code
-
-    def create_special_itruediv_method(self, cdcl, mdcl):
-        L.info("   create wrapper for operator/")
-        assert len(mdcl.arguments) == 1, "operator/ has wrong signature"
-        (__, t), = mdcl.arguments
-        name = cdcl.name
-        assert t.base_type == name, "can only divide to myself"
-        assert mdcl.result_type.base_type == name, "can only return same type"
-        cy_t = self.cr.cython_type(t)
-        code = Code.Code()
-        code.add("""
-        |
-        |def __itruediv__($name self, $name other not None):
-        |    cdef $cy_t * this = self.inst.get()
-        |    cdef $cy_t * that = other.inst.get()
-        |    _itruediv(this, that)
-        |    return self
-        """, locals())
-
-        tl = Code.Code()
-        tl.add("""
-                |cdef extern from "autowrap_tools.hpp":
-                |    void _itruediv($cy_t *, $cy_t *)
-                """, locals())
-
-        self.top_level_code.append(tl)
-
-        return code
-
+    ## TODO allow getitem for any key. Not just size_t and similar.
     def create_special_getitem_method(self, mdcl):
         L.info("   create get wrapper for operator[]")
         meth_code = Code.Code()
@@ -1388,8 +1316,9 @@ class CodeGenerator(object):
             meth_code.add(to_py_code)
             meth_code.add("    return $out_var", locals())
 
-        return meth_code
+        return meth_code, stubs
 
+    ## TODO allow setitem for any key. Not just size_t and similar.
     def create_special_setitem_method(self, mdcl):
         # Note: setting will only work with a ref signature
         #   Object operator[](size_t k)  -> only get is implemented
@@ -1397,20 +1326,36 @@ class CodeGenerator(object):
         res_t = mdcl.result_type
         if not res_t.is_ref:
             L.info("   skip set wrapper for operator[] since return value is not a reference")
-            return Code.Code()
+            return Code.Code(), Code.Code()
 
         res_t_base = res_t.base_type
 
         L.info("   create set wrapper for operator[]")
+        out_converter = self.cr.get(res_t)
+        res_t_typing = out_converter.matching_python_type_full(res_t)
+
         meth_code = Code.Code()
+        stub_code = Code.Code()
+
+        # Prepare docstring
+        docstring = "Cython signature: %s" % mdcl
+        extra_doc = mdcl.cpp_decl.annotations.get("wrap-doc", "")
+        if len(extra_doc) > 0:
+            docstring += "\n" + " "*8 + extra_doc
+
+        stub_code.add("""
+                     |def __setitem__(self, key: int, value: $res_t_typing ) -> None:
+                     |    \"\"\"$docstring\"\"\"
+                     |    ...
+                     """, locals())
 
         call_arg = "key"
         value_arg = "value"
 
         meth_code.add("""
                      |def __setitem__(self, key, $res_t_base value):
-                     |    \"\"\"Test\"\"\"
-                     |    assert isinstance(key, (int, long)), 'arg index wrong type'
+                     |    \"\"\"$docstring\"\"\"
+                     |    assert isinstance(key, int), 'arg index wrong type'
                      |
                      |    cdef long _idx = $call_arg
                      |    if _idx < 0:
@@ -1428,14 +1373,14 @@ class CodeGenerator(object):
         #  CppObject[ idx ] = value
         #
         cy_call_str = "deref(self.inst.get())[%s]" % call_arg
-        out_converter = self.cr.get(res_t)
         code, call_as, cleanup = out_converter.input_conversion(res_t, value_arg, 0)
         meth_code.add("""
                  |    $cy_call_str = $call_as
                  """, locals())
 
-        return meth_code
+        return meth_code, stub_code
 
+    ## TODO return generated stubs as well. Figure out if we can return a list of stubs
     def create_cast_methods(self, mdecls):
         py_names = []
         for mdcl in mdecls:
@@ -1477,6 +1422,8 @@ class CodeGenerator(object):
     def create_special_cmp_method(self, cdcl, ops):
         L.info("   create wrapper __richcmp__")
         meth_code = Code.Code()
+        stub_code = Code.Code()
+
         name = cdcl.name
         op_code_map = {'<': 0,
                        '==': 2,
@@ -1492,11 +1439,17 @@ class CodeGenerator(object):
            |def __richcmp__(self, other, op):
            |    if op not in $implemented_op_codes:
            |       op_str = $inv_op_code_map[op]
-           |       raise Exception("comparions operator %s not implemented" % op_str)
+           |       raise NotImplementedError("Comparison operator %s not implemented" % op_str)
            |    if not isinstance(other, $name):
-           |        return False
+           |       raise NotImplementedError("Comparison currently only allowed with objects of the same type.
+           + Use isinstance and define yourself.")
            |    cdef $name other_casted = other
            |    cdef $name self_casted = self
+           """, locals())
+        stub_code.add("""
+           |
+           |def __richcmp__(self, other: $name, op: int) -> Any:
+           |    ...
            """, locals())
 
         for op in implemented_op_codes:
@@ -1505,7 +1458,7 @@ class CodeGenerator(object):
                             |        return deref(self_casted.inst.get())
                             + $op_sign deref(other_casted.inst.get())""",
                           locals())
-        return meth_code
+        return meth_code, stub_code
 
     def create_special_copy_method(self, class_decl):
         L.info("   create wrapper __copy__")

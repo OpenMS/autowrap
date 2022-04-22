@@ -57,17 +57,16 @@ class Code(object):
         self.content = []
 
     def extend(self, other):
-        # keeps identation
+        # keeps indentation
         self.content.extend(other.content)
 
     def add(self, what, *a, **kw):
-        # may increase indent !
+        # may increase indent!
         if a:  # if dict given
             kw.update(a[0])
         if "self" in kw:
             del kw["self"]  # self causes problems in substitute call below
         if isinstance(what, basestring):
-            # print repr(what)
             try:
                 res = string.Template(what).substitute(**kw)
             except:
@@ -78,7 +77,7 @@ class Code(object):
             res = re.sub(r"\n+ *\+", "", res)
             for line in re.split(r"\n *\|", res):
                 self.content.append(line.rstrip())
-        else:
+        else:  # TODO do we really want to allow adding "ANYTHING" e.g. even None?
             self.content.append(what)
         return self
 

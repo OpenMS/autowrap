@@ -111,7 +111,6 @@ def test_minimal():
         # That is what we expected, cant modify a const member
         pass
 
-
     assert minimal.compute(3) == 4
     # overloaded for float:
     assert minimal.compute(0.0) == 42.0
@@ -224,6 +223,11 @@ def test_minimal():
     assert b == m1
     assert c == m3
 
+    c, b, a = list(reversed(m2))  # call __reversed__
+    assert a == m2
+    assert b == m1
+    assert c == m3
+
     assert m2.test2Lists([m1], [1, 2]) == 3
     assert m1 == m1
 
@@ -247,10 +251,10 @@ def test_minimal():
 
     # Was OverflowError, but now we check positivity for unsigned ints
     with pytest.raises(AssertionError):
-        m2[-1]
+        print(m2[-1])
 
     with pytest.raises(IndexError):
-        m2[3]
+        print(m2[3])
 
     # operator add
     assert wrapped.Minimal(1) + wrapped.Minimal(2) == wrapped.Minimal(3)
