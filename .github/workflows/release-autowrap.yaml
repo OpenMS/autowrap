@@ -66,7 +66,7 @@ jobs:
           echo "\n" >> HISTORY.md
           cat CHANGELOG.md >> HISTORY.md
           rm CHANGELOG.md && echo "autowrap $NEXT_VER" > CHANGELOG.md
-          sed -e -i "s/^[[:space:]]*__version__.*/__version__ = \(${NEXT_VER//./, }\)/g" autowrap/version.py
+          sed -i -e "s/^[[:space:]]*__version__.*/__version__ = \(${NEXT_VER//./, }\)/g" autowrap/version.py
           
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
