@@ -224,7 +224,7 @@ class CodeGenerator(object):
         # first wrap classes, so that self.class_codes[..] is initialized
         # for attaching enums or static functions
         create_for(ResolvedClass, self.create_wrapper_for_class, self.class_codes)
-        create_for(ResolvedEnum, self.create_wrapper_for_enum, self.enum_codes)
+        create_for(ResolvedEnum, self.create_wrapper_for_enum, (self.enum_codes, self.typestub_codes))
         create_for(ResolvedFunction, self.create_wrapper_for_free_function, self.class_codes)
 
         # resolve extra
@@ -269,6 +269,7 @@ class CodeGenerator(object):
             pxd_code += " \n"
 
         pyi_code = "from typing import overload, Any, List, Dict, Tuple, Set, Sequence, Union \n\n"
+        pyi_code += "from enum import Enum as _PyEnum\n\n"
         pyi_code += "\n".join(ci.render() for ci in self.top_level_typestub_code)
         pyi_code += "\n\n"
         for n, c in self.typestub_codes.items():
@@ -337,7 +338,8 @@ class CodeGenerator(object):
 
         return iterators, non_iter_methods
 
-    def create_wrapper_for_enum(self, decl, out_codes):
+    def create_wrapper_for_enum(self, decl, out_codes_and_stub_codes):
+        out_codes, out_stub_codes = out_codes_and_stub_codes
         self.wrapped_enums_cnt += 1
         if decl.cpp_decl.annotations.get("wrap-attach"):
             if not decl.scoped:
@@ -347,12 +349,13 @@ class CodeGenerator(object):
         else:
             name = decl.name
 
-        doc = decl.cpp_decl.annotations.get("wrap-doc", [])
+        doc = decl.cpp_decl.annotations.get("wrap-doc", "")
         if doc:
             doc = '"""\n    ' + '\n    '.join(doc) + '\n    """'
 
         L.info("create wrapper for enum %s" % name)
         code = Code.Code()
+        stub_code = Code.Code()
         enum_pxd_code = Code.Code()
 
         enum_pxd_code.add("""
@@ -367,31 +370,57 @@ class CodeGenerator(object):
                        |cdef class $name:
                        |    $doc
                      """, name=name, doc=doc)
+            stub_code.add("""
+                       |
+                       |class $name:
+                       |    $doc
+                     """, name=name, doc=doc)
         else:  # for scoped enums we use the python enum class
+            # TODO check if we somehow can use an extension class (cdef or cpdef). Should be faster.
+            #  see https://groups.google.com/g/cython-users/c/PpwhyIzqGyA
+            #  and https://github.com/cython/cython/pull/3221
             code.add("""
                        |
                        |class $name(_PyEnum):
                        |    $doc
                      """, name=name, doc=doc)
+
+            stub_code.add("""
+                       |
+                       |class $name(_PyEnum):
+                       |    $doc
+                     """, name=name, doc=doc)
+
         for (optname, value) in decl.items:
             code.add("    $name = $value", name=optname, value=value)
+            stub_code.add("    $name : int", name=optname, value=value)
 
         # Add mapping of int (enum) to the value of the enum (as string)
         if not decl.scoped:
             code.add("""
                     |
                     |    def getMapping(self):
-                    |        return dict([ (v, k) for k, v in self.__class__.__dict__.items() if isinstance(v, int) ])""" )
+                    |        return dict([ (v, k) for k, v in self.__class__.__dict__.items()
+                    +if isinstance(v, int) ])""")
+            stub_code.add("""
+                        |
+                        |    def getMapping(self) -> Dict[int, str]:
+                        |       ...
+                        """)
 
         # TODO check if we need to add an import or custom type to type stubs for enums
         out_codes[decl.name] = code
+        out_stub_codes[decl.name] = stub_code
         self.class_pxd_codes[decl.name] = enum_pxd_code
 
         # Add an extra member to previously declared class code snippets
         for class_name in decl.cpp_decl.annotations.get("wrap-attach", []):
             code = Code.Code()
+            stub_code = Code.Code()
             display_name = decl.cpp_decl.annotations.get("wrap-as", [decl.name])[0]
             code.add("%s = %s" % (display_name, name))
+            stub_code.add("%s : %s" % (display_name, name))
+            self.typestub_codes[class_name].add(stub_code)
             self.class_codes[class_name].add(code)
 
     def create_wrapper_for_class(self, r_class, out_codes):
