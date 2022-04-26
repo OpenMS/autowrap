@@ -63,8 +63,9 @@ jobs:
           NEXT_VER=${{ github.event.inputs.next_version }}
           OLD_VER=${{ steps.version.outputs.version }}
           [ -z "$NEXT_VER" ] && NEXT_VER=$(echo $OLD_VER | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g') || true
-          echo "\n" >> HISTORY.md
+          echo >> HISTORY.md
           cat CHANGELOG.md >> HISTORY.md
+          echo >> HISTORY.md
           rm CHANGELOG.md && echo "autowrap $NEXT_VER" > CHANGELOG.md
           sed -i -e "s/^[[:space:]]*__version__.*/__version__ = \(${NEXT_VER//./, }\)/g" autowrap/version.py
           

@@ -1,6 +1,8 @@
 # encoding: utf-8
 
 from __future__ import print_function
+from __future__ import annotations
+from typing import Union, List
 
 __license__ = """
 
@@ -54,13 +56,13 @@ else:
 class Code(object):
 
     def __init__(self):
-        self.content = []
+        self.content: List[Union[Code,str]] = []
 
-    def extend(self, other):
+    def extend(self, other: Code) -> None:
         # keeps indentation
         self.content.extend(other.content)
 
-    def add(self, what, *a, **kw):
+    def add(self, what: Union[str, bytes, Code], *a, **kw) -> Code:
         # may increase indent!
         if a:  # if dict given
             kw.update(a[0])
@@ -69,7 +71,7 @@ class Code(object):
         if isinstance(what, basestring):
             try:
                 res = string.Template(what).substitute(**kw)
-            except:
+            except ValueError:
                 print(what)
                 print(kw)
                 raise
@@ -81,7 +83,7 @@ class Code(object):
             self.content.append(what)
         return self
 
-    def _render(self, _indent=""):
+    def _render(self, _indent="") -> List[str]:
         result = []
         for content in self.content:
             if isinstance(content, basestring):
@@ -91,5 +93,5 @@ class Code(object):
                     result.append(line)
         return result
 
-    def render(self):
+    def render(self) -> str:
         return "\n".join(self._render())

@@ -100,12 +100,20 @@ def test_minimal():
     # test members
     assert minimal.m_accessible == 0
     assert minimal.m_const == -1
+    assert minimal.m_constdef == -1
 
     minimal.m_accessible = 10
     assert minimal.m_accessible == 10
 
     try:
         minimal.m_const = 10
+        assert False
+    except AttributeError:
+        # That is what we expected, cant modify a const member
+        pass
+
+    try:
+        minimal.m_constdef = 10
         assert False
     except AttributeError:
         # That is what we expected, cant modify a const member

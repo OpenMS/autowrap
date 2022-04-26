@@ -53,16 +53,15 @@ def parse(files, root, num_processes=1, cython_warn_level=1):
 
 
 def generate_code(decls, instance_map, target, debug=False, manual_code=None,
-                  extra_cimports=None, include_boost=True, include_numpy=False, allDecl=[], add_relative=False, shared_ptr="boost"):
-
-
+                  extra_cimports=None, include_boost=True, include_numpy=False,
+                  all_decl=[], add_relative=False, shared_ptr="boost"):
     import autowrap.CodeGenerator
     gen = CodeGenerator.CodeGenerator(decls,
                                       instance_map,
                                       pyx_target_path=target,
                                       manual_code=manual_code,
-                                      extra_cimports=extra_cimports, 
-                                      allDecl=allDecl,
+                                      extra_cimports=extra_cimports,
+                                      all_decl=all_decl,
                                       add_relative=add_relative,
                                       shared_ptr=shared_ptr)
     gen.include_numpy = include_numpy

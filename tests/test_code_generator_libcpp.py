@@ -316,10 +316,10 @@ def test_libcpp():
     t.integer_vector_ptr = [i1, i2, i3]
     assert len(t.integer_vector_ptr) == 3
 
-
-    # process35 uses a const shared_ptr of which it makes a copy
+    # process35 uses a shared_ptr for a const type, of which it makes a copy
     # This means that i1, i2 and i3 are three distinct objects that will not
     # affect each other when manipulated
+    # TODO other option would be to have a second IntConst Wrapper type with only const methods
     i1 = libcpp.Int(20)
     i2 = t.process35(i1)
     assert isinstance(i2, libcpp.Int)
