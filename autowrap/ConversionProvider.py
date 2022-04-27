@@ -706,7 +706,7 @@ class StdMapConverter(TypeConverterBase):
           """, locals()).render()
 
     def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) ->\
-            tuple[Code, str, Union[Code, str]]:
+            Tuple[Code, str, Union[Code, str]]:
         tt_key, tt_value = cpp_type.template_args
         temp_var = "v%d" % arg_num
 
@@ -986,7 +986,7 @@ class StdSetConverter(TypeConverterBase):
           """, locals()).render()
 
     def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) ->\
-            tuple[Code, str, Union[Code, str]]:
+            Tuple[Code, str, Union[Code, str]]:
         tt, = cpp_type.template_args
         temp_var = "v%d" % arg_num
         inner = self.converters.cython_type(tt)
@@ -1622,7 +1622,7 @@ class StdStringUnicodeConverter(StdStringConverter):
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "Union[bytes, unicode]"
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> tuple[Code, str, str]:
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, str]:
         code = Code()
         code.add("""
             |if isinstance($argument_var, unicode):
@@ -1669,8 +1669,8 @@ class SharedPtrConverter(TypeConverterBase):
         inner = self.converters.get(tt)
         return inner.matching_python_type_full(tt)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> tuple[
-        Code, str, Union[Code, str]]:
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) \
+            -> Tuple[Code, str, Union[Code, str]]:
         tt, = cpp_type.template_args
         inner = self.converters.cython_type(tt)
         # Cython expects us to get a C++ type (we cannot just stick var.inst into the function)
