@@ -20,7 +20,7 @@ jobs:
           - CYTHON: "<=0.29.21"          
             python-version: "3.7"
           - CYTHON: "<=0.29.21"          
-            python-version: "3.10"
+            python-version: "3.9" # Cython < 0.29.21 not compatible with 3.10, so neither are we
 #          - CYTHON: ">0.29.21"
 #            python-version: "2.7"
           - CYTHON: ">0.29.21"          
