@@ -426,7 +426,7 @@ class ConstCharPtrConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes)" % (argument_var,)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> tuple[Code, str, str]:
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, str]:
         code = Code().add("cdef const_char * input_%s = <const_char *> %s" % (argument_var, argument_var))
         call_as = "input_%s" % argument_var
         cleanup = ""
