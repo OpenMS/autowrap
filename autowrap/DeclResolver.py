@@ -30,6 +30,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
+from typing import Union, List, AnyStr, Optional, Dict, Tuple
+
 import autowrap.PXDParser as PXDParser
 import autowrap.Types as Types
 import autowrap.Utils as Utils
@@ -112,14 +114,18 @@ __doc__ = """
 
 from autowrap import logger
 
+DEFAULT_NAMESPACE = ""
+CONCURRENT_FILES_PER_CORE = 10
+
 
 class ResolvedTypeDef(object):
 
-    def __init__(self, decl):
-        self.cpp_decl = decl
-        self.name = decl.name
+    def __init__(self, decl: PXDParser.CTypeDefDecl):
+        self.cpp_decl: PXDParser.CTypeDefDecl = decl
+        self.name: str = decl.name
         self.type_ = decl.type_
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+        self.pxd_import_path = None
 
 
 class ResolvedEnum(object):
@@ -131,8 +137,9 @@ class ResolvedEnum(object):
         self.cpp_decl = decl
         self.items = decl.items
         self.type_ = Types.CppType(self.name, enum_items=self.items)
+        self.pxd_import_path = None
         logger.info("created resolved enum: %s" % (decl.name, ))
-        logger.info("           with items: %s" % (decl.items))
+        logger.info("           with items: %s" % decl.items)
         logger.info("")
 
 
@@ -143,11 +150,10 @@ class ResolvedAttribute(object):
         self.type_ = type_
         self.cpp_decl = decl
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+        self.pxd_import_path = None
 
 
-default_namespace = ""
-
-def get_namespace(pxd, default_namespace):
+def get_namespace(pxd, default_namespace: str) -> str:
     filehandle = open(pxd)
     fulltext = filehandle.read()
     filehandle.close()
@@ -158,6 +164,7 @@ def get_namespace(pxd, default_namespace):
     else:
         return match.group(1)
 
+
 class ResolvedClass(object):
 
     """ contains all info for generating wrapping code of
@@ -165,16 +172,29 @@ class ResolvedClass(object):
         "Resolved" means that template parameters and typedefs are resolved.
     """
 
+    name: str
+    methods: OrderKeepingDictionary
+    attributes: List[ResolvedAttribute]
+    cpp_decl: PXDParser.CppClassDecl
+    ns: AnyStr
+    wrap_ignore: bool
+    no_pxd_import: bool
+    wrap_manual_memory: Union[bool, List[AnyStr]]
+    wrap_hash: List[AnyStr]
+    local_map: Dict
+    instance_map: Dict
+    pxd_import_path: Optional[AnyStr]
+
     def __init__(self, name, methods, attributes, decl, instance_map, local_map):
-        self.name = name
-        # resolve overloadings
-        self.methods = OrderKeepingDictionary()
+        self.name: str = name
+        # resolve overloads
+        self.methods: OrderKeepingDictionary = OrderKeepingDictionary()
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
         self.attributes = attributes
 
         self.cpp_decl = decl
-        self.ns = get_namespace(decl.pxd_path, default_namespace)
+        self.ns = get_namespace(decl.pxd_path, DEFAULT_NAMESPACE)
 
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
         self.no_pxd_import = decl.annotations.get("no-pxd-import", False)
@@ -193,6 +213,7 @@ class ResolvedClass(object):
         self.wrap_hash = decl.annotations.get("wrap-hash", [])
         self.local_map = local_map
         self.instance_map = instance_map
+        self.pxd_import_path = None
 
     def get_flattened_methods(self):
         return [m for methods in self.methods.values() for m in methods]
@@ -210,15 +231,16 @@ class ResolvedMethod(object):
 
     def __init__(self, name, is_static, result_type, arguments, decl, instance_map,
                  local_map):
-        self.name = name
-        self.is_static = is_static
+        self.name: str = name
+        self.is_static: bool = is_static
         self.result_type = result_type
         self.arguments = arguments
         self.cpp_decl = decl
-        self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
-        self.with_nogil = decl.annotations.get("wrap-with-no-gil", False)
+        self.wrap_ignore: bool = decl.annotations.get("wrap-ignore", False)
+        self.with_nogil: bool = decl.annotations.get("wrap-with-no-gil", False)
         self.local_map = local_map
-        self.instance_amp = instance_map
+        self.instance_map = instance_map
+        self.pxd_import_path = None
 
     def __str__(self):
         args = [("%s %s" % (t, n)).strip() for (n, t) in self.arguments]
@@ -228,6 +250,7 @@ class ResolvedMethod(object):
 class ResolvedFunction(ResolvedMethod):
 
     pass
+
 
 def resolve_decls_from_files(paths, root, num_processes = 1, cython_warn_level = 1):
     if num_processes > 1:
@@ -256,7 +279,6 @@ def resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_war
     import multiprocessing as mp
     from functools import partial
 
-    CONCURRENT_FILES_PER_CORE = 10
     pool = mp.Pool(processes=num_processes)
     full_paths = [os.path.join(root, path) for path in paths]
 
@@ -398,7 +420,7 @@ def _resolve_inheritance(cdcl, class_decls, inheritance_graph):
 
     logger.info("resolve_inheritance for %s" % cdcl.name)
 
-    # first we recurses to all super classes:
+    # first we recurse over all super classes:
     for super_cld, _ in inheritance_graph[cdcl]:
         _resolve_inheritance(super_cld, class_decls, inheritance_graph)
 
@@ -413,18 +435,18 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     logger.info("add_inherited_methods for %s" % cdcl.name)
 
     super_targs = super_cld.template_parameters
-    # template paremeer None behaves like []
+    # template parameter None behaves like []
     used_parameters = used_parameters or []
     super_targs = super_targs or []
 
-    # check if parmetirization signature matches:
+    # check if parameterization signature matches:
     if len(used_parameters) != len(super_targs):
         raise Exception("deriving %s from %s does not match" % (cdcl.name, super_cld.name))
 
     # map template parameters in super class to the parameters used in current
     # class:
     mapping = dict(zip(super_targs, used_parameters))
-    # get copy of methods from super class ans transform template params:
+    # get copy of methods from super class and transform template params:
     transformed_methods = super_cld.get_transformed_methods(mapping)
     transformed_methods = dict((k, v) for (k, v) in transformed_methods.items()
                                if k != super_cld.name)  # remove constructors
@@ -449,7 +471,7 @@ def _check_typedefs(decls):
         raise Exception(msg)
 
 
-def _parse_all_wrap_instances_comments(class_decls):
+def _parse_all_wrap_instances_comments(class_decls: List[PXDParser.CppClassDecl]):
     """ parses annotations of all classes and registers aliases for
         classes.
 
@@ -467,7 +489,7 @@ def _parse_all_wrap_instances_comments(class_decls):
     return r
 
 
-def _parse_wrap_instances_comments(cdcl):
+def _parse_wrap_instances_comments(cdcl: PXDParser.CppClassDecl) -> Dict[AnyStr, Tuple[Types.CppType, Dict]]:
 
     inst_annotations = cdcl.annotations.get("wrap-instances")
     r = dict()
@@ -482,7 +504,7 @@ def _parse_wrap_instances_comments(cdcl):
     return r
 
 
-def parse_alias(cdcl, instance_decl_str):
+def parse_alias(cdcl: PXDParser.CppClassDecl, instance_decl_str: AnyStr):
     """
     instance_decl_str looks like "Tint := T[int]"
     """
@@ -498,7 +520,7 @@ def parse_alias(cdcl, instance_decl_str):
     return name, type_, t_param_mapping
 
 
-def parse_inst_decl(str_):
+def parse_inst_decl(str_: AnyStr) -> Tuple[AnyStr, Types.CppType]:
     """
     instance_decl_str looks like "Tint := T[int]"
     returns "Tint", CppType.from_string("T[int]")
@@ -507,8 +529,8 @@ def parse_inst_decl(str_):
         left, __, right = str_.partition(":=")
         name, decl_str = left.strip(), right.strip()
         return name, Types.CppType.from_string(decl_str)
-    except:
-        raise Exception("could not parse instance delcaration '%s'" % str_)
+    except ValueError:
+        raise Exception("could not parse instance declaration '%s'" % str_)
 
 
 def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
@@ -553,7 +575,7 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
 
 
 def _build_local_typemap(t_param_mapping, typedef_mapping):
-    # for resolving typedefed types in template instance args:
+    # for resolving typedef'ed types in template instance args:
     local_map = dict((n, t.transformed(typedef_mapping)) for (n, t) in t_param_mapping.items())
 
     # for resolving 'free' typedefs in method args and result types:

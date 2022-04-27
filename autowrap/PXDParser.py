@@ -1,6 +1,5 @@
 # encoding: utf-8
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import print_function, absolute_import, annotations
 
 __license__ = """
 
@@ -32,6 +31,12 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
+from typing import Dict, Union, List, Collection, Sequence, AnyStr, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from autowrap.DeclResolver import ResolvedMethod
+
+import Cython.Compiler.Nodes
 from Cython.Compiler.CmdLine import parse_command_line
 from Cython.Compiler.Main import create_default_resultobj, CompilationSource, Context
 from Cython.Compiler import Pipeline, FusedNode
@@ -43,35 +48,39 @@ import Cython.Compiler.Errors
 from autowrap.Types import CppType
 
 import os
-import sys
 
 from autowrap import logger
 
 from collections import defaultdict
 from .tools import OrderKeepingDictionary
 
+AnnotDict = Dict[str, Union[bool, List[str]]]
+
 """
 Methods in this module use Cythons Parser to build an Cython syntax tree
-from the annotated .pxd files and creates a represenation of the
+from the annotated .pxd files and creates a representation of the
 included classes and methods.
 """
 
 
-def _check_type_constness(type):
-    """ Regargless of Cython version, checks whether the passed Cython type is const """
+def _check_type_constness(ctype: Nodes.CBaseTypeNode) -> bool:
+    """ Regardless of Cython version, checks whether the passed Cython type is const """
     try:
-        return isinstance(type, Nodes.CConstTypeNode)
-    except:
-        return isinstance(type, Nodes.CConstOrVolatileTypeNode) and type.is_const
+        return isinstance(ctype, Nodes.CConstTypeNode)
+    except AttributeError:
+        return isinstance(ctype, Nodes.CConstOrVolatileTypeNode) and ctype.is_const
 
 
-def parse_class_annotations(node, lines):
-    """ parses wrap-instructions inside comments below class def """
+def parse_class_annotations(node, lines: Collection[str]) -> AnnotDict:
+    """ parses wrap-instructions inside comments below class def.
+        Either returns a list of strings for annotations/directives with a ':' and following strings
+        or True/False for boolean directives without ':'
+    """
     start_at_line = node.pos[1]
     return _parse_multiline_annotations(lines[start_at_line:])
 
 
-def _parse_multiline_annotations(lines):
+def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     """does the hard work for parse_class_annotations, and is
     better testable than this.
     """
@@ -91,13 +100,13 @@ def _parse_multiline_annotations(lines):
                 line = next(it).strip()
                 while line.startswith("#  "):
                     if key == "wrap-doc":
-                        value = line[3:].rstrip() # rstrip to keep indentation in docs
+                        value = line[3:].rstrip()  # rstrip to keep indentation in docs
                     else:
                         value = line[1:].strip()
-                    if (key == "wrap-doc" or value): # don't add empty non wrap-doc values
+                    if key == "wrap-doc" or value:  # don't add empty non wrap-doc values
                         result[key].append(value)
                     try:
-                        line = next(it).lstrip() # lstrip to keep empty lines in docs
+                        line = next(it).lstrip()  # lstrip to keep empty lines in docs
                     except StopIteration:
                         break
             else:
@@ -108,7 +117,7 @@ def _parse_multiline_annotations(lines):
     return result
 
 
-def parse_line_annotations(node, lines):
+def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str]) -> AnnotDict:
     """
     parses comments at end of line, in most cases the lines of
     method declarations.
@@ -129,27 +138,28 @@ def parse_line_annotations(node, lines):
         break
 
     for line in lines[start:end]:
-      try:
-        __, __, comment = line.partition("#")
-        if comment:
-            key = None
-            for f_ in comment.split(" "):
-                f = f_.strip()
-                if not f:
-                    continue
-                if ":" in f:
-                    key, value = f.split(":", 1)
-                    assert value.strip(), "empty value (or excess space?) for key '%s' in line '%s'" % (key, line.rstrip())
-                    result[key] = value
-                elif f.find("wrap-") != -1:
-                    key, value = f, True
-                    result[key] = value
-                elif key is not None:
-                    # they belong to the previous key
-                    value = " " + f_
-                    result[key] += value
-      except Exception as e:
-        raise ValueError("Cannot parse '{}'".format(line)) from e
+        try:
+            __, __, comment = line.partition("#")
+            if comment:
+                key = None
+                for f_ in comment.split(" "):
+                    f = f_.strip()
+                    if not f:
+                        continue
+                    if ":" in f:
+                        key, value = f.split(":", 1)
+                        assert value.strip(), "empty value (or excess space?) for key '%s' in line '%s'" \
+                                              % (key, line.rstrip())
+                        result[key] = value
+                    elif f.find("wrap-") != -1:
+                        key, value = f, True
+                        result[key] = value
+                    elif key is not None:
+                        # they belong to the previous key
+                        value = " " + f_
+                        result[key] += value
+        except Exception as e:
+            raise ValueError("Cannot parse '{}'".format(line)) from e
 
     # check for multi line annotations after method declaration
     additional_annotations = _parse_multiline_annotations(lines[end:])
@@ -160,8 +170,7 @@ def parse_line_annotations(node, lines):
     return result
 
 
-def _extract_template_args(node):
-
+def _extract_template_args(node: Cython.Compiler.Nodes.Node) -> CppType:
     if isinstance(node, NameNode):
         return CppType(node.name, None)
 
@@ -177,7 +186,8 @@ def _extract_template_args(node):
     return CppType(name, args)
 
 
-def _extract_type(base_type, decl):
+def _extract_type(base_type: Cython.Compiler.Nodes.CBaseTypeNode, decl: Cython.Compiler.Nodes.CDeclaratorNode) \
+        -> CppType:
     """ extracts type information from node in parse_pxd_file tree """
 
     type_is_const = _check_type_constness(base_type)
@@ -197,12 +207,12 @@ def _extract_type(base_type, decl):
                 is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
                 is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
                 is_unsigned = (
-                    hasattr(arg_node.base_type, "signed")
-                    and not arg_node.base_type.signed
+                        hasattr(arg_node.base_type, "signed")
+                        and not arg_node.base_type.signed
                 )
                 is_long = (
-                    hasattr(arg_node.base_type, "longness")
-                    and arg_node.base_type.longness
+                        hasattr(arg_node.base_type, "longness")
+                        and arg_node.base_type.longness
                 )
 
                 # Handle const template arguments which do not have a name
@@ -260,14 +270,14 @@ def _extract_type(base_type, decl):
 
 
 class BaseDecl(object):
-    def __init__(self, name, annotations, pxd_path):
-        self.name = name
-        self.annotations = annotations
-        self.pxd_path = pxd_path
+    def __init__(self, name: str, annotations: Dict[str, Union[bool, List[str]]], pxd_path: str):
+        self.name: str = name
+        self.annotations: AnnotDict = annotations
+        self.pxd_path: str = pxd_path
 
 
 class CTypeDefDecl(BaseDecl):
-    def __init__(self, new_name, type_, annotations, pxd_path):
+    def __init__(self, new_name: str, type_, annotations: AnnotDict, pxd_path):
         super(CTypeDefDecl, self).__init__(new_name, annotations, pxd_path)
         self.type_ = type_
 
@@ -291,12 +301,12 @@ class EnumDecl(BaseDecl):
         self.template_parameters = None
 
     @classmethod
-    def parseTree(cls, node, lines, pxd_path):
+    def parseTree(cls, node: CEnumDefNode, lines, pxd_path):
         name = node.name
         items = []
         try:
             scoped = node.scoped
-        except:
+        except AttributeError:
             scoped = False
         annotations = parse_class_annotations(node, lines)
         current_value = 0
@@ -319,8 +329,12 @@ class EnumDecl(BaseDecl):
 
 
 class CppClassDecl(BaseDecl):
+    methods: Dict[AnyStr, List[CppMethodOrFunctionDecl]]
+    attributes: List[CppAttributeDecl]
+    template_parameters: List[AnyStr]
+
     def __init__(
-        self, name, template_parameters, methods, attributes, annotations, pxd_path
+            self, name, template_parameters, methods, attributes, annotations, pxd_path
     ):
         super(CppClassDecl, self).__init__(name, annotations, pxd_path)
         self.methods = methods
@@ -328,7 +342,7 @@ class CppClassDecl(BaseDecl):
         self.template_parameters = template_parameters
 
     @classmethod
-    def parseTree(cls, node, lines, pxd_path):
+    def parseTree(cls, node: Cython.Compiler.Nodes.CppClassNode, lines: Collection[str], pxd_path):
         name = node.name
         template_parameters = node.templates
         if (
@@ -356,13 +370,13 @@ class CppClassDecl(BaseDecl):
                                "      # wrap-attach: Foo \n"
                                "      A,B,C")
                 # TODO we might be able to support it with the following
-                #decl = EnumDecl.parseTree(att, lines, pxd_path)
+                # decl = EnumDecl.parseTree(att, lines, pxd_path)
             elif isinstance(att, CClassDefNode):
                 logger.warning("Nested classes are currently not supported by autowrap. Skipping its wrap."
-                                " Try to add them under a new cdef extern section with class namespace. E.g.: \n"
-                                "cdef extern from 'foo.hpp' namespace 'Foo': \n"
-                                "    cpdef cppclass MyClass 'Foo::MyClass': \n"
-                                "      ...")
+                               " Try to add them under a new cdef extern section with class namespace. E.g.: \n"
+                               "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                               "    cpdef cppclass MyClass 'Foo::MyClass': \n"
+                               "      ...")
             if decl is not None:
                 if isinstance(decl, CppMethodOrFunctionDecl):
                     methods.setdefault(decl.name, []).append(decl)
@@ -370,7 +384,7 @@ class CppClassDecl(BaseDecl):
                     attributes.append(decl)
                 elif isinstance(decl, EnumDecl):
                     # Should not happen since we currently forbid it in the logic above
-                    #attributes.append(decl)
+                    # attributes.append(decl)
                     pass
 
         return cls(
@@ -408,7 +422,7 @@ class CppClassDecl(BaseDecl):
 
 
 class CppAttributeDecl(BaseDecl):
-    def __init__(self, name, type_, annotations, pxd_path):
+    def __init__(self, name, type_: CppType, annotations, pxd_path):
         super(CppAttributeDecl, self).__init__(name, annotations, pxd_path)
         self.type_ = type_
 
@@ -446,9 +460,9 @@ class CppMethodOrFunctionDecl(BaseDecl):
 
 class MethodOrAttributeDecl(object):
     @classmethod
-    def parseTree(cls, node, lines, pxd_path):
+    def parseTree(cls, node: CVarDefNode, lines, pxd_path):
         if isinstance(node, CEnumDefNode):
-           return EnumDecl.parseTree(node, lines, pxd_path)
+            return EnumDecl.parseTree(node, lines, pxd_path)
 
         annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
@@ -467,7 +481,9 @@ class MethodOrAttributeDecl(object):
             # Handle raw pointer declarations (call with base name)
             return CppAttributeDecl(decl.base.name, result_type, annotations, pxd_path)
 
+        # if the variable name declaration is part of a function declaration
         if isinstance(decl.base, CFuncDeclaratorNode):
+            # go up the base type
             decl = decl.base
 
         if node.decorators is not None:
@@ -484,9 +500,10 @@ class MethodOrAttributeDecl(object):
             elif isinstance(argdecl, CPtrDeclaratorNode):
                 base = argdecl.base
                 if isinstance(base, CPtrDeclaratorNode):
-                    raise Exception("multi ptr not supported")
+                    raise Exception("multi ptr not supported for method " + name)
                 argname = base.name
             else:
+                # TODO document in which case the following if-case occurs and why two times .base
                 if not hasattr(argdecl, "name"):
                     argname = argdecl.base.base.name
                 else:
@@ -495,13 +512,6 @@ class MethodOrAttributeDecl(object):
             args.append((argname, tt))
 
         return CppMethodOrFunctionDecl(result_type, name, args, is_static, annotations, pxd_path)
-
-    def __str__(self):
-        rv = "static" if self.is_static else ""
-        rv += str(self.result_type)
-        rv += " " + self.name
-        argl = [str(type_) + " " + str(name) for name, type_ in self.arguments]
-        return rv + "(" + ", ".join(argl) + ")"
 
 
 def parse_str(what):
@@ -517,7 +527,6 @@ def parse_str(what):
 
 
 def parse_pxd_file(path, warn_level=1):
-
     Cython.Compiler.Errors.LEVEL = warn_level
 
     options, sources = parse_command_line(["--cplus", path])
@@ -584,7 +593,7 @@ def parse_pxd_file(path, warn_level=1):
     for body in iter_bodies(root):
         handler = handlers.get(type(body))
         if handler is not None:
-            #with open('log.txt', 'a') as f:
+            # with open('log.txt', 'a') as f:
             #    f.write("parsed %s, handler=%s \n" % (body.__class__, handler.__self__))
             result.append(handler(body, lines, path))
         else:
@@ -598,8 +607,8 @@ def parse_pxd_file(path, warn_level=1):
 if __name__ == "__main__":
 
     import sys
+
     if len(sys.argv) == 3:
         print(parse_pxd_file(sys.argv[1], sys.argv[2]))
     else:
         print(parse_pxd_file(sys.argv[1]))
-

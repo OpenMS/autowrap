@@ -201,9 +201,9 @@ def run_cython(inc_dirs, extra_opts, out, warn_level=1):
 def create_wrapper_code(decls, instance_map, addons, converters, out, extra_inc_dirs, extra_opts, include_boost=True, allDecl=[]):
     cimports, manual_code = collect_manual_code(addons)
     register_converters(converters)
-    inc_dirs = autowrap.generate_code(decls, instance_map=instance_map, target=out, 
-            debug=False, manual_code=manual_code, 
-            extra_cimports=cimports, include_boost=include_boost, allDecl=allDecl)
+    inc_dirs = autowrap.generate_code(decls, instance_map=instance_map, target=out,
+                                      debug=False, manual_code=manual_code,
+                                      extra_cimports=cimports, include_boost=include_boost, all_decl=allDecl)
 
     if extra_inc_dirs is not None:
         inc_dirs += extra_inc_dirs

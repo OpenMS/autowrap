@@ -31,7 +31,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 from collections import defaultdict
+from typing import List, Tuple, Optional, Union, AnyStr
 
+from autowrap.DeclResolver import ResolvedClass
 from autowrap.Types import CppType  # , printable
 from autowrap.Code import Code
 
@@ -65,74 +67,6 @@ def mangle(s):
     return s
 
 
-class ConverterRegistry(object):
-
-    """
-    Works with two level lookup: first find converters which support base_type,
-    then call .matches on them to find the finally matching converters
-
-    Therefore TypeConverterBase has methods .get_base_types and .matches
-    """
-
-    def __init__(self, instance_mapping, names_of_classes_to_wrap,
-                 names_of_enums_to_wrap):
-
-        self.lookup = defaultdict(list)
-
-        self.names_of_wrapper_classes = list(instance_mapping.keys())
-        self.names_of_wrapper_classes += ["const %s" % k for k in instance_mapping.keys()]
-        self.names_of_classes_to_wrap = names_of_classes_to_wrap
-        self.names_of_enums_to_wrap = names_of_enums_to_wrap
-
-        self.process_and_set_type_mapping(instance_mapping)
-
-    def process_and_set_type_mapping(self, instance_mapping):
-        # as original c++ class decls are decorated with a beginning "_"
-        # we have to process the instance mapping:
-
-        map_ = dict((name, CppType("_" + name)) for name in
-                    self.names_of_classes_to_wrap + self.names_of_enums_to_wrap)
-        self.instance_mapping = dict()
-        for alias, type_ in instance_mapping.items():
-            self.instance_mapping[alias] = type_.transformed(map_)
-
-    def register(self, converter):
-
-        assert isinstance(converter, TypeConverterBase)
-        L.info("register %s" % converter)
-        converter._set_converter_registry(self)
-
-        # we take a defaultdict(list) for lookup as base_type is only some kind
-        # of "hash value" to speedup lookup. what finally counts is the matches
-        # method of the converters, see get() below:
-
-        for base_type in converter.get_base_types():
-            self.lookup[base_type].append(converter)
-
-    def get(self, cpp_type):
-
-        rv = [conv for conv in self.lookup[cpp_type.base_type]
-              if conv.matches(cpp_type)]
-        if len(rv) < 1:
-            raise Exception("no converter for %s in: %s" % (cpp_type, str(self.lookup)))
-
-        # always take the latest converter which allows overwriting existing
-        # standard converters (externally)!
-        return rv[-1]
-
-    def __contains__(self, cpp_type):
-        try:
-            self.get(cpp_type)
-            return True
-        except:
-            return False
-
-    def cython_type(self, type_):
-        if isinstance(type_, basestring):
-            type_ = CppType(type_)
-        return type_.transformed(self.instance_mapping)
-
-
 class TypeConverterBase(object):
 
     def set_enums_to_wrap(self, enums_to_wrap):
@@ -141,19 +75,19 @@ class TypeConverterBase(object):
     def _set_converter_registry(self, r):
         self.converters = r
 
-    def get_base_types(self):
+    def get_base_types(self) -> List[str]:
         """
         for first level lookup in registry
         """
         raise NotImplementedError()
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         """
         for second level lookup in registry
         """
         raise NotImplementedError()
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         """
         Creates a temporary object which has the type of the current TypeConverter object.
 
@@ -164,40 +98,43 @@ class TypeConverterBase(object):
 
            cdef int & _r 
 
-        Is illegal to declare and we have to remove any references from the type.
+        is illegal to declare and we have to remove any references from the type.
+        Use with_const = False to return the type non-const
         """
-        cy_res_type = self.converters.cython_type(res_type)
+        cy_res_type = self.converters.cython_type(res_type)  # type: CppType
         if cy_res_type.is_ref:
             cy_res_type = cy_res_type.base_type
+            # TODO what about const refs?
             return "cdef %s _r = %s" % (cy_res_type, cy_call_str)
 
-        return "cdef %s _r = %s" % (cy_res_type, cy_call_str)
+        return "cdef %s _r = %s" % (cy_res_type.toString(with_const), cy_call_str)
 
-    # TODO are those really PYTHON types? Looks more like Cython
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         """
         Converts cpp type to general python type, e.g. vector to list
-        :param cpp_type: cpp type
+        :param cpp_type: original cpp type
         :return: python equivalent
         """
         raise NotImplementedError()
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         """
         Converts cpp type to general python type, e.g. vector<vector<int>> to list[list[int]]
         :param cpp_type: cpp type
         :return: python equivalent for static typing
         """
         return "Any"
-        #raise NotImplementedError()
+        # If at some point we make it mandatory, we can raise NotImplementedError()
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         """
         For each argument, creates code to check for valid types
         """
         raise NotImplementedError()
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Union[Code, str],
+                                                                                            Union[Code, str],
+                                                                                            Union[Code, str]]:
         """
         Sets up the conversion of input arguments.
 
@@ -208,11 +145,12 @@ class TypeConverterBase(object):
         """
         raise NotImplementedError()
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) \
+            -> Optional[Union[Code, str]]:
         raise NotImplementedError()
 
     @staticmethod
-    def _code_for_instantiate_object_from_iter(cpp_type, it):
+    def _code_for_instantiate_object_from_iter(cpp_type: CppType, it: str) -> str:
         """
         Code for new object instantiation from iterator (double deref for iterator-ptr)
 
@@ -230,163 +168,159 @@ class TypeConverterBase(object):
 
         if cpp_type.is_ptr:
             cpp_type_base = cpp_type.base_type
-            return string.Template("shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))").substitute(locals())
+            return string.Template("shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))").substitute(
+                locals())
         else:
             return string.Template("shared_ptr[$cpp_type](new $cpp_type(deref($it)))").substitute(locals())
 
 
 class VoidConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        """
-        for first level lookup in registry
-        """
-        return "void",
+    def get_base_types(self) -> List[str]:
+        return ["void"]
 
-    def matches(self, cpp_type):
-        """
-        for second level lookup in registry
-        """
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return cy_call_str
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         raise NotImplementedError("void has no matching python type")
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "None"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         raise NotImplementedError("void has no matching python type")
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         raise NotImplementedError("void has no matching python type")
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return None
 
 
 class IntegerConverter(TypeConverterBase):
-
     """
     wraps long and int. "long" base_type is converted to "int" by the
     cython parser!
     """
 
-    def get_base_types(self):
-        return ("int", "bool", "long", "int32_t", "ptrdiff_t", "int64_t",
-                "long int", "uint32_t", "uint64_t", "size_t")
+    def get_base_types(self) -> List[str]:
+        return ["int", "bool", "long", "int32_t", "ptrdiff_t", "int64_t",
+                "long int", "uint32_t", "uint64_t", "size_t"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return ""
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "int"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, int)" % (argument_var,)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type, argument_var, arg_num) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
 class UnsignedIntegerConverter(TypeConverterBase):
-
     """
     wraps unsigned long and int. "long" base_type is converted to "int" by the
     cython parser!
     """
 
-    def get_base_types(self):
-        return ("unsigned int", "unsigned long", "ptrdiff_t",
-                "uint32_t", "uint64_t", "size_t")
+    def get_base_types(self) -> List[str]:
+        return ["unsigned int", "unsigned long", "ptrdiff_t",
+                "uint32_t", "uint64_t", "size_t"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return ""
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        if cpp_type == "bool":
+            return "bool"  # use most specific type, we could also inherit
         return "int"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, int) and %s >= 0" % (argument_var, argument_var,)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
+
 
 # TODO: common base class for float, int, str conversion
 
 
 class DoubleConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "double",
+    def get_base_types(self) -> List[str]:
+        return ["double"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "double"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "float"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, float)" % (argument_var,)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
 class FloatConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "float",
+    def get_base_types(self) -> List[str]:
+        return ["float"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "float"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "float"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, float)" % (argument_var,)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
@@ -395,19 +329,19 @@ class EnumConverter(TypeConverterBase):
     def __init__(self, enum):
         self.enum = enum
 
-    def get_base_types(self):
-        return self.enum.name,
+    def get_base_types(self) -> List[str]:
+        return [self.enum.name]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         if not self.enum.scoped:
             return "int"
         else:
             return ""
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         if self.enum.cpp_decl.annotations.get("wrap-attach"):
             if not self.enum.scoped:
                 return "__" + self.enum.name
@@ -416,7 +350,7 @@ class EnumConverter(TypeConverterBase):
         else:
             return self.enum.name
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         if not self.enum.scoped:
             values = ", ".join(str(v) for (__, v) in self.enum.items)
             return "%s in [%s]" % (argument_var, values)
@@ -430,8 +364,7 @@ class EnumConverter(TypeConverterBase):
                 name = self.enum.name
             return "isinstance(%s, %s)" % (argument_var, name)
 
-
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
         if not self.enum.scoped:
             call_as = "(<_%s>%s)" % (cpp_type.base_type, argument_var)
@@ -441,135 +374,133 @@ class EnumConverter(TypeConverterBase):
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         # TODO check what to do for non-int scoped enums
         return "%s = <int>%s" % (output_py_var, input_cpp_var)
 
 
 class CharConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "char",
+    def get_base_types(self) -> List[str]:
+        return ["char"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes) and len(%s) == 1" % (argument_var, argument_var,)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<char>((%s)[0]))" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "cdef char  _r = %s" % cy_call_str
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = chr(<char>(%s))" % (output_py_var, input_cpp_var)
 
 
 class ConstCharPtrConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "const_char",
+    def get_base_types(self) -> List[str]:
+        return ["const_char"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes)" % (argument_var,)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, str]:
         code = Code().add("cdef const_char * input_%s = <const_char *> %s" % (argument_var, argument_var))
         call_as = "input_%s" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "cdef const_char  * _r = _cast_const_away(%s)" % cy_call_str
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = <const_char *>(%s)" % (output_py_var, input_cpp_var)
 
 
 class CharPtrConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "char",
+    def get_base_types(self) -> List[str]:
+        return ["char"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes)" % (argument_var,)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<char *>%s)" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "cdef char  * _r = _cast_const_away(%s)" % cy_call_str
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = <char *>(%s)" % (output_py_var, input_cpp_var)
 
 
 class TypeToWrapConverter(TypeConverterBase):
 
-    def __init__(self, class_):
-        self.class_ = class_
+    def __init__(self, class_: ResolvedClass):
+        self.class_: ResolvedClass = class_
 
-    def get_base_types(self):
-        return self.class_.name,
+    def get_base_types(self) -> List[str]:
+        return [self.class_.name]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return True
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return cpp_type.base_type
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         # TODO double-check what happens with ptr/ref types and typedefs
         return cpp_type.base_type
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, %s)" % (argument_var, cpp_type.base_type)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
-
-        cy_type = self.converters.cython_type(cpp_type)
         if cpp_type.is_ptr:
-            call_as = "(%s.inst.get())" % (argument_var, )
+            call_as = "(%s.inst.get())" % (argument_var,)
         else:
-            call_as = "(deref(%s.inst.get()))" % (argument_var, )
+            call_as = "(deref(%s.inst.get()))" % (argument_var,)
 
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> Union[Code, str]:
         t = self.converters.cython_type(res_type)
 
         if t.is_ref:
@@ -594,7 +525,8 @@ class TypeToWrapConverter(TypeConverterBase):
 
         return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) ->\
+            Optional[Union[Code, str]]:
 
         cy_clz = self.converters.cython_type(cpp_type)
 
@@ -614,16 +546,16 @@ class StdPairConverter(TypeConverterBase):
     # remark: we use list instead of tuple internally, in order to
     # provide call by ref args. Python tuples are immutable.
 
-    def get_base_types(self):
-        return "libcpp_pair",
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_pair"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return True
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "list"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         t1, t2, = cpp_type.template_args
         # We use typing.List to be backwards compatible with py <=3.8
         return "List[%s, %s]" % (self.converters.get(t1).matching_python_type_full(t1),
@@ -643,7 +575,7 @@ class StdPairConverter(TypeConverterBase):
           + and $inner_check2
           """, locals()).render()
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, Code]:
         t1, t2, = cpp_type.template_args
         temp_var = "v%d" % arg_num
         i1 = self.converters.cython_type(t1)
@@ -695,10 +627,10 @@ class StdPairConverter(TypeConverterBase):
                 """, locals())
         return code, "%s" % temp_var, cleanup_code
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "_r = %s" % (cy_call_str)
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
 
         assert not cpp_type.is_ptr
         t1, t2, = cpp_type.template_args
@@ -740,16 +672,16 @@ class StdPairConverter(TypeConverterBase):
 
 class StdMapConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "libcpp_map",
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_map"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return True
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "dict"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         tt_key, tt_value = cpp_type.template_args
         inner_conv_1 = self.converters.get(tt_key)
         inner_conv_2 = self.converters.get(tt_value)
@@ -773,7 +705,8 @@ class StdMapConverter(TypeConverterBase):
           + and all($inner_check_2 for v in $arg_var.values())
           """, locals()).render()
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) ->\
+            Tuple[Code, str, Union[Code, str]]:
         tt_key, tt_value = cpp_type.template_args
         temp_var = "v%d" % arg_num
 
@@ -804,8 +737,8 @@ class StdMapConverter(TypeConverterBase):
 
             # Check whether the inner vector has any classes we need to wrap (we cannot do that)
             contains_classes_to_wrap = tt.template_args is not None and \
-                len(set(self.converters.names_of_wrapper_classes).intersection(
-                    set(tt.all_occuring_base_types()))) > 0
+                                       len(set(self.converters.names_of_wrapper_classes).intersection(
+                                           set(tt.all_occuring_base_types()))) > 0
 
             if self.converters.cython_type(tt).is_enum:
                 # Case 1: We wrap a std::vector<> with an enum base type
@@ -818,12 +751,13 @@ class StdMapConverter(TypeConverterBase):
                 # Case 3: We wrap a std::vector< shared_ptr<X> > where X needs to be a type that is easy to wrap
                 raise Exception("Not Implemented")
             elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
-                len(set(self.converters.names_of_wrapper_classes).intersection(
-                    set(tt.all_occuring_base_types()))) > 0:
-                    # Only if the std::vector contains a class that we need to wrap somewhere,
-                    # we cannot do it ...
+                    len(set(self.converters.names_of_wrapper_classes).intersection(
+                        set(tt.all_occuring_base_types()))) > 0:
+                # Only if the std::vector contains a class that we need to wrap somewhere,
+                # we cannot do it ...
                 raise Exception(
-                    "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
+                    "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template "
+                    "arguments")
             elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
                 # Case 4: We wrap a std::vector<> with a base type that contains
                 #         further nested std::vector<> inside
@@ -881,9 +815,10 @@ class StdMapConverter(TypeConverterBase):
 
             key_conv = "<%s> deref(%s).first" % (cy_tt_key, it)
 
-            ## add code for key that is wrapped
+            # TODO can we refactor such that each if-clause adds a part
+            # add code for key that is wrapped
             if tt_key.base_type in self.converters.names_of_wrapper_classes \
-              and not tt_value.base_type in self.converters.names_of_wrapper_classes:
+                    and not tt_value.base_type in self.converters.names_of_wrapper_classes:
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
                 cy_tt = tt_value.base_type
                 item = mangle("item_" + argument_var)
@@ -901,8 +836,8 @@ class StdMapConverter(TypeConverterBase):
                     |$argument_var.update(replace)
                     |del $temp_var
                     """, locals())
-            ## add code for value that is wrapped
-            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes\
+            # add code for value that is wrapped
+            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes \
                     and not tt_key.base_type in self.converters.names_of_wrapper_classes:
                 cy_tt = tt_value.base_type
                 item = mangle("item_" + argument_var)
@@ -919,8 +854,8 @@ class StdMapConverter(TypeConverterBase):
                     |$argument_var.update(replace)
                     |del $temp_var
                     """, locals())
-            ## add code for value AND key that is wrapped
-            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes\
+            # add code for value AND key that is wrapped
+            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes \
                     and tt_key.base_type in self.converters.names_of_wrapper_classes:
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
                 cy_tt = tt_value.base_type
@@ -959,10 +894,10 @@ class StdMapConverter(TypeConverterBase):
 
         return code, "deref(%s)" % temp_var, cleanup_code
 
-    def call_method(self, res_type, cy_call_str):
-        return "_r = %s" % (cy_call_str)
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
 
         assert not cpp_type.is_ptr
 
@@ -974,7 +909,7 @@ class StdMapConverter(TypeConverterBase):
         it = mangle("it_" + input_cpp_var)
 
         if (not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes) \
-           and (not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes):
+                and (not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes):
             raise Exception("Converter can not handle wrapped classes as keys and values in map")
 
         elif not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
@@ -1026,16 +961,16 @@ class StdMapConverter(TypeConverterBase):
 
 class StdSetConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "libcpp_set",
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_set"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return True
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "set"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         tt, = cpp_type.template_args
         inner_conv = self.converters.get(tt)
         return "Set[%s]" % inner_conv.matching_python_type_full(tt)
@@ -1050,7 +985,8 @@ class StdSetConverter(TypeConverterBase):
           |isinstance($arg_var, set) and all($inner_check for li in $arg_var)
           """, locals()).render()
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) ->\
+            Tuple[Code, str, Union[Code, str]]:
         tt, = cpp_type.template_args
         temp_var = "v%d" % arg_num
         inner = self.converters.cython_type(tt)
@@ -1129,10 +1065,10 @@ class StdSetConverter(TypeConverterBase):
                     """, locals())
             return code, "%s" % temp_var, cleanup_code
 
-    def call_method(self, res_type, cy_call_str):
-        return "_r = %s" % (cy_call_str)
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
 
         assert not cpp_type.is_ptr
 
@@ -1177,21 +1113,21 @@ class StdSetConverter(TypeConverterBase):
 
 class StdVectorConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "libcpp_vector",
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_vector"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return True
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "list"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         tt, = cpp_type.template_args
         try:
             inner_conv = self.converters.get(tt)
             return "List[%s]" % inner_conv.matching_python_type_full(tt)
-        except Exception:
+        except NameError:
             return "List[Any]"
 
     def type_check_expression(self, cpp_type, arg_var):
@@ -1275,11 +1211,11 @@ class StdVectorConverter(TypeConverterBase):
         return cleanup_code
 
     def _prepare_nonrecursive_precall(self, topmost_code, cpp_type, code_top, do_deref, *a, **kw):
-            # A) Prepare the pre-call
+        # A) Prepare the pre-call
         if topmost_code is not None:
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
-                    # add cdef statements for the iterators (part of B, post-call but needs to
-                    # be on top)
+                # add cdef statements for the iterators (part of B, post-call but needs to
+                # be on top)
                 code_top += "|cdef libcpp_vector[$inner].iterator $it"
             topmost_code.add(code_top, *a, **kw)
             code_top = ""
@@ -1304,7 +1240,7 @@ class StdVectorConverter(TypeConverterBase):
         #
         # Perform the recursive call
         #
-        conv_code, call_as, cleanup =\
+        conv_code, call_as, cleanup = \
             converter.input_conversion(tt, rec_argument_var, rec_arg_num,
                                        topmost_code_callback, bottommost_code_callback, recursion_cnt + 1)
         # undo the "deref" if it was added ...
@@ -1384,7 +1320,8 @@ class StdVectorConverter(TypeConverterBase):
         else:
             bottommost_code.content.extend(bottommost_code_callback.content)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num, topmost_code=None, bottommost_code=None, recursion_cnt=0):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int, topmost_code: Optional[Code] = None,
+                         bottommost_code: Optional[Code] = None, recursion_cnt: int = 0) -> Tuple[Code, str, Code]:
         """Do the input conversion for a std::vector<T>
 
         In this case, the template argument is tt (or "inner").
@@ -1421,8 +1358,7 @@ class StdVectorConverter(TypeConverterBase):
         # If the inner type is templated and contains a class to wrap by us
         # TODO describe what "to wrap" means. Also typedefs to them etc.?
         inner_contains_classes_to_wrap = tt.template_args is not None and \
-            len(set(self.converters.names_of_wrapper_classes).intersection(
-                set(tt.all_occuring_base_types()))) > 0
+            len(set(self.converters.names_of_wrapper_classes).intersection(set(tt.all_occuring_base_types()))) > 0
 
         if self.converters.cython_type(tt).is_enum:
             # Case 1: We wrap a std::vector<> with an enum base type
@@ -1550,7 +1486,8 @@ class StdVectorConverter(TypeConverterBase):
             # Go into recursion (if possible)
             if hasattr(self, "cr"):
                 self._perform_recursion(
-                    cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt, locals())
+                    cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt,
+                    locals())
             else:
                 raise Exception(
                     "Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr")
@@ -1573,7 +1510,7 @@ class StdVectorConverter(TypeConverterBase):
 
             return code, "%s" % temp_var, cleanup_code
 
-    def call_method(self, res_type, cy_call_str):
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
 
         t = self.converters.cython_type(res_type)
         if t.is_ptr:
@@ -1581,7 +1518,7 @@ class StdVectorConverter(TypeConverterBase):
 
         return "_r = %s" % (cy_call_str)
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
 
         tt, = cpp_type.template_args
         inner = self.converters.cython_type(tt)
@@ -1597,6 +1534,7 @@ class StdVectorConverter(TypeConverterBase):
                 """, locals())
             return code
 
+        # TODO recursion missing for outputting list[list[list..[WrappedClass]]..]
         elif tt.base_type in self.converters.names_of_wrapper_classes:
             cy_tt = tt.base_type
             inner = self.converters.cython_type(tt)
@@ -1615,8 +1553,6 @@ class StdVectorConverter(TypeConverterBase):
                 |   inc($it)
                 """, locals())
             return code
-
-        # TODO recursion missing for outputting list[list[list..[X]]..]
 
         elif tt.base_type == "shared_ptr" \
                 and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
@@ -1650,42 +1586,43 @@ class StdVectorConverter(TypeConverterBase):
 
 class StdStringConverter(TypeConverterBase):
 
-    def get_base_types(self):
-        return "libcpp_string",
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_string"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<libcpp_string>%s)" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes)" % argument_var
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
 
 
 class StdStringUnicodeConverter(StdStringConverter):
-    def get_base_types(self):
-        return "libcpp_utf8_string",
 
-    def matching_python_type(self, cpp_type):
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_utf8_string"]
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
         return ""
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "Union[bytes, unicode]"
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, str]:
         code = Code()
         code.add("""
             |if isinstance($argument_var, unicode):
@@ -1695,21 +1632,20 @@ class StdStringUnicodeConverter(StdStringConverter):
         cleanup = ""
         return code, call_as, cleanup
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, (bytes, unicode))" % argument_var
 
 
 class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
 
-    def get_base_types(self):
-        return "libcpp_utf8_output_string",
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_utf8_output_string"]
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
         return "%s = %s.decode('utf-8')" % (output_py_var, input_cpp_var)
 
 
 class SharedPtrConverter(TypeConverterBase):
-
     """
     This converter deals with functions that expect a shared_ptr[BaseClass] as
     an argument. For this to work, BaseClass needs to have a Python type and
@@ -1717,23 +1653,24 @@ class SharedPtrConverter(TypeConverterBase):
     to do is to pass this inst shared_ptr to the function.
     """
 
-    def get_base_types(self):
-        return "shared_ptr",
+    def get_base_types(self) -> List[str]:
+        return ["shared_ptr"]
 
-    def matches(self, cpp_type):
+    def matches(self, cpp_type: CppType) -> bool:
         tt, = cpp_type.template_args
         return tt in self.converters.names_of_wrapper_classes
 
-    def matching_python_type(self, cpp_type):
+    def matching_python_type(self, cpp_type: CppType) -> str:
         tt, = cpp_type.template_args
         return str(tt)
 
-    def matching_python_type_full(self, cpp_type):
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
         tt, = cpp_type.template_args
         inner = self.converters.get(tt)
         return inner.matching_python_type_full(tt)
 
-    def input_conversion(self, cpp_type, argument_var, arg_num):
+    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) \
+            -> Tuple[Code, str, Union[Code, str]]:
         tt, = cpp_type.template_args
         inner = self.converters.cython_type(tt)
         # Cython expects us to get a C++ type (we cannot just stick var.inst into the function)
@@ -1749,12 +1686,12 @@ class SharedPtrConverter(TypeConverterBase):
                 """, locals())
         return code, call_as, cleanup
 
-    def type_check_expression(self, cpp_type, argument_var):
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         # We can just use the Python type of the template argument
         tt, = cpp_type.template_args
         return "isinstance(%s, %s)" % (argument_var, tt)
 
-    def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
         # L.info("Output conversion for %s" % (cpp_type))
         tt, = cpp_type.template_args
         code = Code()
@@ -1775,11 +1712,87 @@ class SharedPtrConverter(TypeConverterBase):
                 |$output_py_var.inst = $input_cpp_var""", locals())
         return code
 
+
+class ConverterRegistry(object):
+    """
+    Works with two level lookup: first find converters which support base_type,
+    then call .matches on them to find the finally matching converters
+
+    Therefore TypeConverterBase has methods .get_base_types and .matches
+    """
+
+    def __init__(self, instance_mapping, names_of_classes_to_wrap,
+                 names_of_enums_to_wrap):
+
+        self.lookup = defaultdict(list)
+
+        self.names_of_wrapper_classes = list(instance_mapping.keys())
+        # add everything with a const prefix again
+        # TODO super hack. We need to support const completely/better without hacks
+        self.names_of_wrapper_classes += ["const %s" % k for k in instance_mapping.keys()]
+        self.names_of_classes_to_wrap = names_of_classes_to_wrap
+        self.names_of_enums_to_wrap = names_of_enums_to_wrap
+
+        self.process_and_set_type_mapping(instance_mapping)
+
+    def process_and_set_type_mapping(self, instance_mapping):
+        # as original c++ class decls are decorated with a beginning "_"
+        # we have to process the instance mapping:
+
+        map_ = dict((name, CppType("_" + name)) for name in
+                    self.names_of_classes_to_wrap + self.names_of_enums_to_wrap)
+        self.instance_mapping = dict()
+        for alias, type_ in instance_mapping.items():
+            self.instance_mapping[alias] = type_.transformed(map_)
+
+    def register(self, converter):
+
+        assert isinstance(converter, TypeConverterBase)
+        L.info("register %s" % converter)
+        converter._set_converter_registry(self)
+
+        # we take a defaultdict(list) for lookup as base_type is only some kind
+        # of "hash value" to speedup lookup. what finally counts is the matches
+        # method of the converters, see get() below:
+
+        for base_type in converter.get_base_types():
+            self.lookup[base_type].append(converter)
+
+    def get(self, cpp_type: CppType) -> TypeConverterBase:
+        """
+        Gets a conversion provider that inherits from TypeConverterBase and matches both cpp_type.base_type
+        and the matches function from the successfully looked-up TypeConverter
+
+        :param cpp_type: CppType
+        :return: TypeConverterBase
+        :except: NameError
+        """
+        rv = [conv for conv in self.lookup[cpp_type.base_type]
+              if conv.matches(cpp_type)]
+        if len(rv) < 1:
+            raise NameError("no converter for %s in: %s" % (cpp_type, str(self.lookup)))
+
+        # always take the latest converter which allows overwriting existing
+        # standard converters (externally)!
+        return rv[-1]
+
+    def __contains__(self, cpp_type):
+        try:
+            self.get(cpp_type)
+            return True
+        except NameError:
+            return False
+
+    def cython_type(self, type_: Union[CppType, AnyStr]) -> CppType:
+        if isinstance(type_, basestring):
+            type_ = CppType(type_)
+        return type_.transformed(self.instance_mapping)
+
+
 special_converters = []
 
 
 def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
-
     names_of_classes_to_wrap = list(set(c.cpp_decl.name for c in
                                         classes_to_wrap))
     names_of_enums_to_wrap = list(set(c.cpp_decl.name for c in enums_to_wrap))

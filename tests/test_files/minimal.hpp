@@ -17,6 +17,7 @@ class Minimal {
     public:
 
         static const int m_const = -1;
+        static const int m_constdef = -1;
         int m_accessible;
 
         Minimal();

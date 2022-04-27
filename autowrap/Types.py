@@ -1,4 +1,5 @@
 # encoding: utf-8
+from __future__ import annotations
 
 __license__ = """
 
@@ -34,6 +35,9 @@ import copy
 import re
 
 import logging as L
+
+from typing import AnyStr, Dict
+
 
 class CppType(object):
 
@@ -211,16 +215,16 @@ class CppType(object):
             t._collect_base_types(base_types)
 
     @staticmethod
-    def from_string(str_):
+    def from_string(str_: AnyStr) -> CppType:
         return CppType._from_string(str_)
 
     @staticmethod
-    def _from_string(str_):
+    def _from_string(str_: AnyStr) -> CppType:
         # TODO is there a reason why "_" is not in the regex?
         matched = re.match(r"([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?",
                            str_.strip())
         if matched is None:
-            raise Exception("can not parse '%s'" % str_)
+            raise ValueError("can not parse '%s'" % str_)
         base_type, t_str = matched.groups()
         if t_str is None:
             orig_for_error_message = base_type
@@ -269,7 +273,7 @@ class CppType(object):
         return CppType(base_type, t_types, is_ref=is_ref, is_ptr=is_ptr)
 
 
-def printable(type_map, join_str=", "):
+def printable(type_map: Dict[AnyStr, CppType], join_str: str = ", ") -> str:
     if not type_map:
         return "None"
     rules = sorted("%s -> %s" % (k, v) for (k, v) in type_map.items())

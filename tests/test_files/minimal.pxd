@@ -23,6 +23,7 @@ cdef extern from "minimal.hpp":
 
         int m_accessible
         int m_const # wrap-constant
+        const int m_constdef
 
         int get()
         libcpp_string compute(libcpp_string)
