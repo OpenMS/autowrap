@@ -605,6 +605,61 @@ class CodeGenerator(object):
                             |
                             """ % r_class.wrap_hash[0], locals())
 
+        if "wrap-buffer-protocol" in r_class.cpp_decl.annotations:
+            buffer_parts = r_class.cpp_decl.annotations['wrap-buffer-protocol'][0].split(",")
+            buffer_sourcer = buffer_parts[0]
+            buffer_type = buffer_parts[1]
+            buffer_sizer = buffer_parts[2]
+            buffer_code = {
+                "char": 'c',
+                "signed char": "b",
+                "unsigned char": "B",
+                "bool": "?",
+                "short": "h",
+                "unsigned short": "H",
+                "int": "i",
+                "unsigned int": "I",
+                "long": "l",
+                "unsigned long": "L",
+                "long long": "q",
+                "unsigned long long": "Q",
+                "ssize_t": "n",
+                "size_t": "N",
+                "float": "f",
+                "double": "d",
+                "char[]": "s",
+                "char[]": "p",
+                "void*": "P",
+
+            }[buffer_type]
+            class_code.add("""
+                                |
+                                |    cdef Py_ssize_t _buffer_protocol_shape[1]
+                                |    cdef Py_ssize_t _buffer_protocol_stride[1]
+                                |
+                                |    def __getbuffer__(self, Py_buffer *buffer, int flags):
+                                |        cdef size_t size = self.inst.get().{buffer_sizer}
+                                |        # Prepare flat buffer for exporting
+                                |        self._buffer_protocol_shape[0] = size
+                                |        self._buffer_protocol_stride[0] = <Py_ssize_t>sizeof({buffer_type})
+                                |
+                                |        buffer.buf = <char *>(self.inst.get().{buffer_sourcer})
+                                |        buffer.format = '{buffer_code}'
+                                |        buffer.internal = NULL
+                                |        buffer.itemsize = sizeof({buffer_type})
+                                |        buffer.len = size
+                                |        buffer.ndim = 1
+                                |        buffer.obj = self
+                                |        buffer.readonly = False
+                                |        buffer.shape = self._buffer_protocol_shape
+                                |        buffer.strides = self._buffer_protocol_stride
+                                |        buffer.suboffsets = NULL
+                                |
+                                |    def __releasebuffer__(self, Py_buffer *buffer):
+                                |        pass
+                                |
+                                """.format(**locals()))
+
         self.class_pxd_codes[cname] = class_pxd_code
         out_codes[cname] = class_code
 
@@ -1645,6 +1700,7 @@ class CodeGenerator(object):
                    |#cython: c_string_encoding=ascii
                    |#cython: embedsignature=False
                    |from  enum             import Enum as _PyEnum
+                   |from cpython cimport Py_buffer
                    |from  libcpp.string   cimport string as libcpp_string
                    |from  libcpp.string   cimport string as libcpp_utf8_string
                    |from  libcpp.string   cimport string as libcpp_utf8_output_string
