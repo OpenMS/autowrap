@@ -39,11 +39,13 @@ def expect_exception(fun):
             if 0:
                 print("info: expected exception. here some more info:")
                 import traceback
+
                 traceback.print_exc()
                 print()
             pass
         else:
             assert False, "%s did not raise exception" % fun
+
     # set name, so that test frame work recognizes wrapped function
     wrapper.__name__ = fun.__name__ + "__exception_wrapped"
     return wrapper

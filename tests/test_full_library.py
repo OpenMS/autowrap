@@ -94,7 +94,7 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
 
     compile_args = []
     link_args = []
-    
+
     if sys.platform == "darwin":
         compile_args += ["-stdlib=libc++"]
         link_args += ["-stdlib=libc++"]
@@ -114,15 +114,14 @@ def compile_and_import(names, source_files, include_dirs=None, extra_files=[], *
 
     try:
         sys.path.insert(0, now)
-        sys.path.insert(0, now+"/package")
+        sys.path.insert(0, now + "/package")
 
         with open("setup.py", "w") as fp:
             fp.write(setup_code)
 
         assert (
             subprocess.Popen(
-                "%s setup.py build_ext --force --inplace" % sys.executable,
-                shell=True
+                "%s setup.py build_ext --force --inplace" % sys.executable, shell=True
             ).wait()
             == 0
         )
@@ -232,7 +231,7 @@ def test_full_lib(tmpdir):
                 extra_cimports=cimports,
                 include_boost=True,
                 all_decl=masterDict,
-                add_relative=True
+                add_relative=True,
             )
             masterDict[modname]["inc_dirs"] = autowrap_include_dirs
         os.chdir("..")

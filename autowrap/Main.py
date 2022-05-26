@@ -151,8 +151,7 @@ def register_converters(converters):
         except ImportError as e:
             print("tried import from ", sys.path[0])
             print("module I tried to import: ", tail)
-            raise ImportError(str(e) +
-                              ", maybe __init__.py files are missing")
+            raise ImportError(str(e) + ", maybe __init__.py files are missing")
 
         if not hasattr(mod, "register_converters"):
             print("\n")
@@ -173,6 +172,7 @@ def register_converters(converters):
 def run_cython(inc_dirs, extra_opts, out, warn_level=1):
     from Cython.Compiler.Main import compile, CompilationOptions
     import Cython.Compiler.Errors
+
     Cython.Compiler.Errors.LEVEL = warn_level
 
     # Try to get directive_defaults (API differs from 0.25 on)
@@ -181,6 +181,7 @@ def run_cython(inc_dirs, extra_opts, out, warn_level=1):
     except ImportError:
         # Cython 0.25
         import Cython.Compiler.Options
+
         directive_defaults = Cython.Compiler.Options.get_directive_defaults()
 
     # TODO merge these options, if compiler_directives is given in extra_opts? Otherwise they are overwritten
@@ -189,21 +190,38 @@ def run_cython(inc_dirs, extra_opts, out, warn_level=1):
     directive_defaults["wraparound"] = False
     directive_defaults["language_level"] = sys.version_info.major
 
-    options = dict(include_path=inc_dirs,
-                   compiler_directives=directive_defaults,
-                   cplus=True)
+    options = dict(
+        include_path=inc_dirs, compiler_directives=directive_defaults, cplus=True
+    )
     if extra_opts is not None:
         options.update(extra_opts)
     options = CompilationOptions(**options)
     compile(out, options=options)
 
 
-def create_wrapper_code(decls, instance_map, addons, converters, out, extra_inc_dirs, extra_opts, include_boost=True, allDecl=[]):
+def create_wrapper_code(
+    decls,
+    instance_map,
+    addons,
+    converters,
+    out,
+    extra_inc_dirs,
+    extra_opts,
+    include_boost=True,
+    allDecl=[],
+):
     cimports, manual_code = collect_manual_code(addons)
     register_converters(converters)
-    inc_dirs = autowrap.generate_code(decls, instance_map=instance_map, target=out,
-                                      debug=False, manual_code=manual_code,
-                                      extra_cimports=cimports, include_boost=include_boost, all_decl=allDecl)
+    inc_dirs = autowrap.generate_code(
+        decls,
+        instance_map=instance_map,
+        target=out,
+        debug=False,
+        manual_code=manual_code,
+        extra_cimports=cimports,
+        include_boost=include_boost,
+        all_decl=allDecl,
+    )
 
     if extra_inc_dirs is not None:
         inc_dirs += extra_inc_dirs
@@ -214,5 +232,6 @@ def create_wrapper_code(decls, instance_map, addons, converters, out, extra_inc_
 
 def run(pxds, addons, converters, out, extra_inc_dirs=None, extra_opts=None):
     decls, instance_map = autowrap.parse(pxds, ".")
-    return create_wrapper_code(decls, instance_map, addons, converters, out, extra_inc_dirs,
-                               extra_opts)
+    return create_wrapper_code(
+        decls, instance_map, addons, converters, out, extra_inc_dirs, extra_opts
+    )

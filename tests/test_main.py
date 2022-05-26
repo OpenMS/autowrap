@@ -31,12 +31,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 def test_from_command_line():
     import os
+
     old_dir = os.path.abspath(os.getcwd())
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(os.path.join(script_dir, "test_files"))
-    args = ["pxds/*.pxd", "--out", "out.pyx", "--addons=/addons",
-            "--converters=converters"]
+    args = [
+        "pxds/*.pxd",
+        "--out",
+        "out.pyx",
+        "--addons=/addons",
+        "--converters=converters",
+    ]
     from autowrap.Main import _main
+
     try:
         _main(args)
     finally:
@@ -62,8 +69,9 @@ def test_run():
     converters = [script_dir + "/test_files/converters"]
 
     extra_includes = [script_dir + "/test_files/includes"]
-    includes = run(pxds, addons, converters, script_dir + "/test_files/out.pyx",
-                   extra_includes)
+    includes = run(
+        pxds, addons, converters, script_dir + "/test_files/out.pyx", extra_includes
+    )
 
     mod = compile_and_import("out", [script_dir + "/test_files/out.cpp"], includes)
 
@@ -77,7 +85,7 @@ def test_run():
     assert b.get() == 7
 
     # test iter wrapping
-    ih, = list(b)
+    (ih,) = list(b)
     assert ih.get() == 7
 
     # manually generated method
@@ -92,7 +100,7 @@ def test_run():
     c.set_(fh)
     assert c.get().get() == 2.0
 
-    fh, = list(c)
+    (fh,) = list(c)
     assert fh.get() == 2.0
 
     # manual class:

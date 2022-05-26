@@ -49,15 +49,14 @@ from .utils import expect_exception
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
+
 def test_minimal():
 
-    from autowrap.ConversionProvider import (TypeConverterBase,
-                                             special_converters)
+    from autowrap.ConversionProvider import TypeConverterBase, special_converters
 
     class SpecialIntConverter(TypeConverterBase):
-
         def get_base_types(self):
-            return "int",
+            return ("int",)
 
         def matches(self, cpp_type):
             return cpp_type.is_unsigned
@@ -82,12 +81,13 @@ def test_minimal():
     special_converters.append(SpecialIntConverter())
 
     target = os.path.join(test_files, "minimal_wrapper.pyx")
-    include_dirs = autowrap.parse_and_generate_code(["minimal.pxd",
-                                                     "minimal_td.pxd"],
-                                                    root=test_files, target=target,  debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["minimal.pxd", "minimal_td.pxd"], root=test_files, target=target, debug=True
+    )
     cpp_source = os.path.join(test_files, "minimal.cpp")
-    wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source],
-                                                include_dirs)
+    wrapped = autowrap.Utils.compile_and_import(
+        "wrapped", [target, cpp_source], include_dirs
+    )
     os.remove(target)
     assert wrapped.__name__ == "wrapped"
 
@@ -125,7 +125,7 @@ def test_minimal():
 
     assert minimal.compute(1, 2) == 3
     assert minimal.compute_int(4) == 5
-    assert minimal.compute(b"uwe") == b'ewu'
+    assert minimal.compute(b"uwe") == b"ewu"
     assert minimal.compute_str(b"emzed") == b"dezme"
     assert minimal.pass_charptr(b"emzed") == b"emzed"
     assert minimal.pass_const_charptr(b"emzed") == b"emzed"
@@ -177,7 +177,7 @@ def test_minimal():
     m3 = wrapped.Minimal([1, 2, 3])
     assert m3.compute(0) == 4
 
-    ### Different ways of wrapping a function: 
+    ### Different ways of wrapping a function:
     # all three call() methods (call, call2, call3) do exactly the same thing
     # and all modify the input argument. However, they are wrapped differently
     # in the pxd file:
@@ -209,7 +209,7 @@ def test_minimal():
     assert m3.call_str(in_) == 3
     assert in_ == [b"a", b"bc", b"hi"]
 
-    msg, = m3.message()
+    (msg,) = m3.message()
     assert msg == b"hello"
 
     m1, m2 = m3.create_two()
@@ -297,5 +297,3 @@ def test_minimal():
     m1 = wrapped.Minimal(3)
     m1 /= m1
     assert m1 == wrapped.Minimal(1)
-
-

@@ -44,8 +44,17 @@ class CppType(object):
     CTYPES = ["int", "long", "double", "float", "char", "void"]
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
-    def __init__(self, base_type, template_args=None, is_ptr=False, is_ref=False,
-                 is_unsigned=False, is_long=False, enum_items=None, is_const=False):
+    def __init__(
+        self,
+        base_type,
+        template_args=None,
+        is_ptr=False,
+        is_ref=False,
+        is_unsigned=False,
+        is_long=False,
+        enum_items=None,
+        is_const=False,
+    ):
         # L.info("Create new type %s with args %s and const %s" % (base_type, template_args, is_const))
         self.base_type = "void" if base_type is None else base_type
         self.is_ptr = is_ptr
@@ -122,8 +131,7 @@ class CppType(object):
                 res.is_enum = True
             return res
         if self.template_args is not None:
-            trans_targs = [t._inv_transform(inv_typemap) for t in
-                           self.template_args]
+            trans_targs = [t._inv_transform(inv_typemap) for t in self.template_args]
             self.template_args = trans_targs
         return self
 
@@ -142,15 +150,15 @@ class CppType(object):
         self.is_enum = self.is_enum or other.is_enum
 
     def __hash__(self):
-        """ for using Types as dict keys """
+        """for using Types as dict keys"""
         return hash(str(self))
 
     def __eq__(self, other):
-        """ for using Types as dict keys """
+        """for using Types as dict keys"""
         return str(self) == str(other)
 
     def __ne__(self, other):
-        """ for using Types as dict keys """
+        """for using Types as dict keys"""
         return str(self) != str(other)
 
     def copy(self):
@@ -179,11 +187,19 @@ class CppType(object):
         if ptr and ref:
             raise NotImplementedError("can not handle ref and ptr together")
         if self.template_args is not None:
-            inner = "[%s]" % (",".join(t.toString(withConst) for t in self.template_args))
+            inner = "[%s]" % (
+                ",".join(t.toString(withConst) for t in self.template_args)
+            )
         else:
             inner = ""
-        result = "%s%s%s %s%s %s" % (const_, unsigned, long_, self.base_type, inner,
-                                    ptr or ref)
+        result = "%s%s%s %s%s %s" % (
+            const_,
+            unsigned,
+            long_,
+            self.base_type,
+            inner,
+            ptr or ref,
+        )
         result = result.replace("  ", " ")
         return result.strip()  # if unsigned is "" or ptr is "" and ref is ""
 
@@ -221,8 +237,9 @@ class CppType(object):
     @staticmethod
     def _from_string(str_: AnyStr) -> CppType:
         # TODO is there a reason why "_" is not in the regex?
-        matched = re.match(r"([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?",
-                           str_.strip())
+        matched = re.match(
+            r"([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?", str_.strip()
+        )
         if matched is None:
             raise ValueError("can not parse '%s'" % str_)
         base_type, t_str = matched.groups()
@@ -259,8 +276,13 @@ class CppType(object):
 
             is_ref = str_.endswith("&")
             is_ptr = str_.endswith("*")
-            return CppType(base_type, is_unsigned=is_unsigned, is_ptr=is_ptr, is_ref=is_ref,
-                           is_long=is_long)
+            return CppType(
+                base_type,
+                is_unsigned=is_unsigned,
+                is_ptr=is_ptr,
+                is_ref=is_ref,
+                is_long=is_long,
+            )
 
         t_args = t_str[1:-1].split(",")
         if t_args == [""]:

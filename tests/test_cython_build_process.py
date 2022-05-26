@@ -32,7 +32,7 @@ import os
 import autowrap.Utils
 
 
-test_files = os.path.join(os.path.dirname(__file__), 'test_files')
+test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
 
 def testBuildExt():

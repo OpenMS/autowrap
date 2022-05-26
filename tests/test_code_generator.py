@@ -48,55 +48,84 @@ import sys
 
 test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
+
 def test_enums():
     if int(cython_version[0]) < 3:
         return
     target = os.path.join(test_files, "enums.pyx")
 
-    include_dirs = autowrap.parse_and_generate_code(["enums.pxd"],
-                                                    root=test_files, target=target, debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["enums.pxd"], root=test_files, target=target, debug=True
+    )
 
-    mod = autowrap.Utils.compile_and_import("enummodule", [target, ], include_dirs)
+    mod = autowrap.Utils.compile_and_import(
+        "enummodule",
+        [
+            target,
+        ],
+        include_dirs,
+    )
 
     foo = mod.Foo()
     my_enum = mod.Foo.MyEnum
     assert "Testing Enum documentation." in my_enum.__doc__
     myenum_a = mod.Foo.MyEnum.A
     myenum2_a = mod.Foo.MyEnum2.A
-    assert (foo.enumToInt(myenum_a) == 1)
+    assert foo.enumToInt(myenum_a) == 1
     with pytest.raises(AssertionError):
         foo.enumToInt(myenum2_a)
+
 
 def test_number_conv():
 
     target = os.path.join(test_files, "number_conv.pyx")
 
-    include_dirs = autowrap.parse_and_generate_code(["number_conv.pxd"],
-                                                    root=test_files, target=target, debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["number_conv.pxd"], root=test_files, target=target, debug=True
+    )
 
-    mod = autowrap.Utils.compile_and_import("number_conv", [target, ], include_dirs)
+    mod = autowrap.Utils.compile_and_import(
+        "number_conv",
+        [
+            target,
+        ],
+        include_dirs,
+    )
 
     mf = mod.add_max_float(0)
     mf2 = mod.add_max_float(mf)
     assert not math.isinf(mf2), "somehow overflow happened"
 
     repr_ = "%.13e" % mod.pass_full_precision(0.05)
-    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
+    assert repr_.startswith("5.0000000000000"), (
+        "loss of precision during conversion: %s" % repr_
+    )
 
     inl = [0.05]
     outl = mod.pass_full_precision_vec(inl)
 
     repr_ = "%.13e" % inl[0]
-    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
+    assert repr_.startswith("5.0000000000000"), (
+        "loss of precision during conversion: %s" % repr_
+    )
 
     repr_ = "%.13e" % outl[0]
-    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
+    assert repr_.startswith("5.0000000000000"), (
+        "loss of precision during conversion: %s" % repr_
+    )
+
 
 def test_shared_ptr():
 
     target = os.path.join(test_files, "shared_ptr_test.pyx")
     include_dirs = autowrap.CodeGenerator.fixed_include_dirs(True) + [test_files]
-    m = autowrap.Utils.compile_and_import("m", [target, ], include_dirs)
+    m = autowrap.Utils.compile_and_import(
+        "m",
+        [
+            target,
+        ],
+        include_dirs,
+    )
     assert m.__name__ == "m"
 
     h1 = m.Holder(b"uwe")
@@ -132,16 +161,24 @@ def test_shared_ptr():
 def test_inherited():
 
     target = os.path.join(test_files, "inherited.pyx")
-    include_dirs = autowrap.parse_and_generate_code(["inherited.pxd"],
-                                                    root=test_files, target=target, debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["inherited.pxd"], root=test_files, target=target, debug=True
+    )
 
-    mod = autowrap.Utils.compile_and_import("inheritedmodule", [target, ], include_dirs)
+    mod = autowrap.Utils.compile_and_import(
+        "inheritedmodule",
+        [
+            target,
+        ],
+        include_dirs,
+    )
     print(mod.__name__)
     i = mod.InheritedInt()
     assert i.foo() == 1
     assert i.bar() == 0
     assert i.getBase() == 1
     assert i.getBaseZ() == 0
+
 
 def test_templated():
 
@@ -150,20 +187,23 @@ def test_templated():
     decls, instance_map = autowrap.parse(["templated.pxd"], root=test_files)
 
     co = autowrap.Code.Code()
-    co.add("""def special(self):
-             |    return "hi" """)
+    co.add(
+        """def special(self):
+             |    return "hi" """
+    )
 
     methods = dict(T=co)
 
-    include_dirs = autowrap.generate_code(decls, instance_map, target=target,
-                                          debug=True, manual_code=methods)
+    include_dirs = autowrap.generate_code(
+        decls, instance_map, target=target, debug=True, manual_code=methods
+    )
 
     cpp_source = os.path.join(test_files, "templated.cpp")
     cpp_sources = []
 
-    twrapped = autowrap.Utils.compile_and_import("twrapped",
-                                                 [target] + cpp_sources,
-                                                 include_dirs)
+    twrapped = autowrap.Utils.compile_and_import(
+        "twrapped", [target] + cpp_sources, include_dirs
+    )
     os.remove(target)
     assert twrapped.__name__ == "twrapped"
 
@@ -234,29 +274,43 @@ def test_templated():
     assert twrapped.Templated.computeSeven() == 7
     assert twrapped.Templated_other.computeSeven() == 7
 
+
 def test_gil_unlock():
 
     target = os.path.join(test_files, "gil_testing_wrapper.pyx")
-    include_dirs = autowrap.parse_and_generate_code(["gil_testing.pxd"],
-                                                    root=test_files, target=target,  debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["gil_testing.pxd"], root=test_files, target=target, debug=True
+    )
 
-    wrapped = autowrap.Utils.compile_and_import("gtwrapped", [target, ],
-                                                include_dirs)
+    wrapped = autowrap.Utils.compile_and_import(
+        "gtwrapped",
+        [
+            target,
+        ],
+        include_dirs,
+    )
     g = wrapped.GilTesting(b"Jack")
     g.do_something(b"How are you?")
     assert g.get_greetings() == b"Hello Jack, How are you?"
 
+
 def test_automatic_string_conversion():
     target = os.path.join(test_files, "libcpp_utf8_string_test.pyx")
-    include_dirs = autowrap.parse_and_generate_code(["libcpp_utf8_string_test.pxd"],
-                                                    root=test_files, target=target,  debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_utf8_string_test.pxd"], root=test_files, target=target, debug=True
+    )
 
-    wrapped = autowrap.Utils.compile_and_import("libcpp_utf8_string_wrapped", [target, ],
-                                                include_dirs)
+    wrapped = autowrap.Utils.compile_and_import(
+        "libcpp_utf8_string_wrapped",
+        [
+            target,
+        ],
+        include_dirs,
+    )
     h = wrapped.Hello()
 
     input_bytes = b"J\xc3\xbcrgen"
-    input_unicode = b"J\xc3\xbcrgen".decode('utf-8')
+    input_unicode = b"J\xc3\xbcrgen".decode("utf-8")
 
     expected = b"Hello J\xc3\xbcrgen"
 
@@ -269,7 +323,7 @@ def test_automatic_string_conversion():
     assert msg == expected
 
     input_greet_bytes = b"Hall\xc3\xb6chen"
-    input_greet_unicode = input_greet_bytes.decode('utf-8')
+    input_greet_unicode = input_greet_bytes.decode("utf-8")
 
     expected = b"Hall\xc3\xb6chen J\xc3\xbcrgen"
 
@@ -277,19 +331,29 @@ def test_automatic_string_conversion():
     assert isinstance(msg, bytes)
     assert msg == expected
 
+
 def test_automatic_output_string_conversion():
     target = os.path.join(test_files, "libcpp_utf8_output_string_test.pyx")
-    include_dirs = autowrap.parse_and_generate_code(["libcpp_utf8_output_string_test.pxd"],
-                                                    root=test_files, target=target, debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_utf8_output_string_test.pxd"],
+        root=test_files,
+        target=target,
+        debug=True,
+    )
 
-    wrapped = autowrap.Utils.compile_and_import("libcpp_utf8_output_string_wrapped", [target, ],
-                                                include_dirs)
+    wrapped = autowrap.Utils.compile_and_import(
+        "libcpp_utf8_output_string_wrapped",
+        [
+            target,
+        ],
+        include_dirs,
+    )
     h = wrapped.LibCppUtf8OutputStringTest()
 
     input_bytes = b"J\xc3\xbcrgen"
-    input_unicode = b"J\xc3\xbcrgen".decode('utf-8')
+    input_unicode = b"J\xc3\xbcrgen".decode("utf-8")
 
-    expected = b"Hello J\xc3\xbcrgen".decode('utf-8')
+    expected = b"Hello J\xc3\xbcrgen".decode("utf-8")
     expected_type = str
     if sys.version_info[0] < 3:
         expected_type = unicode
@@ -301,4 +365,3 @@ def test_automatic_output_string_conversion():
     msg = h.get(input_unicode)
     assert isinstance(msg, expected_type)
     assert msg == expected
-

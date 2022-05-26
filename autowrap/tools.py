@@ -35,8 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # of an OrderedDictionary, which is not feature complete but simple and
 # sufficient for our uses
 
-class OrderKeepingDictionary(object):
 
+class OrderKeepingDictionary(object):
     def __init__(self):
         self._dd = dict()
         self._keys = []

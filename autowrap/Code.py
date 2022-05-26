@@ -54,9 +54,8 @@ else:
 
 
 class Code(object):
-
     def __init__(self):
-        self.content: List[Union[Code,str]] = []
+        self.content: List[Union[Code, str]] = []
 
     def extend(self, other: Code) -> None:
         # keeps indentation
@@ -75,7 +74,7 @@ class Code(object):
                 print(what)
                 print(kw)
                 raise
-            res = re.sub(r"^[ ]*\n[ ]*\|", "", res)     # ltrim first line
+            res = re.sub(r"^[ ]*\n[ ]*\|", "", res)  # ltrim first line
             res = re.sub(r"\n+ *\+", "", res)
             for line in re.split(r"\n *\|", res):
                 self.content.append(line.rstrip())
