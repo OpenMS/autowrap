@@ -41,14 +41,13 @@ from .utils import expect_exception
 
 
 def _parse(pxdFileName):
-    test_file = os.path.join(os.path.dirname(__file__),
-                             'test_files',
-                             pxdFileName)
+    test_file = os.path.join(os.path.dirname(__file__), "test_files", pxdFileName)
     return autowrap.PXDParser.parse_pxd_file(test_file)
 
 
 def test_long():
-    cld, gund, fund = autowrap.PXDParser.parse_str("""
+    cld, gund, fund = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "*":
 
     cdef cppclass T[U,V]:
@@ -56,13 +55,15 @@ cdef extern from "*":
 
     long gun()
     T[long int,int] fun()
-    """)
+    """
+    )
     assert str(gund.result_type) == "long int"
     assert str(fund.result_type) == "T[long int,int]"
 
 
 def test_multiline_annotations():
-    cdcl, = autowrap.PXDParser.parse_str("""
+    (cdcl,) = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "*":
 
     cdef cppclass T:
@@ -70,13 +71,15 @@ cdef extern from "*":
             float y,  # b:4
            )
 
-    """)
-    mdcl, = cdcl.methods.get("fun")
+    """
+    )
+    (mdcl,) = cdcl.methods.get("fun")
     assert mdcl.annotations == dict(a="3", b="4")
 
 
 def test_minimal():
-    cld, = autowrap.PXDParser.parse_str("""
+    (cld,) = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "Minimal.hpp":
 
     cdef cppclass Minimal:
@@ -92,7 +95,8 @@ cdef extern from "Minimal.hpp":
 
         void run(Minimal)
         void run2(Minimal *)
-    """)
+    """
+    )
 
     assert cld.name == "Minimal"
     assert cld.template_parameters is None
@@ -143,31 +147,37 @@ def test_int_container_pxd_parsing():
 
 
 def test_ref():
-    gun, = autowrap.PXDParser.parse_str("""
+    (gun,) = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "":
     unsigned int & gun (vector[double &] &)
-            """)
+            """
+    )
     assert gun.result_type == CppType.from_string("unsigned int &")
-    (n, t), = gun.arguments
+    ((n, t),) = gun.arguments
     assert t == CppType.from_string("vector[double &] &")
 
 
 def test_ptr():
-    gun, = autowrap.PXDParser.parse_str("""
+    (gun,) = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "":
     unsigned int * gun (vector[double *] *)
-            """)
+            """
+    )
     assert gun.result_type == CppType.from_string("unsigned int *")
-    (n, t), = gun.arguments
+    ((n, t),) = gun.arguments
     assert t == CppType.from_string("vector[double *] *")
 
 
 def test_enum():
-    E, = autowrap.PXDParser.parse_str("""
+    (E,) = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "":
     cdef enum E:
                 A, B, C
-            """)
+            """
+    )
 
     assert E.name == "E"
     A, B, C = E.items
@@ -177,7 +187,8 @@ cdef extern from "":
 
 
 def test_class_and_enum():
-    A, E = autowrap.PXDParser.parse_str("""
+    A, E = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "":
 
     cdef cppclass A:
@@ -185,10 +196,11 @@ cdef extern from "":
 
     cdef enum E:
                 A, B, C
-    """)
+    """
+    )
 
     assert A.name == "A"
-    method, = A.methods.get("A")
+    (method,) = A.methods.get("A")
     assert method.name == "A"
     assert len(method.arguments) == 0
 
@@ -200,7 +212,8 @@ cdef extern from "":
 
 
 def test_multi_enum():
-    E, F = autowrap.PXDParser.parse_str("""
+    E, F = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "":
     cdef enum E:
                 A, B, C
@@ -208,7 +221,8 @@ cdef extern from "":
     cdef enum F:
                 X, Y=4, Z
 
-            """)
+            """
+    )
 
     assert E.name == "E"
     A, B, C = E.items
@@ -224,7 +238,8 @@ cdef extern from "":
 
 
 def test_multi_mixed():
-    E, F, X = autowrap.PXDParser.parse_str("""
+    E, F, X = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "":
     cdef enum E:
                 A, B, C
@@ -235,7 +250,8 @@ cdef extern from "":
     cdef cppclass X:
          void fun(int)
 
-            """)
+            """
+    )
 
     assert E.name == "E"
     A, B, C = E.items
@@ -250,16 +266,17 @@ cdef extern from "":
     assert I == ("I", 5)
 
     assert X.name == "X", X
-    (fun,),  = X.methods.values()
+    ((fun,),) = X.methods.values()
     assert fun.result_type == CppType("void"), fun.result_type
     assert fun.name == "fun"
-    (arg_name, type_), = fun.arguments
+    ((arg_name, type_),) = fun.arguments
     assert arg_name == ""
     assert type_ == CppType("int")
 
 
 def test_multi_classes_in_one_file():
-    inst1, inst2 = autowrap.PXDParser.parse_str("""
+    inst1, inst2 = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "A.h":
     cdef cppclass A[B,C] :
         # wrap-instances:
@@ -271,52 +288,63 @@ cdef extern from "A.h":
         #   C[float]
         pass
 
-    """)
+    """
+    )
     assert inst1.name == "A"
     assert inst1.template_parameters == ["B", "C"]
     assert inst1.methods.keys() == ["run"]
     assert inst2.name == "C"
-    assert inst2.template_parameters == ["E", ]
+    assert inst2.template_parameters == [
+        "E",
+    ]
     assert len(inst2.methods) == 0
 
 
 def test_typedef():
-    decl1, decl2 = autowrap.PXDParser.parse_str("""
+    decl1, decl2 = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "A.h":
     ctypedef unsigned int myInt
     ctypedef long * allInt
-    """)
-    assert decl1.name == 'myInt', decl1.name
-    assert decl2.name == 'allInt', decl2.name
+    """
+    )
+    assert decl1.name == "myInt", decl1.name
+    assert decl2.name == "allInt", decl2.name
     assert str(decl1.type_) == "unsigned int"
     assert str(decl2.type_) == "long int *", str(decl2.type_)
 
 
 def test_typedef2():
 
-    decl1, = autowrap.PXDParser.parse_str("""
+    (decl1,) = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "A.h":
     ctypedef size_t x
-    """)
-    assert decl1.name == 'x', decl1.name
+    """
+    )
+    assert decl1.name == "x", decl1.name
     assert str(decl1.type_) == "size_t", str(decl1.type_)
 
 
 @expect_exception
 def test_doubleptr():
 
-    autowrap.PXDParser.parse_str("""
+    autowrap.PXDParser.parse_str(
+        """
 cdef extern from "A.h":
     void fun(int **)
-        """)
+        """
+    )
 
 
 def test_aliased_ptr():
-    d1, d2 = autowrap.PXDParser.parse_str("""
+    d1, d2 = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "A.h":
     ctypedef int integer
     ctypedef integer * iptr
-        """)
+        """
+    )
     assert d1.name == "integer"
     assert d2.name == "iptr"
     assert str(d1.type_) == "int"
@@ -324,13 +352,15 @@ cdef extern from "A.h":
 
 
 def test_multi_alias():
-    d1, d2, d3, d4 = autowrap.PXDParser.parse_str("""
+    d1, d2, d3, d4 = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "A.h":
     ctypedef int X
     ctypedef X * iptr
     ctypedef X Y
     ctypedef Y * iptr2
-        """)
+        """
+    )
     assert d1.name == "X"
     assert str(d1.type_) == "int"
     assert d2.name == "iptr"
@@ -342,25 +372,28 @@ cdef extern from "A.h":
 
 
 def test_function():
-    decl1, decl2 = autowrap.PXDParser.parse_str("""
+    decl1, decl2 = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "A.h":
     int floor(float x)
     int ceil(float x)
-    """)
+    """
+    )
 
     assert decl1.name == "floor"
     assert decl2.name == "ceil"
 
-    (name, t), = decl1.arguments
+    ((name, t),) = decl1.arguments
     assert name == "x"
     assert str(t) == "float"
-    (name, t), = decl2.arguments
+    ((name, t),) = decl2.arguments
     assert name == "x"
     assert str(t) == "float"
 
 
 def test_inner_unsigned():
-    decl1, decl2 = autowrap.PXDParser.parse_str("""
+    decl1, decl2 = autowrap.PXDParser.parse_str(
+        """
 
 cdef extern from "A.h":
 
@@ -371,45 +404,51 @@ cdef extern from "A.h":
     cdef cppclass T:
         fun(A[unsigned int])
 
-    """)
+    """
+    )
 
-    fun,  = decl2.methods.get("fun")
-    (__, arg_t), = fun.arguments
+    (fun,) = decl2.methods.get("fun")
+    ((__, arg_t),) = fun.arguments
     assert str(arg_t) == "A[unsigned int]"
 
 
 def test_static():
-    decl, = autowrap.PXDParser.parse_str("""
+    (decl,) = autowrap.PXDParser.parse_str(
+        """
 
 cdef extern from "A.h":
 
     cdef cppclass A:
         int fun(int x) # wrap-static
 
-    """)
+    """
+    )
 
-    fun,  = decl.methods.get("fun")
-    (__, arg_t), = fun.arguments
+    (fun,) = decl.methods.get("fun")
+    ((__, arg_t),) = fun.arguments
     assert str(arg_t) == "int"
 
 
 def test_free_function():
-    decl, = autowrap.PXDParser.parse_str("""
+    (decl,) = autowrap.PXDParser.parse_str(
+        """
 
 cdef extern from "A.h":
 
     int fun(int x)
 
-    """)
+    """
+    )
 
     assert decl.name == "fun"
     assert str(decl.result_type) == "int"
-    (__, arg_t), = decl.arguments
+    ((__, arg_t),) = decl.arguments
     assert str(arg_t) == "int"
 
 
 def test_attributes():
-    decl, = autowrap.PXDParser.parse_str("""
+    (decl,) = autowrap.PXDParser.parse_str(
+        """
 
 cdef extern from "A.h":
 
@@ -418,10 +457,11 @@ cdef extern from "A.h":
         float f
         int fun(int x) # wrap-static
 
-    """)
+    """
+    )
 
-    fun,  = decl.methods.get("fun")
-    (__, arg_t), = fun.arguments
+    (fun,) = decl.methods.get("fun")
+    ((__, arg_t),) = fun.arguments
     assert str(arg_t) == "int"
 
 
@@ -429,28 +469,33 @@ def test_annotation_typical_error_detection():
     # tests typical error for key:value decls in comments
     # with " " behind ":", eg "wrap-as: xyz" instead of "wrap-as:xyz":
     try:
-        cdcl, = autowrap.PXDParser.parse_str("""
+        (cdcl,) = autowrap.PXDParser.parse_str(
+            """
 
 cdef extern from "*":
     cdef cppclass T:
         void fun() # wrap-as: xyz
-        """)
+        """
+        )
     except:
         pass
     else:
         assert False, "expected exception"
 
     # annotation below is ok now !
-    cdcl, = autowrap.PXDParser.parse_str("""
+    (cdcl,) = autowrap.PXDParser.parse_str(
+        """
 
 cdef extern from "*":
     cdef cppclass T:
         void fun() # wrap-as:xyz
-        """)
+        """
+    )
 
 
 def test_annotations():
-    cld, = autowrap.PXDParser.parse_str("""
+    (cld,) = autowrap.PXDParser.parse_str(
+        """
 cdef extern from "*":
         cdef cppclass T:
             # wrap-ignore
@@ -469,39 +514,42 @@ cdef extern from "*":
             void hun(int x
                     )  # wrap-as:jun
             void kun(int x) # wrap-with-no-gil
-""")
+"""
+    )
 
     assert len(cld.annotations) == 2
-    assert cld.annotations["wrap-as"] == ['Z']
+    assert cld.annotations["wrap-as"] == ["Z"]
     assert cld.annotations["wrap-ignore"] is True
 
     for mdcl in cld.methods["fun"]:
         # Also test if multiple annotations are correctly represented
-        assert mdcl.annotations == {'wrap-as': 'gun', 'wrap-test': 'test'}
+        assert mdcl.annotations == {"wrap-as": "gun", "wrap-test": "test"}
 
     for mdcl in cld.methods["gun"]:
-        assert mdcl.annotations == {'wrap-as': 'hun'}
+        assert mdcl.annotations == {"wrap-as": "hun"}
 
     for mdcl in cld.methods["iun"]:
         assert mdcl.annotations == {}
 
     for mdcl in cld.methods["hun"]:
-        assert mdcl.annotations == {'wrap-as': 'jun'}
+        assert mdcl.annotations == {"wrap-as": "jun"}
 
     for mdcl in cld.methods["kun"]:
-        assert mdcl.annotations == {'wrap-with-no-gil': True}
+        assert mdcl.annotations == {"wrap-with-no-gil": True}
 
 
 def test_parsing_of_nested_template_args():
 
-    td1, td2, td3 = autowrap.PXDParser.parse_str("""
+    td1, td2, td3 = autowrap.PXDParser.parse_str(
+        """
 
 cdef extern from "*":
 
     ctypedef  A[B[C]]                   pfui
     ctypedef  A[C,D[E[F]]]              uiii
     ctypedef  A[Y, B[C[Y], C[Y, D[E]]]] huii
-    """)
+    """
+    )
 
     assert str(td1.type_) == "A[B[C]]"
     assert str(td2.type_) == "A[C,D[E[F]]]"
@@ -509,10 +557,7 @@ cdef extern from "*":
 
 
 def test_multiline_docs():
-    lines = ["# wrap-doc:",
-             "#  first line",
-             "#    second line indented",
-             "#  "]
+    lines = ["# wrap-doc:", "#  first line", "#    second line indented", "#  "]
     result = autowrap.PXDParser._parse_multiline_annotations(lines)
 
     assert result["wrap-doc"][0] == "first line"

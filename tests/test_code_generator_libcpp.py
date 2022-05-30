@@ -51,8 +51,7 @@ test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
 
 def sub_libcpp_copy_constructors(libcpp):
-    """ Test copy constructors
-    """
+    """Test copy constructors"""
     import copy
 
     # Create new Int, make Python copy (shallow copy)
@@ -92,13 +91,21 @@ def sub_libcpp_copy_constructors(libcpp):
     assert int_wrp.i_ == 1
     assert int_wrpcpy.i_ == 1
 
+
 def test_libcpp():
     target = os.path.join(test_files, "libcpp_test.pyx")
 
-    include_dirs = autowrap.parse_and_generate_code(["libcpp_test.pxd"],
-                                                    root=test_files, target=target,  debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_test.pxd"], root=test_files, target=target, debug=True
+    )
 
-    libcpp = autowrap.Utils.compile_and_import("libcpp", [target, ], include_dirs)
+    libcpp = autowrap.Utils.compile_and_import(
+        "libcpp",
+        [
+            target,
+        ],
+        include_dirs,
+    )
     assert libcpp.__name__ == "libcpp"
     print(dir(libcpp))
     assert len(libcpp.LibCppTest.__doc__) == 214
@@ -182,7 +189,7 @@ def test_libcpp():
     assert list(out.items()) == [(3, libcpp.EEE.A)]
 
     out = t.process15(12)
-    (k, v),  = out.items()
+    ((k, v),) = out.items()
     assert k == 12
     assert v.gett() == 12
 
@@ -211,11 +218,11 @@ def test_libcpp():
     assert d1.get(1) == 11
 
     d2 = dict()
-    t.process212(d2, {b"42": [ [11, 6], [2] , [8] ]})
+    t.process212(d2, {b"42": [[11, 6], [2], [8]]})
     assert d2.get(1) == 11
 
     d3 = dict()
-    t.process214(d3, {b"42": [ [11, 6], [2, 8] ]})
+    t.process214(d3, {b"42": [[11, 6], [2, 8]]})
     assert d3.get(1) == 11
 
     d1 = set((42,))
@@ -257,7 +264,7 @@ def test_libcpp():
     assert len(empty_list[2]) == 1
     assert empty_list[0][0].i_ == 42
 
-    empty_list = [[[[]]],   [[[]]]]
+    empty_list = [[[[]]], [[[]]]]
     t.process30(empty_list)
 
     assert len(empty_list) == 2
@@ -330,7 +337,7 @@ def test_libcpp():
     assert i2.i_ == 22
     assert i3.i_ == 22
 
-    # 
+    #
     # Testing raw ptr
     #
     i1 = libcpp.Int(1)
@@ -359,15 +366,14 @@ def test_libcpp():
     rval = t.process39(i2)
     assert rval.i_ == 12
 
-    # 
-    # Unsigned Int 
+    #
+    # Unsigned Int
     #
     res = t.process38(5)
     assert len(res) == 2
     assert len(res[0]) == 1
     assert res[0][0] == 5
     assert res[1][0] == 5
-
 
     # Testing abstract base class
     i1 = libcpp.ABS_Impl1(1)
@@ -408,6 +414,5 @@ def test_libcpp():
     tset = {t1, t2}
     assert len(tset) == 2
 
-    tdict = {t1 : "a", t2 : "b"}
+    tdict = {t1: "a", t2: "b"}
     assert len(tdict) == 2
-

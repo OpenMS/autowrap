@@ -64,7 +64,7 @@ included classes and methods.
 
 
 def _check_type_constness(ctype: Nodes.CBaseTypeNode) -> bool:
-    """ Regardless of Cython version, checks whether the passed Cython type is const """
+    """Regardless of Cython version, checks whether the passed Cython type is const"""
     try:
         return isinstance(ctype, Nodes.CConstTypeNode)
     except AttributeError:
@@ -72,9 +72,9 @@ def _check_type_constness(ctype: Nodes.CBaseTypeNode) -> bool:
 
 
 def parse_class_annotations(node, lines: Collection[str]) -> AnnotDict:
-    """ parses wrap-instructions inside comments below class def.
-        Either returns a list of strings for annotations/directives with a ':' and following strings
-        or True/False for boolean directives without ':'
+    """parses wrap-instructions inside comments below class def.
+    Either returns a list of strings for annotations/directives with a ':' and following strings
+    or True/False for boolean directives without ':'
     """
     start_at_line = node.pos[1]
     return _parse_multiline_annotations(lines[start_at_line:])
@@ -103,7 +103,9 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                         value = line[3:].rstrip()  # rstrip to keep indentation in docs
                     else:
                         value = line[1:].strip()
-                    if key == "wrap-doc" or value:  # don't add empty non wrap-doc values
+                    if (
+                        key == "wrap-doc" or value
+                    ):  # don't add empty non wrap-doc values
                         result[key].append(value)
                     try:
                         line = next(it).lstrip()  # lstrip to keep empty lines in docs
@@ -117,7 +119,9 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     return result
 
 
-def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str]) -> AnnotDict:
+def parse_line_annotations(
+    node: Cython.Compiler.Nodes.Node, lines: Sequence[str]
+) -> AnnotDict:
     """
     parses comments at end of line, in most cases the lines of
     method declarations.
@@ -148,8 +152,10 @@ def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str
                         continue
                     if ":" in f:
                         key, value = f.split(":", 1)
-                        assert value.strip(), "empty value (or excess space?) for key '%s' in line '%s'" \
-                                              % (key, line.rstrip())
+                        assert value.strip(), (
+                            "empty value (or excess space?) for key '%s' in line '%s'"
+                            % (key, line.rstrip())
+                        )
                         result[key] = value
                     elif f.find("wrap-") != -1:
                         key, value = f, True
@@ -165,7 +171,7 @@ def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str
     additional_annotations = _parse_multiline_annotations(lines[end:])
     # add multi line doc string to result (overwrites single line wrap-doc, if exists)
     if "wrap-doc" in additional_annotations.keys():
-        result["wrap-doc"] = '\n' + '\n'.join(additional_annotations["wrap-doc"])
+        result["wrap-doc"] = "\n" + "\n".join(additional_annotations["wrap-doc"])
 
     return result
 
@@ -182,13 +188,17 @@ def _extract_template_args(node: Cython.Compiler.Nodes.Node) -> CppType:
     elif isinstance(node.index, NameNode):
         args = [CppType(node.index.name)]
     else:
-        raise Exception("Can not handle node %s in template argument declaration" % node.index)
+        raise Exception(
+            "Can not handle node %s in template argument declaration" % node.index
+        )
     return CppType(name, args)
 
 
-def _extract_type(base_type: Cython.Compiler.Nodes.CBaseTypeNode, decl: Cython.Compiler.Nodes.CDeclaratorNode) \
-        -> CppType:
-    """ extracts type information from node in parse_pxd_file tree """
+def _extract_type(
+    base_type: Cython.Compiler.Nodes.CBaseTypeNode,
+    decl: Cython.Compiler.Nodes.CDeclaratorNode,
+) -> CppType:
+    """extracts type information from node in parse_pxd_file tree"""
 
     type_is_const = _check_type_constness(base_type)
 
@@ -207,12 +217,12 @@ def _extract_type(base_type: Cython.Compiler.Nodes.CBaseTypeNode, decl: Cython.C
                 is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
                 is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
                 is_unsigned = (
-                        hasattr(arg_node.base_type, "signed")
-                        and not arg_node.base_type.signed
+                    hasattr(arg_node.base_type, "signed")
+                    and not arg_node.base_type.signed
                 )
                 is_long = (
-                        hasattr(arg_node.base_type, "longness")
-                        and arg_node.base_type.longness
+                    hasattr(arg_node.base_type, "longness")
+                    and arg_node.base_type.longness
                 )
 
                 # Handle const template arguments which do not have a name
@@ -248,8 +258,12 @@ def _extract_type(base_type: Cython.Compiler.Nodes.CBaseTypeNode, decl: Cython.C
                 tt = _extract_template_args(arg_node)
                 template_parameters.append(tt)
             else:
-                raise Exception("Can not handle template argument node (arg_node) %r" % arg_node.pos[0].file_path +
-                                " line: %r" % arg_node.pos[1] + " col: %r" % arg_node.pos[2])
+                raise Exception(
+                    "Can not handle template argument node (arg_node) %r"
+                    % arg_node.pos[0].file_path
+                    + " line: %r" % arg_node.pos[1]
+                    + " col: %r" % arg_node.pos[2]
+                )
 
         base_type = base_type.base_type_node
 
@@ -270,7 +284,9 @@ def _extract_type(base_type: Cython.Compiler.Nodes.CBaseTypeNode, decl: Cython.C
 
 
 class BaseDecl(object):
-    def __init__(self, name: str, annotations: Dict[str, Union[bool, List[str]]], pxd_path: str):
+    def __init__(
+        self, name: str, annotations: Dict[str, Union[bool, List[str]]], pxd_path: str
+    ):
         self.name: str = name
         self.annotations: AnnotDict = annotations
         self.pxd_path: str = pxd_path
@@ -334,7 +350,7 @@ class CppClassDecl(BaseDecl):
     template_parameters: List[AnyStr]
 
     def __init__(
-            self, name, template_parameters, methods, attributes, annotations, pxd_path
+        self, name, template_parameters, methods, attributes, annotations, pxd_path
     ):
         super(CppClassDecl, self).__init__(name, annotations, pxd_path)
         self.methods = methods
@@ -342,7 +358,9 @@ class CppClassDecl(BaseDecl):
         self.template_parameters = template_parameters
 
     @classmethod
-    def parseTree(cls, node: Cython.Compiler.Nodes.CppClassNode, lines: Collection[str], pxd_path):
+    def parseTree(
+        cls, node: Cython.Compiler.Nodes.CppClassNode, lines: Collection[str], pxd_path
+    ):
         name = node.name
         template_parameters = node.templates
         if (
@@ -363,20 +381,24 @@ class CppClassDecl(BaseDecl):
             if isinstance(att, CVarDefNode):  # attribute or member function
                 decl = MethodOrAttributeDecl.parseTree(att, lines, pxd_path)
             elif isinstance(att, CEnumDefNode):
-                logger.warning("Nested enums currently not supported by autowrap. Skipping its wrap."
-                               " Please add them under a new cdef extern section with class namespace. E.g.: \n"
-                               "cdef extern from 'foo.hpp' namespace 'Foo': \n"
-                               "    cpdef enum class MyEnum 'Foo::MyEnum': \n"
-                               "      # wrap-attach: Foo \n"
-                               "      A,B,C")
+                logger.warning(
+                    "Nested enums currently not supported by autowrap. Skipping its wrap."
+                    " Please add them under a new cdef extern section with class namespace. E.g.: \n"
+                    "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                    "    cpdef enum class MyEnum 'Foo::MyEnum': \n"
+                    "      # wrap-attach: Foo \n"
+                    "      A,B,C"
+                )
                 # TODO we might be able to support it with the following
                 # decl = EnumDecl.parseTree(att, lines, pxd_path)
             elif isinstance(att, CClassDefNode):
-                logger.warning("Nested classes are currently not supported by autowrap. Skipping its wrap."
-                               " Try to add them under a new cdef extern section with class namespace. E.g.: \n"
-                               "cdef extern from 'foo.hpp' namespace 'Foo': \n"
-                               "    cpdef cppclass MyClass 'Foo::MyClass': \n"
-                               "      ...")
+                logger.warning(
+                    "Nested classes are currently not supported by autowrap. Skipping its wrap."
+                    " Try to add them under a new cdef extern section with class namespace. E.g.: \n"
+                    "cdef extern from 'foo.hpp' namespace 'Foo': \n"
+                    "    cpdef cppclass MyClass 'Foo::MyClass': \n"
+                    "      ..."
+                )
             if decl is not None:
                 if isinstance(decl, CppMethodOrFunctionDecl):
                     methods.setdefault(decl.name, []).append(decl)
@@ -438,7 +460,12 @@ class CppMethodOrFunctionDecl(BaseDecl):
         result_type = self.result_type.transformed(typemap)
         args = [(n, t.transformed(typemap)) for n, t in self.arguments]
         return CppMethodOrFunctionDecl(
-            result_type, self.name, args, self.is_static, self.annotations, self.pxd_path
+            result_type,
+            self.name,
+            args,
+            self.is_static,
+            self.annotations,
+            self.pxd_path,
         )
 
     def matches(self, other):
@@ -477,7 +504,9 @@ class MethodOrAttributeDecl(object):
             # Handle regular declarations
             return CppAttributeDecl(decl.name, result_type, annotations, pxd_path)
 
-        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(decl.base, CFuncDeclaratorNode):
+        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(
+            decl.base, CFuncDeclaratorNode
+        ):
             # Handle raw pointer declarations (call with base name)
             return CppAttributeDecl(decl.base.name, result_type, annotations, pxd_path)
 
@@ -488,7 +517,7 @@ class MethodOrAttributeDecl(object):
 
         if node.decorators is not None:
             for dec in node.decorators:
-                if dec.decorator.name == 'staticmethod':
+                if dec.decorator.name == "staticmethod":
                     is_static = True
 
         name = decl.base.name
@@ -511,7 +540,9 @@ class MethodOrAttributeDecl(object):
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname, tt))
 
-        return CppMethodOrFunctionDecl(result_type, name, args, is_static, annotations, pxd_path)
+        return CppMethodOrFunctionDecl(
+            result_type, name, args, is_static, annotations, pxd_path
+        )
 
 
 def parse_str(what):

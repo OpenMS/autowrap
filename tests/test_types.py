@@ -139,7 +139,6 @@ def _check(type_, trans, expected_str_repres):
 
 
 def test_base_type_collecting():
-
     def check(t, tobe):
         collected = "".join(sorted(t.all_occuring_base_types()))
         if collected != tobe:

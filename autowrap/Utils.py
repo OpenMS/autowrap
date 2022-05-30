@@ -81,17 +81,19 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("\n")
     for source_file in source_files:
         if source_file[-4:] != ".pyx" and source_file[-4:] != ".cpp":
-            raise NameError("Expected pyx and/or cpp files as source files for compilation.")
+            raise NameError(
+                "Expected pyx and/or cpp files as source files for compilation."
+            )
         shutil.copy(source_file, tempdir)
-        stub = source_file[:-4]+".pyi"
+        stub = source_file[:-4] + ".pyi"
         if os.path.exists(stub):
-            shutil.copy(stub, os.path.join(tempdir, name+".pyi"))
+            shutil.copy(stub, os.path.join(tempdir, name + ".pyi"))
 
     compile_args = []
     link_args = []
 
     if sys.platform == "darwin":
-        compile_args += ["-stdlib=libc++","-std=c++11"]
+        compile_args += ["-stdlib=libc++", "-std=c++11"]
         link_args += ["-stdlib=libc++"]
 
     if sys.platform == "linux" or sys.platform == "linux2":
@@ -116,19 +118,26 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         fp.write(setup_code)
 
     # module folder needs to have a py.typed file to recognize type stubs
-    open("py.typed", 'a').close()
+    open("py.typed", "a").close()
 
     import sys
+
     sys.path.insert(0, tempdir)
     if debug:
         print("\n")
         print("-" * 70)
         import pprint
+
         pprint.pprint(sys.path)
         print("-" * 70)
         print("\n")
 
-    assert subprocess.Popen("%s setup.py build_ext --force --inplace" % sys.executable, shell=True).wait() == 0
+    assert (
+        subprocess.Popen(
+            "%s setup.py build_ext --force --inplace" % sys.executable, shell=True
+        ).wait()
+        == 0
+    )
     print("BUILT")
     result = __import__(name)
     print("imported")
@@ -148,7 +157,7 @@ def remove_labels(graph):
 
 
 def find_cycle(graph_as_dict):
-    """ modified version of
+    """modified version of
     http://neopythonic.blogspot.de/2009/01/detecting-cycles-in-directed-graph.html
     """
 
@@ -163,7 +172,7 @@ def find_cycle(graph_as_dict):
             top = stack[-1]
             for node in graph_as_dict.get(top, []):
                 if node in stack:
-                    return stack[stack.index(node):]
+                    return stack[stack.index(node) :]
                 if node in todo:
                     stack.append(node)
                     todo.remove(node)
@@ -193,16 +202,16 @@ def print_map(mapping):
 
 
 def flatten(mapping):
-    """ resolves nested mappings, eg:
-            A -> B
-            B -> C[X,D]
-            C -> Z
-            D -> Y
-        is resolved to:
-            A -> Z[X,Y]
-            B -> Z[X,Y]
-            C -> Z
-            D -> Y
+    """resolves nested mappings, eg:
+        A -> B
+        B -> C[X,D]
+        C -> Z
+        D -> Y
+    is resolved to:
+        A -> Z[X,Y]
+        B -> Z[X,Y]
+        C -> Z
+        D -> Y
     """
     _check_for_cycles_in_mapping(mapping)
     # this loop only terminates for cylce free mappings:

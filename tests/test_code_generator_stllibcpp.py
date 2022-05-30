@@ -54,10 +54,17 @@ def test_stl_libcpp():
 
     target = os.path.join(test_files, "libcpp_stl_test.pyx")
 
-    include_dirs = autowrap.parse_and_generate_code(["libcpp_stl_test.pxd"],
-                                                    root=test_files, target=target,  debug=True)
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_stl_test.pxd"], root=test_files, target=target, debug=True
+    )
 
-    libcpp_stl = autowrap.Utils.compile_and_import("libcpp_stl", [target, ], include_dirs)
+    libcpp_stl = autowrap.Utils.compile_and_import(
+        "libcpp_stl",
+        [
+            target,
+        ],
+        include_dirs,
+    )
     assert libcpp_stl.__name__ == "libcpp_stl"
     print(dir(libcpp_stl))
 
@@ -67,9 +74,9 @@ def test_stl_libcpp():
     i2 = libcpp_stl.IntWrapper(2)
 
     m1 = libcpp_stl.MapWrapper()
-    m1.map_ = {3 : 8.0}
+    m1.map_ = {3: 8.0}
     m2 = libcpp_stl.MapWrapper(m1)
-    m2.map_ = {3 : 8.0, 7 : 9.0}
+    m2.map_ = {3: 8.0, 7: 9.0}
 
     assert len(m1.map_) == 1
     assert len(m2.map_) == 2
@@ -83,7 +90,7 @@ def test_stl_libcpp():
 
     vec_wrapper = libcpp_stl.LibCppSTLVector()
     itest = libcpp_stl.IntWrapper(5)
-    vec_wrapper.push_back( itest )
+    vec_wrapper.push_back(itest)
     assert vec_wrapper[0].i_ == 5
     itest = libcpp_stl.IntWrapper(7)
     vec_wrapper[0] = itest
@@ -99,7 +106,7 @@ def test_stl_libcpp():
     assert list(set_inp)[0].i_ == 2 + 10
 
     expected = set([i1])
-    res = t.process_2_set(i1) 
+    res = t.process_2_set(i1)
     assert len(res) == len(expected)
     # they should be the same object
     assert list(res)[0].i_ == list(expected)[0].i_
@@ -108,9 +115,9 @@ def test_stl_libcpp():
     # Test std::vector< shared_ptr < Widget > >
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
-    vec_inp = [ i1, i2, i2]
+    vec_inp = [i1, i2, i2]
     assert len(vec_inp) == 3
-    assert vec_inp[0].i_ == 1 
+    assert vec_inp[0].i_ == 1
     assert t.process_3_vector(vec_inp) == 1 + 10
     assert len(vec_inp) == 4
     assert vec_inp[0].i_ == 1 + 10
@@ -138,7 +145,7 @@ def test_stl_libcpp():
     assert vec_inp[0].i_ == 2 + 10
 
     expected = [i1]
-    res = t.process_6_vector(i1) 
+    res = t.process_6_vector(i1)
     assert len(res) == len(expected)
     # they should be the same object
     assert res[0].i_ == expected[0].i_
@@ -147,7 +154,7 @@ def test_stl_libcpp():
     # Test std::map< Widget, int >
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
-    map_inp = {i2 : 5}
+    map_inp = {i2: 5}
     assert t.process_7_map(map_inp) == 2
     assert len(map_inp) == 1
     assert list(map_inp.values())[0] == 5 + 10
@@ -161,7 +168,7 @@ def test_stl_libcpp():
     # Test std::map< int, Widget >
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
-    map_inp = { 5: i2 }
+    map_inp = {5: i2}
     assert t.process_9_map(map_inp) == 5
     assert len(map_inp) == 1
     assert list(map_inp.values())[0].i_ == 2 + 10
@@ -179,7 +186,7 @@ def test_stl_libcpp():
     # Test std::map< string, IntWrapper >
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
-    map_inp = { b"test" : i2 }
+    map_inp = {b"test": i2}
     assert t.process_12_map(map_inp) == 2 + 10
     assert len(map_inp) == 1
     assert list(map_inp.values())[0].i_ == 2 + 10
@@ -188,7 +195,7 @@ def test_stl_libcpp():
     # Test std::map< Widget, vector<int> >
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
-    map_inp = { i2 : [6, 2] }
+    map_inp = {i2: [6, 2]}
     assert t.process_13_map(map_inp) == 2
     assert len(map_inp) == 1
     assert list(map_inp.values())[0][0] == 6 + 10
@@ -201,7 +208,7 @@ def test_stl_libcpp():
     vec_wrapper.push_back(2)
     i1 = libcpp_stl.IntWrapper(1)
     i2 = libcpp_stl.IntWrapper(2)
-    map_inp = { i2 : vec_wrapper }
+    map_inp = {i2: vec_wrapper}
     assert t.process_14_map(map_inp) == 2
     assert len(map_inp) == 1
     assert list(map_inp.values())[0][0] == 6 + 10

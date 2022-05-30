@@ -1,15 +1,13 @@
 from autowrap.Code import Code
-from autowrap.ConversionProvider import (TypeConverterBase,
-                                         mangle,
-                                         StdMapConverter)
+from autowrap.ConversionProvider import TypeConverterBase, mangle, StdMapConverter
+
 
 class IntHolderConverter(TypeConverterBase):
-
     def get_base_types(self):
-        return "IntHolder",
+        return ("IntHolder",)
 
     def matches(self, cpp_type):
-        return  not cpp_type.is_ptr
+        return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type):
         return "int"
@@ -21,10 +19,13 @@ class IntHolderConverter(TypeConverterBase):
         # here we inject special behavoir for testing if this converter
         # was called !
         ih_name = "ih_" + argument_var
-        code = Code().add("""
+        code = Code().add(
+            """
                           |cdef _Holder[int] $ih_name
                           |$ih_name.set(<int>$argument_var)
-                          """, locals())
+                          """,
+            locals(),
+        )
         call_as = "(%s)" % ih_name
         cleanup = ""
         return code, call_as, cleanup

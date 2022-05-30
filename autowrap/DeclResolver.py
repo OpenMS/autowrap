@@ -40,7 +40,6 @@ from collections import defaultdict
 from autowrap.tools import OrderKeepingDictionary
 
 
-
 __doc__ = """
 
     The methods in this module take the class declarations created by
@@ -119,7 +118,6 @@ CONCURRENT_FILES_PER_CORE = 10
 
 
 class ResolvedTypeDef(object):
-
     def __init__(self, decl: PXDParser.CTypeDefDecl):
         self.cpp_decl: PXDParser.CTypeDefDecl = decl
         self.name: str = decl.name
@@ -129,7 +127,6 @@ class ResolvedTypeDef(object):
 
 
 class ResolvedEnum(object):
-
     def __init__(self, decl):
         self.name = decl.name
         self.scoped = decl.scoped
@@ -138,13 +135,12 @@ class ResolvedEnum(object):
         self.items = decl.items
         self.type_ = Types.CppType(self.name, enum_items=self.items)
         self.pxd_import_path = None
-        logger.info("created resolved enum: %s" % (decl.name, ))
+        logger.info("created resolved enum: %s" % (decl.name,))
         logger.info("           with items: %s" % decl.items)
         logger.info("")
 
 
 class ResolvedAttribute(object):
-
     def __init__(self, name, type_, decl):
         self.name = name
         self.type_ = type_
@@ -158,6 +154,7 @@ def get_namespace(pxd, default_namespace: str) -> str:
     fulltext = filehandle.read()
     filehandle.close()
     import re
+
     match = re.search(r"cdef extern.*?namespace\s*\"([^\"]*)\"", fulltext)
     if not match:
         return default_namespace
@@ -167,9 +164,9 @@ def get_namespace(pxd, default_namespace: str) -> str:
 
 class ResolvedClass(object):
 
-    """ contains all info for generating wrapping code of
-        resolved class.
-        "Resolved" means that template parameters and typedefs are resolved.
+    """contains all info for generating wrapping code of
+    resolved class.
+    "Resolved" means that template parameters and typedefs are resolved.
     """
 
     name: str
@@ -209,7 +206,7 @@ class ResolvedClass(object):
         elif self.wrap_manual_memory == False:
             self.wrap_manual_memory = []
         # elif empty list or list with actual content: pass
-        assert( isinstance(self.wrap_manual_memory, list) )
+        assert isinstance(self.wrap_manual_memory, list)
         self.wrap_hash = decl.annotations.get("wrap-hash", [])
         self.local_map = local_map
         self.instance_map = instance_map
@@ -224,13 +221,14 @@ class ResolvedClass(object):
 
 class ResolvedMethod(object):
 
-    """ contains all info for generating wrapping code of
-        resolved class.
-        "resolved" means that template parameters are resolved.
+    """contains all info for generating wrapping code of
+    resolved class.
+    "resolved" means that template parameters are resolved.
     """
 
-    def __init__(self, name, is_static, result_type, arguments, decl, instance_map,
-                 local_map):
+    def __init__(
+        self, name, is_static, result_type, arguments, decl, instance_map, local_map
+    ):
         self.name: str = name
         self.is_static: bool = is_static
         self.result_type = result_type
@@ -252,14 +250,16 @@ class ResolvedFunction(ResolvedMethod):
     pass
 
 
-def resolve_decls_from_files(paths, root, num_processes = 1, cython_warn_level = 1):
+def resolve_decls_from_files(paths, root, num_processes=1, cython_warn_level=1):
     if num_processes > 1:
-        return resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_warn_level)
+        return resolve_decls_from_files_multi_thread(
+            paths, root, num_processes, cython_warn_level
+        )
     else:
         return resolve_decls_from_files_single_thread(paths, root, cython_warn_level)
 
 
-def resolve_decls_from_files_single_thread(paths, root, cython_warn_level = 1):
+def resolve_decls_from_files_single_thread(paths, root, cython_warn_level=1):
     decls = []
     for k, path in enumerate(paths):
         full_path = os.path.join(root, path)
@@ -269,7 +269,9 @@ def resolve_decls_from_files_single_thread(paths, root, cython_warn_level = 1):
     return _resolve_decls(decls)
 
 
-def resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_warn_level = 1):
+def resolve_decls_from_files_multi_thread(
+    paths, root, num_processes, cython_warn_level=1
+):
     """Perform parsing with multiple threads
 
     This function distributes the work on `num_processes` processes and each
@@ -287,8 +289,14 @@ def resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_war
         n_work = len(full_paths)
         remaining = max(0, n_work - num_processes * CONCURRENT_FILES_PER_CORE)
         args = [full_paths.pop() for k in range(n_work - remaining)]
-        logger.log(25, "parsing progress %s out of %s with %s processes" % (len(paths)-remaining, len(paths), num_processes))
-        parse_pxd_file_warn = partial(PXDParser.parse_pxd_file, warn_level = cython_warn_level)
+        logger.log(
+            25,
+            "parsing progress %s out of %s with %s processes"
+            % (len(paths) - remaining, len(paths), num_processes),
+        )
+        parse_pxd_file_warn = partial(
+            PXDParser.parse_pxd_file, warn_level=cython_warn_level
+        )
         res = pool.map(parse_pxd_file_warn, args)
         for r in res:
             decls.extend(r)
@@ -339,16 +347,21 @@ def _resolve_decls(decls):
     instance_mapping = dict((k, v0) for (k, (v0, v1)) in instance_mapping.items())
 
     # resolve typedefs in class alias values
-    instance_mapping = dict((k, v.transformed(typedef_mapping)) for (k, v) in
-                            instance_mapping.items())
+    instance_mapping = dict(
+        (k, v.transformed(typedef_mapping)) for (k, v) in instance_mapping.items()
+    )
 
     # add enum mapping to class instances mapping
     intersecting_names = set(instance_mapping) & set(enum_mapping)
-    assert not intersecting_names, "enum names and class decls overlap: %s" % intersecting_names
+    assert not intersecting_names, (
+        "enum names and class decls overlap: %s" % intersecting_names
+    )
 
     instance_mapping.update(enum_mapping)
 
-    functions = [_resolve_function(f, instance_mapping, typedef_mapping) for f in function_decls]
+    functions = [
+        _resolve_function(f, instance_mapping, typedef_mapping) for f in function_decls
+    ]
 
     enums = [ResolvedEnum(e) for e in enum_decls]
     typedefs = [ResolvedTypeDef(t) for t in typedef_decls]
@@ -441,15 +454,18 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
 
     # check if parameterization signature matches:
     if len(used_parameters) != len(super_targs):
-        raise Exception("deriving %s from %s does not match" % (cdcl.name, super_cld.name))
+        raise Exception(
+            "deriving %s from %s does not match" % (cdcl.name, super_cld.name)
+        )
 
     # map template parameters in super class to the parameters used in current
     # class:
     mapping = dict(zip(super_targs, used_parameters))
     # get copy of methods from super class and transform template params:
     transformed_methods = super_cld.get_transformed_methods(mapping)
-    transformed_methods = dict((k, v) for (k, v) in transformed_methods.items()
-                               if k != super_cld.name)  # remove constructors
+    transformed_methods = dict(
+        (k, v) for (k, v) in transformed_methods.items() if k != super_cld.name
+    )  # remove constructors
     for method in transformed_methods:
         logger.info("attach to %s: %s" % (cdcl.name, method))
     cdcl.attach_base_methods(transformed_methods)
@@ -472,15 +488,15 @@ def _check_typedefs(decls):
 
 
 def _parse_all_wrap_instances_comments(class_decls: List[PXDParser.CppClassDecl]):
-    """ parses annotations of all classes and registers aliases for
-        classes.
+    """parses annotations of all classes and registers aliases for
+    classes.
 
-        cdef cppclass A[U]:
-            #wrap-instances:
-            #  AA := A[int]
+    cdef cppclass A[U]:
+        #wrap-instances:
+        #  AA := A[int]
 
-        generates an entry  'AA' : ( A[int], {'U': 'int'} ) in r
-        where "A[int]" is CppType("A", [CppType["int"])
+    generates an entry  'AA' : ( A[int], {'U': 'int'} ) in r
+    where "A[int]" is CppType("A", [CppType["int"])
 
     """
     r = dict()
@@ -489,7 +505,9 @@ def _parse_all_wrap_instances_comments(class_decls: List[PXDParser.CppClassDecl]
     return r
 
 
-def _parse_wrap_instances_comments(cdcl: PXDParser.CppClassDecl) -> Dict[AnyStr, Tuple[Types.CppType, Dict]]:
+def _parse_wrap_instances_comments(
+    cdcl: PXDParser.CppClassDecl,
+) -> Dict[AnyStr, Tuple[Types.CppType, Dict]]:
 
     inst_annotations = cdcl.annotations.get("wrap-instances")
     r = dict()
@@ -534,11 +552,12 @@ def parse_inst_decl(str_: AnyStr) -> Tuple[AnyStr, Types.CppType]:
 
 
 def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
-    """
-    """
+    """ """
     all_resolved_classes = []
     for class_decl in class_decls:
-        resolved_classes = _resolve_class_decl(class_decl, typedef_mapping, instance_mapping)
+        resolved_classes = _resolve_class_decl(
+            class_decl, typedef_mapping, instance_mapping
+        )
         all_resolved_classes.extend(resolved_classes)
     return all_resolved_classes
 
@@ -564,19 +583,24 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
                 if ignore:
                     continue
                 if mdcl.name == class_decl.name:
-                    r_method = _resolve_constructor(cinst_name, mdcl, i_mapping, local_mapping)
+                    r_method = _resolve_constructor(
+                        cinst_name, mdcl, i_mapping, local_mapping
+                    )
                 else:
                     r_method = _resolve_method(mdcl, i_mapping, local_mapping)
                 r_methods.append(r_method)
-        r_class = ResolvedClass(cinst_name, r_methods, r_attributes,
-                                class_decl, i_mapping, local_mapping)
+        r_class = ResolvedClass(
+            cinst_name, r_methods, r_attributes, class_decl, i_mapping, local_mapping
+        )
         resolved_classes.append(r_class)
     return resolved_classes
 
 
 def _build_local_typemap(t_param_mapping, typedef_mapping):
     # for resolving typedef'ed types in template instance args:
-    local_map = dict((n, t.transformed(typedef_mapping)) for (n, t) in t_param_mapping.items())
+    local_map = dict(
+        (n, t.transformed(typedef_mapping)) for (n, t) in t_param_mapping.items()
+    )
 
     # for resolving 'free' typedefs in method args and result types:
     if set(local_map) & set(typedef_mapping):
@@ -589,8 +613,9 @@ def _build_local_typemap(t_param_mapping, typedef_mapping):
 
 def _resolve_constructor(cinst_name, method_decl, instance_mapping, local_type_map):
     logger.info("resolve method decl: '%s'" % method_decl)
-    result = _resolve_method_or_function(method_decl, instance_mapping,
-                                         local_type_map, ResolvedMethod)
+    result = _resolve_method_or_function(
+        method_decl, instance_mapping, local_type_map, ResolvedMethod
+    )
     result.name = cinst_name
     # logger.info("result             : '%s'" % result)
     # logger.info("")
@@ -599,8 +624,9 @@ def _resolve_constructor(cinst_name, method_decl, instance_mapping, local_type_m
 
 def _resolve_method(method_decl, instance_mapping, local_type_map):
     logger.info("resolve method decl: '%s'" % method_decl)
-    result = _resolve_method_or_function(method_decl, instance_mapping,
-                                         local_type_map, ResolvedMethod)
+    result = _resolve_method_or_function(
+        method_decl, instance_mapping, local_type_map, ResolvedMethod
+    )
     # logger.info("result             : '%s'" % result)
     # logger.info("")
     return result
@@ -608,27 +634,36 @@ def _resolve_method(method_decl, instance_mapping, local_type_map):
 
 def _resolve_function(method_decl, instance_mapping, local_type_map):
     logger.info("resolve function decl: '%s'" % method_decl)
-    result = _resolve_method_or_function(method_decl, instance_mapping,
-                                         local_type_map, ResolvedFunction)
+    result = _resolve_method_or_function(
+        method_decl, instance_mapping, local_type_map, ResolvedFunction
+    )
     # logger.info("result               : '%s'" % result)
     # logger.info("")
     return result
 
 
-def _resolve_method_or_function(method_decl, instance_mapping, local_type_map,
-                                clz):
+def _resolve_method_or_function(method_decl, instance_mapping, local_type_map, clz):
     """
     resolves aliases in return and argument types
     """
-    result_type = _resolve_alias(method_decl.result_type, instance_mapping,
-                                 local_type_map)
+    result_type = _resolve_alias(
+        method_decl.result_type, instance_mapping, local_type_map
+    )
     args = []
     for arg_name, arg_type in method_decl.arguments:
         arg_type = _resolve_alias(arg_type, instance_mapping, local_type_map)
         args.append((arg_name, arg_type))
     name = method_decl.annotations.get("wrap-as", method_decl.name)
 
-    return clz(name, method_decl.is_static, result_type, args, method_decl, instance_mapping, local_type_map)
+    return clz(
+        name,
+        method_decl.is_static,
+        result_type,
+        args,
+        method_decl,
+        instance_mapping,
+        local_type_map,
+    )
 
 
 def _resolve_attribute(adecl, instance_mapping, type_map):

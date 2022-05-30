@@ -68,7 +68,6 @@ def mangle(s):
 
 
 class TypeConverterBase(object):
-
     def set_enums_to_wrap(self, enums_to_wrap):
         self.enums_to_wrap = enums_to_wrap
 
@@ -87,16 +86,18 @@ class TypeConverterBase(object):
         """
         raise NotImplementedError()
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         """
         Creates a temporary object which has the type of the current TypeConverter object.
 
         The object is *always* named "_r" and will be of type "res_type". It
         will be assigned the value of "cy_call_str".
 
-        Note that Cython cannot declare C++ references, therefore 
+        Note that Cython cannot declare C++ references, therefore
 
-           cdef int & _r 
+           cdef int & _r
 
         is illegal to declare and we have to remove any references from the type.
         Use with_const = False to return the type non-const
@@ -132,9 +133,9 @@ class TypeConverterBase(object):
         """
         raise NotImplementedError()
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Union[Code, str],
-                                                                                            Union[Code, str],
-                                                                                            Union[Code, str]]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Union[Code, str], Union[Code, str], Union[Code, str]]:
         """
         Sets up the conversion of input arguments.
 
@@ -145,8 +146,9 @@ class TypeConverterBase(object):
         """
         raise NotImplementedError()
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) \
-            -> Optional[Union[Code, str]]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[Union[Code, str]]:
         raise NotImplementedError()
 
     @staticmethod
@@ -168,21 +170,25 @@ class TypeConverterBase(object):
 
         if cpp_type.is_ptr:
             cpp_type_base = cpp_type.base_type
-            return string.Template("shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))").substitute(
-                locals())
+            return string.Template(
+                "shared_ptr[$cpp_type_base](new $cpp_type_base(deref(deref($it))))"
+            ).substitute(locals())
         else:
-            return string.Template("shared_ptr[$cpp_type](new $cpp_type(deref($it)))").substitute(locals())
+            return string.Template(
+                "shared_ptr[$cpp_type](new $cpp_type(deref($it)))"
+            ).substitute(locals())
 
 
 class VoidConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["void"]
 
     def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         return cy_call_str
 
     def matching_python_type(self, cpp_type: CppType) -> str:
@@ -194,10 +200,14 @@ class VoidConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         raise NotImplementedError("void has no matching python type")
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         raise NotImplementedError("void has no matching python type")
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return None
 
 
@@ -208,8 +218,18 @@ class IntegerConverter(TypeConverterBase):
     """
 
     def get_base_types(self) -> List[str]:
-        return ["int", "bool", "long", "int32_t", "ptrdiff_t", "int64_t",
-                "long int", "uint32_t", "uint64_t", "size_t"]
+        return [
+            "int",
+            "bool",
+            "long",
+            "int32_t",
+            "ptrdiff_t",
+            "int64_t",
+            "long int",
+            "uint32_t",
+            "uint64_t",
+            "size_t",
+        ]
 
     def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
@@ -229,7 +249,9 @@ class IntegerConverter(TypeConverterBase):
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
@@ -240,8 +262,14 @@ class UnsignedIntegerConverter(TypeConverterBase):
     """
 
     def get_base_types(self) -> List[str]:
-        return ["unsigned int", "unsigned long", "ptrdiff_t",
-                "uint32_t", "uint64_t", "size_t"]
+        return [
+            "unsigned int",
+            "unsigned long",
+            "ptrdiff_t",
+            "uint32_t",
+            "uint64_t",
+            "size_t",
+        ]
 
     def matches(self, cpp_type: CppType) -> bool:
         return not cpp_type.is_ptr
@@ -255,15 +283,22 @@ class UnsignedIntegerConverter(TypeConverterBase):
         return "int"
 
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
-        return "isinstance(%s, int) and %s >= 0" % (argument_var, argument_var,)
+        return "isinstance(%s, int) and %s >= 0" % (
+            argument_var,
+            argument_var,
+        )
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
@@ -271,7 +306,6 @@ class UnsignedIntegerConverter(TypeConverterBase):
 
 
 class DoubleConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["double"]
 
@@ -287,18 +321,21 @@ class DoubleConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, float)" % (argument_var,)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
 class FloatConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["float"]
 
@@ -314,18 +351,21 @@ class FloatConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, float)" % (argument_var,)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<%s>%s)" % (cpp_type, argument_var)
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 
 class EnumConverter(TypeConverterBase):
-
     def __init__(self, enum):
         self.enum = enum
 
@@ -364,7 +404,9 @@ class EnumConverter(TypeConverterBase):
                 name = self.enum.name
             return "isinstance(%s, %s)" % (argument_var, name)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         if not self.enum.scoped:
             call_as = "(<_%s>%s)" % (cpp_type.base_type, argument_var)
@@ -374,13 +416,14 @@ class EnumConverter(TypeConverterBase):
         cleanup = ""
         return code, call_as, cleanup
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         # TODO check what to do for non-int scoped enums
         return "%s = <int>%s" % (output_py_var, input_cpp_var)
 
 
 class CharConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["char"]
 
@@ -394,23 +437,31 @@ class CharConverter(TypeConverterBase):
         return "bytes"
 
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
-        return "isinstance(%s, bytes) and len(%s) == 1" % (argument_var, argument_var,)
+        return "isinstance(%s, bytes) and len(%s) == 1" % (
+            argument_var,
+            argument_var,
+        )
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<char>((%s)[0]))" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         return "cdef char  _r = %s" % cy_call_str
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = chr(<char>(%s))" % (output_py_var, input_cpp_var)
 
 
 class ConstCharPtrConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["const_char"]
 
@@ -426,21 +477,29 @@ class ConstCharPtrConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes)" % (argument_var,)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, str]:
-        code = Code().add("cdef const_char * input_%s = <const_char *> %s" % (argument_var, argument_var))
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, str]:
+        code = Code().add(
+            "cdef const_char * input_%s = <const_char *> %s"
+            % (argument_var, argument_var)
+        )
         call_as = "input_%s" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         return "cdef const_char  * _r = _cast_const_away(%s)" % cy_call_str
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = <const_char *>(%s)" % (output_py_var, input_cpp_var)
 
 
 class CharPtrConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["char"]
 
@@ -456,21 +515,26 @@ class CharPtrConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes)" % (argument_var,)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<char *>%s)" % argument_var
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         return "cdef char  * _r = _cast_const_away(%s)" % cy_call_str
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = <char *>(%s)" % (output_py_var, input_cpp_var)
 
 
 class TypeToWrapConverter(TypeConverterBase):
-
     def __init__(self, class_: ResolvedClass):
         self.class_: ResolvedClass = class_
 
@@ -490,7 +554,9 @@ class TypeToWrapConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, %s)" % (argument_var, cpp_type.base_type)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         if cpp_type.is_ptr:
             call_as = "(%s.inst.get())" % (argument_var,)
@@ -500,7 +566,9 @@ class TypeToWrapConverter(TypeConverterBase):
         cleanup = ""
         return code, call_as, cleanup
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> Union[Code, str]:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> Union[Code, str]:
         t = self.converters.cython_type(res_type)
 
         if t.is_ref:
@@ -515,18 +583,22 @@ class TypeToWrapConverter(TypeConverterBase):
 
             # If t is a pointer, we would like to call on the base type
             t = t.base_type
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef $const $t * __r = ($cy_call_str)
                 |if __r == NULL:
                 |    return None
                 |cdef $t * _r = new $t(deref(__r))
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
         return "cdef %s * _r = new %s(%s)" % (t, t, cy_call_str)
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) ->\
-            Optional[Union[Code, str]]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[Union[Code, str]]:
 
         cy_clz = self.converters.cython_type(cpp_type)
 
@@ -535,10 +607,13 @@ class TypeToWrapConverter(TypeConverterBase):
             cy_clz = cy_clz.base_type
 
         t = cpp_type.base_type
-        return Code().add("""
+        return Code().add(
+            """
                       |cdef $t $output_py_var = $t.__new__($t)
                       |$output_py_var.inst = shared_ptr[$cy_clz]($input_cpp_var)
-        """, locals())
+        """,
+            locals(),
+        )
 
 
 class StdPairConverter(TypeConverterBase):
@@ -556,13 +631,21 @@ class StdPairConverter(TypeConverterBase):
         return "list"
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        t1, t2, = cpp_type.template_args
+        (
+            t1,
+            t2,
+        ) = cpp_type.template_args
         # We use typing.List to be backwards compatible with py <=3.8
-        return "List[%s, %s]" % (self.converters.get(t1).matching_python_type_full(t1),
-                                 self.converters.get(t2).matching_python_type_full(t2))
+        return "List[%s, %s]" % (
+            self.converters.get(t1).matching_python_type_full(t1),
+            self.converters.get(t2).matching_python_type_full(t2),
+        )
 
     def type_check_expression(self, cpp_type, arg_var):
-        t1, t2, = cpp_type.template_args
+        (
+            t1,
+            t2,
+        ) = cpp_type.template_args
         inner_conv1 = self.converters.get(t1)
         inner_conv2 = self.converters.get(t2)
         assert inner_conv1 is not None, "arg type %s not supported" % t1
@@ -570,13 +653,25 @@ class StdPairConverter(TypeConverterBase):
         inner_check1 = inner_conv1.type_check_expression(t1, "%s[0]" % arg_var)
         inner_check2 = inner_conv2.type_check_expression(t2, "%s[1]" % arg_var)
 
-        return Code().add("""
+        return (
+            Code()
+            .add(
+                """
           |isinstance($arg_var, list) and len($arg_var) == 2 and $inner_check1
           + and $inner_check2
-          """, locals()).render()
+          """,
+                locals(),
+            )
+            .render()
+        )
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, Code]:
-        t1, t2, = cpp_type.template_args
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Code]:
+        (
+            t1,
+            t2,
+        ) = cpp_type.template_args
         temp_var = "v%d" % arg_num
         i1 = self.converters.cython_type(t1)
         i2 = self.converters.cython_type(t2)
@@ -597,43 +692,68 @@ class StdPairConverter(TypeConverterBase):
         else:
             arg1 = "%s[1]" % argument_var
 
-        code = Code().add("""
+        code = Code().add(
+            """
             |cdef libcpp_pair[$i1, $i2] $temp_var
             |$temp_var.first = $arg0
             |$temp_var.second = $arg1
-            """, locals())
+            """,
+            locals(),
+        )
 
         cleanup_code = Code()
         if cpp_type.is_ref and not cpp_type.is_const:
-            if not i1.is_enum and t1.base_type in self.converters.names_of_wrapper_classes:
+            if (
+                not i1.is_enum
+                and t1.base_type in self.converters.names_of_wrapper_classes
+            ):
                 temp1 = "temp1"
-                cleanup_code.add("""
+                cleanup_code.add(
+                    """
                     |cdef $t1 $temp1 = $t1.__new__($t1)
                     |$temp1.inst = shared_ptr[$i1](new $i1($temp_var.first))
-                                   """, locals())
+                                   """,
+                    locals(),
+                )
             else:
                 temp1 = "%s.first" % temp_var
-            if not i2.is_enum and t2.base_type in self.converters.names_of_wrapper_classes:
+            if (
+                not i2.is_enum
+                and t2.base_type in self.converters.names_of_wrapper_classes
+            ):
                 temp2 = "temp2"
-                cleanup_code.add("""
+                cleanup_code.add(
+                    """
                     |cdef $t2 $temp2 = $t2.__new__($t2)
                     |$temp2.inst = shared_ptr[$i2](new $i2($temp_var.second))
-                                   """, locals())
+                                   """,
+                    locals(),
+                )
             else:
                 temp2 = "%s.second" % temp_var
 
-            cleanup_code.add("""
+            cleanup_code.add(
+                """
                 |$argument_var[:] = [$temp1, $temp2]
-                """, locals())
+                """,
+                locals(),
+            )
         return code, "%s" % temp_var, cleanup_code
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         return "_r = %s" % (cy_call_str)
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Code:
 
         assert not cpp_type.is_ptr
-        t1, t2, = cpp_type.template_args
+        (
+            t1,
+            t2,
+        ) = cpp_type.template_args
 
         i1 = self.converters.cython_type(t1)
         i2 = self.converters.cython_type(t2)
@@ -642,36 +762,50 @@ class StdPairConverter(TypeConverterBase):
 
         if i1.is_enum:
             out1 = "out1"
-            code.add("""cdef $i1 out1 = (<$i1> $input_cpp_var.first)
-                       """, locals())
+            code.add(
+                """cdef $i1 out1 = (<$i1> $input_cpp_var.first)
+                       """,
+                locals(),
+            )
 
         elif t1.base_type in self.converters.names_of_wrapper_classes:
             out1 = "out1"
-            code.add("""cdef $t1 out1 = $t1.__new__($t1)
+            code.add(
+                """cdef $t1 out1 = $t1.__new__($t1)
                        |out1.inst = shared_ptr[$i1](new $i1($input_cpp_var.first))
-                       """, locals())
+                       """,
+                locals(),
+            )
         else:
             out1 = "%s.first" % input_cpp_var
 
         if i2.is_enum:
             out2 = "out2"
-            code.add("""cdef $i2 out2 = (<$i2> $input_cpp_var.second)
-                       """, locals())
+            code.add(
+                """cdef $i2 out2 = (<$i2> $input_cpp_var.second)
+                       """,
+                locals(),
+            )
         elif t2.base_type in self.converters.names_of_wrapper_classes:
             out2 = "out2"
-            code.add("""cdef $t2 out2 = $t2.__new__($t2)
+            code.add(
+                """cdef $t2 out2 = $t2.__new__($t2)
                        |out2.inst = shared_ptr[$i2](new $i2($input_cpp_var.second))
-                       """, locals())
+                       """,
+                locals(),
+            )
         else:
             out2 = "%s.second" % input_cpp_var
 
-        code.add("""cdef list $output_py_var = [$out1, $out2]
-            """, locals())
+        code.add(
+            """cdef list $output_py_var = [$out1, $out2]
+            """,
+            locals(),
+        )
         return code
 
 
 class StdMapConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["libcpp_map"]
 
@@ -686,8 +820,10 @@ class StdMapConverter(TypeConverterBase):
         inner_conv_1 = self.converters.get(tt_key)
         inner_conv_2 = self.converters.get(tt_value)
         # We use typing.Dict to be backwards compatible with py <= 3.8
-        return "Dict[%s, %s]" % (inner_conv_1.matching_python_type_full(tt_key),
-                                 inner_conv_2.matching_python_type_full(tt_value))
+        return "Dict[%s, %s]" % (
+            inner_conv_1.matching_python_type_full(tt_key),
+            inner_conv_2.matching_python_type_full(tt_value),
+        )
 
     def type_check_expression(self, cpp_type, arg_var):
         tt_key, tt_value = cpp_type.template_args
@@ -699,14 +835,22 @@ class StdMapConverter(TypeConverterBase):
         inner_check_1 = inner_conv_1.type_check_expression(tt_key, "k")
         inner_check_2 = inner_conv_2.type_check_expression(tt_value, "v")
 
-        return Code().add("""
+        return (
+            Code()
+            .add(
+                """
           |isinstance($arg_var, dict)
           + and all($inner_check_1 for k in $arg_var.keys())
           + and all($inner_check_2 for v in $arg_var.values())
-          """, locals()).render()
+          """,
+                locals(),
+            )
+            .render()
+        )
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) ->\
-            Tuple[Code, str, Union[Code, str]]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
         tt_key, tt_value = cpp_type.template_args
         temp_var = "v%d" % arg_num
 
@@ -726,19 +870,27 @@ class StdMapConverter(TypeConverterBase):
             value_conv = "<%s> value" % cy_tt_value
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
             value_conv = "deref((<%s>value).inst.get())" % tt_value.base_type
-        elif tt_value.template_args is not None and tt_value.base_type == "libcpp_vector":
+        elif (
+            tt_value.template_args is not None and tt_value.base_type == "libcpp_vector"
+        ):
             # Special case: the value type is a std::vector< X >, maybe something we can convert?
 
             # code_top = """
             value_var = "value"
-            tt, = tt_value.template_args
+            (tt,) = tt_value.template_args
             vtemp_var = "svec%s" % arg_num
             inner = self.converters.cython_type(tt)
 
             # Check whether the inner vector has any classes we need to wrap (we cannot do that)
-            contains_classes_to_wrap = tt.template_args is not None and \
-                                       len(set(self.converters.names_of_wrapper_classes).intersection(
-                                           set(tt.all_occuring_base_types()))) > 0
+            contains_classes_to_wrap = (
+                tt.template_args is not None
+                and len(
+                    set(self.converters.names_of_wrapper_classes).intersection(
+                        set(tt.all_occuring_base_types())
+                    )
+                )
+                > 0
+            )
 
             if self.converters.cython_type(tt).is_enum:
                 # Case 1: We wrap a std::vector<> with an enum base type
@@ -746,19 +898,34 @@ class StdMapConverter(TypeConverterBase):
             elif tt.base_type in self.converters.names_of_wrapper_classes:
                 # Case 2: We wrap a std::vector<> with a base type we need to wrap
                 raise Exception("Not Implemented")
-            elif tt.template_args is not None and tt.base_type == "shared_ptr" \
-                    and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
+            elif (
+                tt.template_args is not None
+                and tt.base_type == "shared_ptr"
+                and len(set(tt.template_args[0].all_occuring_base_types())) == 1
+            ):
                 # Case 3: We wrap a std::vector< shared_ptr<X> > where X needs to be a type that is easy to wrap
                 raise Exception("Not Implemented")
-            elif tt.template_args is not None and tt.base_type != "libcpp_vector" and \
-                    len(set(self.converters.names_of_wrapper_classes).intersection(
-                        set(tt.all_occuring_base_types()))) > 0:
+            elif (
+                tt.template_args is not None
+                and tt.base_type != "libcpp_vector"
+                and len(
+                    set(self.converters.names_of_wrapper_classes).intersection(
+                        set(tt.all_occuring_base_types())
+                    )
+                )
+                > 0
+            ):
                 # Only if the std::vector contains a class that we need to wrap somewhere,
                 # we cannot do it ...
                 raise Exception(
                     "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template "
-                    "arguments")
-            elif tt.template_args is not None and tt.base_type == "libcpp_vector" and contains_classes_to_wrap:
+                    "arguments"
+                )
+            elif (
+                tt.template_args is not None
+                and tt.base_type == "libcpp_vector"
+                and contains_classes_to_wrap
+            ):
                 # Case 4: We wrap a std::vector<> with a base type that contains
                 #         further nested std::vector<> inside
                 #         -> deal with recursion
@@ -768,21 +935,28 @@ class StdMapConverter(TypeConverterBase):
                 inner = self.converters.cython_type(tt)
                 # cython cares for conversion of stl containers with std types,
                 # but we need to add the definition to the top
-                code = Code().add("""
+                code = Code().add(
+                    """
                     |cdef libcpp_vector[$inner] $vtemp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
 
                 value_conv_cleanup = Code().add("")
                 value_conv_code = Code().add("$vtemp_var = $value_var", locals())
                 value_conv = "%s" % vtemp_var
                 if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
-                    cleanup_code = Code().add("""
+                    cleanup_code = Code().add(
+                        """
                         |$value_var[:] = $vtemp_var
-                        """, locals())
+                        """,
+                        locals(),
+                    )
 
         elif tt_value in self.converters:
-            value_conv_code, value_conv, value_conv_cleanup = \
-                self.converters.get(tt_value).input_conversion(tt_value, "value", 0)
+            value_conv_code, value_conv, value_conv_cleanup = self.converters.get(
+                tt_value
+            ).input_conversion(tt_value, "value", 0)
         else:
             value_conv = "<%s> value" % cy_tt_value
 
@@ -791,22 +965,29 @@ class StdMapConverter(TypeConverterBase):
         elif tt_key.base_type in self.converters.names_of_wrapper_classes:
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
         elif tt_key in self.converters:
-            key_conv_code, key_conv, key_conv_cleanup = \
-                self.converters.get(tt_key).input_conversion(tt_key, "key", 0)
+            key_conv_code, key_conv, key_conv_cleanup = self.converters.get(
+                tt_key
+            ).input_conversion(tt_key, "key", 0)
         else:
             key_conv = "<%s> key" % cy_tt_key
 
-        code.add("""
+        code.add(
+            """
             |cdef libcpp_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
             + libcpp_map[$cy_tt_key, $cy_tt_value]()
 
             |for key, value in $argument_var.items():
-            """, locals())
+            """,
+            locals(),
+        )
 
         code.add(key_conv_code)
         code.add(value_conv_code)
-        code.add("""    deref($temp_var)[ $key_conv ] = $value_conv
-            """, locals())
+        code.add(
+            """    deref($temp_var)[ $key_conv ] = $value_conv
+            """,
+            locals(),
+        )
         code.add(key_conv_cleanup)
         code.add(value_conv_cleanup)
 
@@ -817,13 +998,16 @@ class StdMapConverter(TypeConverterBase):
 
             # TODO can we refactor such that each if-clause adds a part
             # add code for key that is wrapped
-            if tt_key.base_type in self.converters.names_of_wrapper_classes \
-                    and not tt_value.base_type in self.converters.names_of_wrapper_classes:
+            if (
+                tt_key.base_type in self.converters.names_of_wrapper_classes
+                and not tt_value.base_type in self.converters.names_of_wrapper_classes
+            ):
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
                 cy_tt = tt_value.base_type
                 item = mangle("item_" + argument_var)
                 item_key = mangle("itemk_" + argument_var)
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |replace = dict()
                     |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
                     |cdef $py_tt_key $item_key
@@ -835,13 +1019,19 @@ class StdMapConverter(TypeConverterBase):
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
             # add code for value that is wrapped
-            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes \
-                    and not tt_key.base_type in self.converters.names_of_wrapper_classes:
+            elif (
+                not cy_tt_value.is_enum
+                and tt_value.base_type in self.converters.names_of_wrapper_classes
+                and not tt_key.base_type in self.converters.names_of_wrapper_classes
+            ):
                 cy_tt = tt_value.base_type
                 item = mangle("item_" + argument_var)
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |replace = dict()
                     |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
                     |cdef $cy_tt $item
@@ -853,15 +1043,21 @@ class StdMapConverter(TypeConverterBase):
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
             # add code for value AND key that is wrapped
-            elif not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes \
-                    and tt_key.base_type in self.converters.names_of_wrapper_classes:
+            elif (
+                not cy_tt_value.is_enum
+                and tt_value.base_type in self.converters.names_of_wrapper_classes
+                and tt_key.base_type in self.converters.names_of_wrapper_classes
+            ):
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
                 cy_tt = tt_value.base_type
                 item_val = mangle("itemv_" + argument_var)
                 item_key = mangle("itemk_" + argument_var)
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |replace = dict()
                     |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
                     |cdef $py_tt_key $item_key
@@ -876,10 +1072,13 @@ class StdMapConverter(TypeConverterBase):
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
             else:
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |replace = dict()
                     |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
                     |while $it != $temp_var.end():
@@ -888,16 +1087,22 @@ class StdMapConverter(TypeConverterBase):
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
         else:
             cleanup_code = "del %s" % temp_var
 
         return code, "deref(%s)" % temp_var, cleanup_code
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         return "_r = %s" % cy_call_str
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Code:
 
         assert not cpp_type.is_ptr
 
@@ -908,19 +1113,33 @@ class StdMapConverter(TypeConverterBase):
 
         it = mangle("it_" + input_cpp_var)
 
-        if (not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes) \
-                and (not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes):
-            raise Exception("Converter can not handle wrapped classes as keys and values in map")
+        if (
+            not cy_tt_value.is_enum
+            and tt_value.base_type in self.converters.names_of_wrapper_classes
+        ) and (
+            not cy_tt_key.is_enum
+            and tt_key.base_type in self.converters.names_of_wrapper_classes
+        ):
+            raise Exception(
+                "Converter can not handle wrapped classes as keys and values in map"
+            )
 
-        elif not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
+        elif (
+            not cy_tt_key.is_enum
+            and tt_key.base_type in self.converters.names_of_wrapper_classes
+        ):
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
         else:
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
 
-        if not cy_tt_value.is_enum and tt_value.base_type in self.converters.names_of_wrapper_classes:
+        if (
+            not cy_tt_value.is_enum
+            and tt_value.base_type in self.converters.names_of_wrapper_classes
+        ):
             cy_tt = tt_value.base_type
             item = mangle("item_" + output_py_var)
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = dict()
                 |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
                 |cdef $cy_tt $item
@@ -929,12 +1148,18 @@ class StdMapConverter(TypeConverterBase):
                 |   $item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
                 |   $output_py_var[$key_conv] = $item
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
-        elif not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
+        elif (
+            not cy_tt_key.is_enum
+            and tt_key.base_type in self.converters.names_of_wrapper_classes
+        ):
             value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
             item_key = mangle("itemk_" + output_py_var)
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = dict()
                 |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
                 |cdef $py_tt_key $item_key
@@ -945,22 +1170,26 @@ class StdMapConverter(TypeConverterBase):
                 |   # $output_py_var[$key_conv] = $value_conv
                 |   $output_py_var[$item_key] = $value_conv
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
         else:
             value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = dict()
                 |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
                 |while $it != $input_cpp_var.end():
                 |   $output_py_var[$key_conv] = $value_conv
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
 
 class StdSetConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["libcpp_set"]
 
@@ -971,36 +1200,48 @@ class StdSetConverter(TypeConverterBase):
         return "set"
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         inner_conv = self.converters.get(tt)
         return "Set[%s]" % inner_conv.matching_python_type_full(tt)
 
     def type_check_expression(self, cpp_type, arg_var):
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         inner_conv = self.converters.get(tt)
         assert inner_conv is not None, "arg type %s not supported" % tt
         inner_check = inner_conv.type_check_expression(tt, "li")
 
-        return Code().add("""
+        return (
+            Code()
+            .add(
+                """
           |isinstance($arg_var, set) and all($inner_check for li in $arg_var)
-          """, locals()).render()
+          """,
+                locals(),
+            )
+            .render()
+        )
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) ->\
-            Tuple[Code, str, Union[Code, str]]:
-        tt, = cpp_type.template_args
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        (tt,) = cpp_type.template_args
         temp_var = "v%d" % arg_num
         inner = self.converters.cython_type(tt)
         it = mangle("it_" + argument_var)
         if inner.is_enum:
             item = "item%d" % arg_num
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef libcpp_set[$inner] * $temp_var = new libcpp_set[$inner]()
                 |cdef int $item
                 |for $item in $argument_var:
                 |   $temp_var.insert(<$inner> $item)
-                """, locals())
+                """,
+                locals(),
+            )
             if cpp_type.is_ref and not cpp_type.is_const:
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |replace = set()
                     |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
                     |while $it != $temp_var.end():
@@ -1009,7 +1250,9 @@ class StdSetConverter(TypeConverterBase):
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
             else:
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
@@ -1025,16 +1268,20 @@ class StdSetConverter(TypeConverterBase):
 
             cy_tt = tt.base_type
             item = "item%d" % arg_num
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef libcpp_set[$inner] * $temp_var = new libcpp_set[$inner]()
                 |cdef $base_type $item
                 |for $item in $argument_var:
                 |   $temp_var.insert($do_deref($item.inst.get()))
-                """, locals())
+                """,
+                locals(),
+            )
             if cpp_type.is_ref and not cpp_type.is_const:
 
                 instantiation = self._code_for_instantiate_object_from_iter(inner, it)
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |replace = set()
                     |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
                     |while $it != $temp_var.end():
@@ -1045,7 +1292,9 @@ class StdSetConverter(TypeConverterBase):
                     |$argument_var.clear()
                     |$argument_var.update(replace)
                     |del $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
 
             else:
                 cleanup_code = "del %s" % temp_var
@@ -1053,36 +1302,49 @@ class StdSetConverter(TypeConverterBase):
         else:
             inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef libcpp_set[$inner] $temp_var = $argument_var
-                """, locals())
+                """,
+                locals(),
+            )
 
             cleanup_code = ""
             if cpp_type.is_ref and not cpp_type.is_const:
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |$argument_var.clear()
                     |$argument_var.update($temp_var)
-                    """, locals())
+                    """,
+                    locals(),
+                )
             return code, "%s" % temp_var, cleanup_code
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
         return "_r = %s" % cy_call_str
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Code:
 
         assert not cpp_type.is_ptr
 
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         inner = self.converters.cython_type(tt)
         if inner.is_enum:
             it = mangle("it_" + input_cpp_var)
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = set()
                 |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
                 |while $it != $input_cpp_var.end():
                 |   $output_py_var.add(<int>deref($it))
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
         elif tt.base_type in self.converters.names_of_wrapper_classes:
@@ -1092,7 +1354,8 @@ class StdSetConverter(TypeConverterBase):
             item = mangle("item_" + output_py_var)
 
             instantiation = self._code_for_instantiate_object_from_iter(inner, it)
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = set()
                 |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
                 |cdef $cy_tt $item
@@ -1101,18 +1364,22 @@ class StdSetConverter(TypeConverterBase):
                 |   $item.inst = $instantiation
                 |   $output_py_var.add($item)
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
         else:
             # cython cares for conversion of stl containers with std types:
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef set $output_py_var = $input_cpp_var
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
 
 class StdVectorConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["libcpp_vector"]
 
@@ -1123,7 +1390,7 @@ class StdVectorConverter(TypeConverterBase):
         return "list"
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         try:
             inner_conv = self.converters.get(tt)
             return "List[%s]" % inner_conv.matching_python_type_full(tt)
@@ -1131,7 +1398,7 @@ class StdVectorConverter(TypeConverterBase):
             return "List[Any]"
 
     def type_check_expression(self, cpp_type, arg_var):
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         inner_conv = self.converters.get(tt)
         assert inner_conv is not None, "arg type %s not supported" % tt
         if arg_var[-4:] == "_rec":
@@ -1141,11 +1408,20 @@ class StdVectorConverter(TypeConverterBase):
             arg_var_next = "elemt_rec"
         inner_check = inner_conv.type_check_expression(tt, arg_var_next)
 
-        return Code().add("""
+        return (
+            Code()
+            .add(
+                """
           |isinstance($arg_var, list) and all($inner_check for $arg_var_next in $arg_var)
-          """, locals()).render()
+          """,
+                locals(),
+            )
+            .render()
+        )
 
-    def _prepare_nonrecursive_cleanup(self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw):
+    def _prepare_nonrecursive_cleanup(
+        self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw
+    ):
         # B) Prepare the post-call
         if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
             # If the vector is passed by reference, we need to store the
@@ -1166,14 +1442,20 @@ class StdVectorConverter(TypeConverterBase):
 
             # Add cleanup code (loop through the temporary vector C++ and
             # add items to the python replace_n list).
-            cleanup_code = Code().add(tp_add + """
+            cleanup_code = Code().add(
+                tp_add
+                + """
                 |replace_$recursion_cnt = []
                 |while $it != $temp_var_used.end():
                 |    $item = $cy_tt.__new__($cy_tt)
                 |    $item.inst = $instantiation
                 |    replace_$recursion_cnt.append($item)
                 |    inc($it)
-                """ + btm_add, *a, **kw)
+                """
+                + btm_add,
+                *a,
+                **kw
+            )
         else:
             if recursion_cnt == 0:
                 if cpp_type.is_ptr:
@@ -1185,7 +1467,9 @@ class StdVectorConverter(TypeConverterBase):
                 bottommost_code.add("del %s" % temp_var)
         return cleanup_code
 
-    def _prepare_recursive_cleanup(self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw):
+    def _prepare_recursive_cleanup(
+        self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw
+    ):
         # B) Prepare the post-call
         if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
             # If the vector is passed by reference, we need to store the
@@ -1198,10 +1482,15 @@ class StdVectorConverter(TypeConverterBase):
             else:
                 tp_add = "cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()"
                 a[0]["temp_var_used"] = temp_var
-            cleanup_code = Code().add(tp_add + """
+            cleanup_code = Code().add(
+                tp_add
+                + """
                 |replace_$recursion_cnt = []
                 |while $it != $temp_var_used.end():
-                """, *a, **kw)
+                """,
+                *a,
+                **kw
+            )
         else:
             if recursion_cnt == 0:
                 cleanup_code = Code().add("del %s" % temp_var)
@@ -1210,7 +1499,9 @@ class StdVectorConverter(TypeConverterBase):
                 bottommost_code.add("del %s" % temp_var)
         return cleanup_code
 
-    def _prepare_nonrecursive_precall(self, topmost_code, cpp_type, code_top, do_deref, *a, **kw):
+    def _prepare_nonrecursive_precall(
+        self, topmost_code, cpp_type, code_top, do_deref, *a, **kw
+    ):
         # A) Prepare the pre-call
         if topmost_code is not None:
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
@@ -1220,15 +1511,31 @@ class StdVectorConverter(TypeConverterBase):
             topmost_code.add(code_top, *a, **kw)
             code_top = ""
         # Now prepare the loop itself
-        code = Code().add(code_top + """
+        code = Code().add(
+            code_top
+            + """
                 |for $item in $argument_var:
                 |    $temp_var.push_back($do_deref($item.inst.get()))
-                """, *a, **kw)
+                """,
+            *a,
+            **kw
+        )
         return code
 
-    def _perform_recursion(self, cpp_type, tt, arg_num, item, topmost_code,
-                           bottommost_code, code, cleanup_code, recursion_cnt,
-                           *a, **kw):
+    def _perform_recursion(
+        self,
+        cpp_type,
+        tt,
+        arg_num,
+        item,
+        topmost_code,
+        bottommost_code,
+        code,
+        cleanup_code,
+        recursion_cnt,
+        *a,
+        **kw
+    ):
 
         converter = self.cr.get(tt)
         py_type = converter.matching_python_type(tt)
@@ -1240,9 +1547,14 @@ class StdVectorConverter(TypeConverterBase):
         #
         # Perform the recursive call
         #
-        conv_code, call_as, cleanup = \
-            converter.input_conversion(tt, rec_argument_var, rec_arg_num,
-                                       topmost_code_callback, bottommost_code_callback, recursion_cnt + 1)
+        conv_code, call_as, cleanup = converter.input_conversion(
+            tt,
+            rec_argument_var,
+            rec_arg_num,
+            topmost_code_callback,
+            bottommost_code_callback,
+            recursion_cnt + 1,
+        )
         # undo the "deref" if it was added ...
         new_item = call_as
         if call_as.find("deref") != -1:
@@ -1262,15 +1574,25 @@ class StdVectorConverter(TypeConverterBase):
         # A) Prepare the pre-call, Step 3
         # add the outer loop
         #
-        code.add("""
+        code.add(
+            """
             |for $item in $argument_var:
-            """, *a, **kw)
+            """,
+            *a,
+            **kw
+        )
         #
         # A) Prepare the pre-call, Step 4
         # clear the vector since it needs to be empty before we start the inner loop
         #
-        code.add(Code().add("""
-            |$new_item.clear()""", *a, **kw))
+        code.add(
+            Code().add(
+                """
+            |$new_item.clear()""",
+                *a,
+                **kw
+            )
+        )
         #
         # A) Prepare the pre-call, Step 5
         # add the inner loop (may contain more inner loops ... )
@@ -1281,9 +1603,13 @@ class StdVectorConverter(TypeConverterBase):
         # store the vector from the inner loop in our vector (since
         # it is a std::vector object, there is no "inst" to get).
         #
-        code.add("""
+        code.add(
+            """
             |    $temp_var.push_back(deref($new_item))
-            """, *a, **kw)
+            """,
+            *a,
+            **kw
+        )
 
         #
         # B) Prepare the post-call, Step 1
@@ -1300,10 +1626,14 @@ class StdVectorConverter(TypeConverterBase):
         # (only if we actually give back the reference)
         #
         if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
-            cleanup_code.add("""
+            cleanup_code.add(
+                """
                 |    replace_$recursion_cnt.append(replace_$recursion_cnt_next)
                 |    inc($it)
-                             """, *a, **kw)
+                             """,
+                *a,
+                **kw
+            )
 
         #
         # B) Prepare the post-call, Step 3
@@ -1313,15 +1643,26 @@ class StdVectorConverter(TypeConverterBase):
             # we are the outermost loop
             cleanup_code.content.extend(bottommost_code_callback.content)
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
-                cleanup_code.add("""
+                cleanup_code.add(
+                    """
                     |$argument_var[:] = replace_$recursion_cnt
                     |del $temp_var
-                                 """, *a, **kw)
+                                 """,
+                    *a,
+                    **kw
+                )
         else:
             bottommost_code.content.extend(bottommost_code_callback.content)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int, topmost_code: Optional[Code] = None,
-                         bottommost_code: Optional[Code] = None, recursion_cnt: int = 0) -> Tuple[Code, str, Code]:
+    def input_conversion(
+        self,
+        cpp_type: CppType,
+        argument_var: str,
+        arg_num: int,
+        topmost_code: Optional[Code] = None,
+        bottommost_code: Optional[Code] = None,
+        recursion_cnt: int = 0,
+    ) -> Tuple[Code, str, Code]:
         """Do the input conversion for a std::vector<T>
 
         In this case, the template argument is tt (or "inner").
@@ -1334,7 +1675,7 @@ class StdVectorConverter(TypeConverterBase):
         if recursion_cnt > 1:
             assert topmost_code is not None
             assert bottommost_code is not None
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         temp_var = "v%s" % arg_num
         inner = self.converters.cython_type(tt)
         it = mangle("it_" + argument_var)  # + "_%s" % recursion_cnt
@@ -1357,24 +1698,37 @@ class StdVectorConverter(TypeConverterBase):
 
         # If the inner type is templated and contains a class to wrap by us
         # TODO describe what "to wrap" means. Also typedefs to them etc.?
-        inner_contains_classes_to_wrap = tt.template_args is not None and \
-            len(set(self.converters.names_of_wrapper_classes).intersection(set(tt.all_occuring_base_types()))) > 0
+        inner_contains_classes_to_wrap = (
+            tt.template_args is not None
+            and len(
+                set(self.converters.names_of_wrapper_classes).intersection(
+                    set(tt.all_occuring_base_types())
+                )
+            )
+            > 0
+        )
 
         if self.converters.cython_type(tt).is_enum:
             # Case 1: We wrap a std::vector<> with an enum base type
             item = "item%s" % arg_num
             if topmost_code is not None:
-                raise Exception("Recursion in std::vector<T> not yet implemented for enum")
+                raise Exception(
+                    "Recursion in std::vector<T> not yet implemented for enum"
+                )
 
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef libcpp_vector[$inner] * $temp_var
                 + = new libcpp_vector[$inner]()
                 |cdef int $item
                 |for $item in $argument_var:
                 |    $temp_var.push_back(<$inner> $item)
-                """, locals())
+                """,
+                locals(),
+            )
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |replace = []
                     |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
                     |while $it != $temp_var.end():
@@ -1382,7 +1736,9 @@ class StdVectorConverter(TypeConverterBase):
                     |    inc($it)
                     |$argument_var[:] = replace
                     |del $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
             else:
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
@@ -1402,9 +1758,12 @@ class StdVectorConverter(TypeConverterBase):
                 do_deref = ""
 
             instantiation = self._code_for_instantiate_object_from_iter(inner, it)
-            code = self._prepare_nonrecursive_precall(topmost_code, cpp_type, code_top, do_deref, locals())
+            code = self._prepare_nonrecursive_precall(
+                topmost_code, cpp_type, code_top, do_deref, locals()
+            )
             cleanup_code = self._prepare_nonrecursive_cleanup(
-                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
+                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals()
+            )
 
             if cpp_type.is_ptr:
                 call_fragment = temp_var
@@ -1413,28 +1772,35 @@ class StdVectorConverter(TypeConverterBase):
 
             return code, call_fragment, cleanup_code
 
-        elif tt.template_args is not None and tt.base_type == "shared_ptr" \
-                and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
+        elif (
+            tt.template_args is not None
+            and tt.base_type == "shared_ptr"
+            and len(set(tt.template_args[0].all_occuring_base_types())) == 1
+        ):
             # Case 3: We wrap a std::vector< shared_ptr<X> > where X needs to be a type that is easy to wrap
 
-            base_type, = tt.template_args
-            cpp_tt, = inner.template_args
+            (base_type,) = tt.template_args
+            (cpp_tt,) = inner.template_args
 
             item = "%s_rec" % argument_var
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef libcpp_vector[$inner] $temp_var 
                 |cdef $base_type $item
                 |for $item in $argument_var:
                 |    $temp_var.push_back($item.inst)
                 |# call
-                """, locals())
+                """,
+                locals(),
+            )
 
             cleanup_code = Code().add("")
 
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
                 item2 = "%s_rec_b" % argument_var
                 instantiation = self._code_for_instantiate_object_from_iter(inner, it)
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |# gather results
                     |replace = list()
                     |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
@@ -1447,7 +1813,9 @@ class StdVectorConverter(TypeConverterBase):
                     |$argument_var[:] = []
                     |for $item2 in replace:
                     |    $argument_var.append($item2)
-                    """, locals())
+                    """,
+                    locals(),
+                )
 
             return code, "%s" % temp_var, cleanup_code
 
@@ -1460,7 +1828,8 @@ class StdVectorConverter(TypeConverterBase):
             # If the inner rest of the template is a pure libcpp_pair<int,int> for example,
             # cython can do it with a simple assignment automatically. See final else-case.
             raise Exception(
-                "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments")
+                "Recursion in std::vector<T> is not implemented for other STL methods and wrapped template arguments"
+            )
 
         elif inner_contains_classes_to_wrap and tt.base_type == "libcpp_vector":
             # Case 4: We wrap a std::vector<> with a base type that contains
@@ -1481,16 +1850,27 @@ class StdVectorConverter(TypeConverterBase):
                 code.add(code_top, locals())
 
             cleanup_code = self._prepare_recursive_cleanup(
-                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals())
+                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals()
+            )
 
             # Go into recursion (if possible)
             if hasattr(self, "cr"):
                 self._perform_recursion(
-                    cpp_type, tt, arg_num, item, topmost_code, bottommost_code, code, cleanup_code, recursion_cnt,
-                    locals())
+                    cpp_type,
+                    tt,
+                    arg_num,
+                    item,
+                    topmost_code,
+                    bottommost_code,
+                    code,
+                    cleanup_code,
+                    recursion_cnt,
+                    locals(),
+                )
             else:
                 raise Exception(
-                    "Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr")
+                    "Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr"
+                )
 
             return code, "deref(%s)" % temp_var, cleanup_code
 
@@ -1498,19 +1878,27 @@ class StdVectorConverter(TypeConverterBase):
             # Case 5: We wrap a regular type
             inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef libcpp_vector[$inner] $temp_var = $argument_var
-                """, locals())
+                """,
+                locals(),
+            )
 
             cleanup_code = Code().add("")
             if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
-                cleanup_code = Code().add("""
+                cleanup_code = Code().add(
+                    """
                     |$argument_var[:] = $temp_var
-                    """, locals())
+                    """,
+                    locals(),
+                )
 
             return code, "%s" % temp_var, cleanup_code
 
-    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
 
         t = self.converters.cython_type(res_type)
         if t.is_ptr:
@@ -1518,20 +1906,25 @@ class StdVectorConverter(TypeConverterBase):
 
         return "_r = %s" % (cy_call_str)
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Code:
 
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         inner = self.converters.cython_type(tt)
 
         if inner.is_enum:
             it = mangle("it_" + input_cpp_var)
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = []
                 |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
                 |while $it != $input_cpp_var.end():
                 |   $output_py_var.append(<int>deref($it))
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
         # TODO recursion missing for outputting list[list[list..[WrappedClass]]..]
@@ -1542,7 +1935,8 @@ class StdVectorConverter(TypeConverterBase):
             item = mangle("item_" + output_py_var)
 
             instantiation = self._code_for_instantiate_object_from_iter(inner, it)
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = []
                 |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
                 |cdef $cy_tt $item
@@ -1551,20 +1945,25 @@ class StdVectorConverter(TypeConverterBase):
                 |   $item.inst = $instantiation
                 |   $output_py_var.append($item)
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
-        elif tt.base_type == "shared_ptr" \
-                and len(set(tt.template_args[0].all_occuring_base_types())) == 1:
+        elif (
+            tt.base_type == "shared_ptr"
+            and len(set(tt.template_args[0].all_occuring_base_types())) == 1
+        ):
 
             inner = self.converters.cython_type(tt)
             it = mangle("it_" + input_cpp_var)
             item = mangle("item_" + output_py_var)
 
-            base_type, = tt.template_args
-            cpp_tt, = inner.template_args
+            (base_type,) = tt.template_args
+            (cpp_tt,) = inner.template_args
 
-            code = Code().add("""
+            code = Code().add(
+                """
                 |$output_py_var = []
                 |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
                 |cdef $base_type $item
@@ -1573,19 +1972,23 @@ class StdVectorConverter(TypeConverterBase):
                 |   $item.inst = deref($it)
                 |   $output_py_var.append($item)
                 |   inc($it)
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
         else:
             # cython cares for conversion of stl containers with std types:
-            code = Code().add("""
+            code = Code().add(
+                """
                 |cdef list $output_py_var = $input_cpp_var
-                """, locals())
+                """,
+                locals(),
+            )
             return code
 
 
 class StdStringConverter(TypeConverterBase):
-
     def get_base_types(self) -> List[str]:
         return ["libcpp_string"]
 
@@ -1598,7 +2001,9 @@ class StdStringConverter(TypeConverterBase):
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "bytes"
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[str, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[str, str, str]:
         code = ""
         call_as = "(<libcpp_string>%s)" % argument_var
         cleanup = ""
@@ -1607,12 +2012,13 @@ class StdStringConverter(TypeConverterBase):
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         return "isinstance(%s, bytes)" % argument_var
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
 
 
 class StdStringUnicodeConverter(StdStringConverter):
-
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_string"]
 
@@ -1622,12 +2028,17 @@ class StdStringUnicodeConverter(StdStringConverter):
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "Union[bytes, unicode]"
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) -> Tuple[Code, str, str]:
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, str]:
         code = Code()
-        code.add("""
+        code.add(
+            """
             |if isinstance($argument_var, unicode):
             |    $argument_var = $argument_var.encode('utf-8')
-            """, locals())
+            """,
+            locals(),
+        )
         call_as = "(<libcpp_string>%s)" % argument_var
         cleanup = ""
         return code, call_as, cleanup
@@ -1637,11 +2048,12 @@ class StdStringUnicodeConverter(StdStringConverter):
 
 
 class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
-
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_output_string"]
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Optional[str]:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
         return "%s = %s.decode('utf-8')" % (output_py_var, input_cpp_var)
 
 
@@ -1657,59 +2069,74 @@ class SharedPtrConverter(TypeConverterBase):
         return ["shared_ptr"]
 
     def matches(self, cpp_type: CppType) -> bool:
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         return tt in self.converters.names_of_wrapper_classes
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         return str(tt)
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         inner = self.converters.get(tt)
         return inner.matching_python_type_full(tt)
 
-    def input_conversion(self, cpp_type: CppType, argument_var: str, arg_num: int) \
-            -> Tuple[Code, str, Union[Code, str]]:
-        tt, = cpp_type.template_args
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        (tt,) = cpp_type.template_args
         inner = self.converters.cython_type(tt)
         # Cython expects us to get a C++ type (we cannot just stick var.inst into the function)
-        code = Code().add("""
+        code = Code().add(
+            """
             |cdef shared_ptr[$inner] input_$argument_var = $argument_var.inst
-            """, locals())
+            """,
+            locals(),
+        )
         call_as = "input_" + argument_var
         cleanup = ""
         # Put the pointer back if we pass by reference
         if cpp_type.is_ref and not cpp_type.is_const:
-            cleanup = Code().add("""
+            cleanup = Code().add(
+                """
                 |$argument_var.inst = input_$argument_var
-                """, locals())
+                """,
+                locals(),
+            )
         return code, call_as, cleanup
 
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         # We can just use the Python type of the template argument
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         return "isinstance(%s, %s)" % (argument_var, tt)
 
-    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Code:
         # L.info("Output conversion for %s" % (cpp_type))
-        tt, = cpp_type.template_args
+        (tt,) = cpp_type.template_args
         code = Code()
         if tt.is_const:
             # If the template argument is constant, we need to have non-const base-types for our code
             inner = self.converters.cython_type(tt).toString(False)
             tt = tt.toString(withConst=False)
-            code.add("""
+            code.add(
+                """
                      |# Const shared_ptr detected, we need to produce a non-const copy to stick into Python object
                      |cdef $inner * raw_$input_cpp_var = new $inner((deref(<$inner * const>$input_cpp_var.get())))
                      |cdef $tt py_result
                      |$output_py_var = $tt.__new__($tt)
-                     |$output_py_var.inst = shared_ptr[$inner](raw_$input_cpp_var) """, locals())
+                     |$output_py_var.inst = shared_ptr[$inner](raw_$input_cpp_var) """,
+                locals(),
+            )
         else:
-            code.add("""
+            code.add(
+                """
                 |cdef $tt py_result
                 |$output_py_var = $tt.__new__($tt)
-                |$output_py_var.inst = $input_cpp_var""", locals())
+                |$output_py_var.inst = $input_cpp_var""",
+                locals(),
+            )
         return code
 
 
@@ -1721,15 +2148,18 @@ class ConverterRegistry(object):
     Therefore TypeConverterBase has methods .get_base_types and .matches
     """
 
-    def __init__(self, instance_mapping, names_of_classes_to_wrap,
-                 names_of_enums_to_wrap):
+    def __init__(
+        self, instance_mapping, names_of_classes_to_wrap, names_of_enums_to_wrap
+    ):
 
         self.lookup = defaultdict(list)
 
         self.names_of_wrapper_classes = list(instance_mapping.keys())
         # add everything with a const prefix again
         # TODO super hack. We need to support const completely/better without hacks
-        self.names_of_wrapper_classes += ["const %s" % k for k in instance_mapping.keys()]
+        self.names_of_wrapper_classes += [
+            "const %s" % k for k in instance_mapping.keys()
+        ]
         self.names_of_classes_to_wrap = names_of_classes_to_wrap
         self.names_of_enums_to_wrap = names_of_enums_to_wrap
 
@@ -1739,8 +2169,10 @@ class ConverterRegistry(object):
         # as original c++ class decls are decorated with a beginning "_"
         # we have to process the instance mapping:
 
-        map_ = dict((name, CppType("_" + name)) for name in
-                    self.names_of_classes_to_wrap + self.names_of_enums_to_wrap)
+        map_ = dict(
+            (name, CppType("_" + name))
+            for name in self.names_of_classes_to_wrap + self.names_of_enums_to_wrap
+        )
         self.instance_mapping = dict()
         for alias, type_ in instance_mapping.items():
             self.instance_mapping[alias] = type_.transformed(map_)
@@ -1767,8 +2199,9 @@ class ConverterRegistry(object):
         :return: TypeConverterBase
         :except: NameError
         """
-        rv = [conv for conv in self.lookup[cpp_type.base_type]
-              if conv.matches(cpp_type)]
+        rv = [
+            conv for conv in self.lookup[cpp_type.base_type] if conv.matches(cpp_type)
+        ]
         if len(rv) < 1:
             raise NameError("no converter for %s in: %s" % (cpp_type, str(self.lookup)))
 
@@ -1793,13 +2226,12 @@ special_converters = []
 
 
 def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
-    names_of_classes_to_wrap = list(set(c.cpp_decl.name for c in
-                                        classes_to_wrap))
+    names_of_classes_to_wrap = list(set(c.cpp_decl.name for c in classes_to_wrap))
     names_of_enums_to_wrap = list(set(c.cpp_decl.name for c in enums_to_wrap))
 
-    converters = ConverterRegistry(instance_map,
-                                   names_of_classes_to_wrap,
-                                   names_of_enums_to_wrap)
+    converters = ConverterRegistry(
+        instance_map, names_of_classes_to_wrap, names_of_enums_to_wrap
+    )
 
     converters.register(IntegerConverter())
     converters.register(UnsignedIntegerConverter())
@@ -1830,6 +2262,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
         converters.register(converter)
 
     return converters
+
 
 # now one can externally register own converters:
 #

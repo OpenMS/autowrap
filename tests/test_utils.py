@@ -73,6 +73,7 @@ def test_hierarchy_detector3():
 
 def test_nested_mapping_flattening():
     from autowrap.Types import CppType
+
     B = CppType.from_string("B")
     Y = CppType.from_string("Y")
     Z = CppType.from_string("Z")
