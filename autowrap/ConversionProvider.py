@@ -706,10 +706,7 @@ class StdPairConverter(TypeConverterBase):
 
         cleanup_code = Code()
         if cpp_type.is_ref and not cpp_type.is_const:
-            if (
-                not i1.is_enum
-                and self.is_wrapper_class(t1.base_type)
-            ):
+            if not i1.is_enum and self.is_wrapper_class(t1.base_type):
                 temp1 = "temp1"
                 cleanup_code.add(
                     """
@@ -720,10 +717,7 @@ class StdPairConverter(TypeConverterBase):
                 )
             else:
                 temp1 = "%s.first" % temp_var
-            if (
-                not i2.is_enum
-                and self.is_wrapper_class(t2.base_type)
-            ):
+            if not i2.is_enum and self.is_wrapper_class(t2.base_type):
                 temp2 = "temp2"
                 cleanup_code.add(
                     """
@@ -1001,9 +995,8 @@ class StdMapConverter(TypeConverterBase):
 
             # TODO can we refactor such that each if-clause adds a part
             # add code for key that is wrapped
-            if (
-                self.is_wrapper_class(tt_key.base_type)
-                and not self.is_wrapper_class(tt_value.base_type)
+            if self.is_wrapper_class(tt_key.base_type) and not self.is_wrapper_class(
+                tt_value.base_type
             ):
                 value_conv = "<%s> deref(%s).second" % (cy_tt_value, it)
                 cy_tt = tt_value.base_type
@@ -1116,10 +1109,7 @@ class StdMapConverter(TypeConverterBase):
 
         it = mangle("it_" + input_cpp_var)
 
-        if (
-            not cy_tt_key.is_enum
-            and self.is_wrapper_class(tt_key.base_type)
-        ):
+        if not cy_tt_key.is_enum and self.is_wrapper_class(tt_key.base_type):
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
             value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
             item_key = mangle("itemk_" + output_py_var)
@@ -1142,10 +1132,7 @@ class StdMapConverter(TypeConverterBase):
         else:
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
 
-        if (
-            not cy_tt_value.is_enum
-            and self.is_wrapper_class(tt_value.base_type)
-        ):
+        if not cy_tt_value.is_enum and self.is_wrapper_class(tt_value.base_type):
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
             cy_tt = tt_value.base_type
             item = mangle("item_" + output_py_var)
