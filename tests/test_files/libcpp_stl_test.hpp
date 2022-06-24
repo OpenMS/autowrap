@@ -9,16 +9,16 @@ class IntWrapper {
     public:
         int i_;
 
-        IntWrapper(): 
-          i_(0) 
+        IntWrapper():
+          i_(0)
         {}
 
-        IntWrapper(const int i): 
-          i_(i) 
+        IntWrapper(const int i):
+          i_(i)
         {}
 
         // for map
-        bool operator<( const IntWrapper & other ) const 
+        bool operator<( const IntWrapper & other ) const
         {
           return this->i_ < other.i_;
         }
@@ -48,7 +48,7 @@ class MapWrapper {
       std::map<int, double> map_;
 
       MapWrapper() {}
-      MapWrapper(const MapWrapper& other) 
+      MapWrapper(const MapWrapper& other)
       {
         map_ = other.map_;
       }
