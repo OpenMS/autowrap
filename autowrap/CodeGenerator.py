@@ -1035,6 +1035,18 @@ class CodeGenerator(object):
                     "truediv", "/", cdcl, methods[0]
                 )
                 return [code], stubs
+            elif op == "<<":
+                assert len(methods) == 1, "overloaded operator<< not supported"
+                code, stubs = self.create_special_op_method(
+                    "lshift", "<<", cdcl, methods[0]
+                )
+                return [code], stubs
+            elif op == ">>":
+                assert len(methods) == 1, "overloaded operator>> not supported"
+                code, stubs = self.create_special_op_method(
+                    "rshift", ">>", cdcl, methods[0]
+                )
+                return [code], stubs
             elif op == "%":
                 assert len(methods) == 1, "overloaded operator% no supported"
                 code, stubs = self.create_special_op_method(
@@ -1069,6 +1081,18 @@ class CodeGenerator(object):
                 assert len(methods) == 1, "overloaded operator%= not supported"
                 code, stubs = self.create_special_iop_method(
                     "imod", "%=", cdcl, methods[0]
+                )
+                return [code], stubs
+            elif op == "<<=":
+                assert len(methods) == 1, "overloaded operator<<= not supported"
+                code, stubs = self.create_special_iop_method(
+                    "ilshift", "<<=", cdcl, methods[0]
+                )
+                return [code], stubs
+            elif op == ">>=":
+                assert len(methods) == 1, "overloaded operator>>= not supported"
+                code, stubs = self.create_special_iop_method(
+                    "irshift", ">>=", cdcl, methods[0]
                 )
                 return [code], stubs
 

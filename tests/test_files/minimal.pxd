@@ -89,6 +89,8 @@ cdef extern from "minimal.hpp":
         Minimal operator-(Minimal)
         Minimal operator/(Minimal)
         Minimal operator%(Minimal)
+        Minimal operator<<(Minimal)
+        Minimal operator>>(Minimal)
 
         # cython does not support declaration of operator+= yet
         Minimal iadd(Minimal) # wrap-as:operator+=
@@ -96,6 +98,8 @@ cdef extern from "minimal.hpp":
         Minimal imul(Minimal) # wrap-as:operator*=
         Minimal itruediv(Minimal) # wrap-as:operator/=
         Minimal imod(Minimal) # wrap-as:operator%=
+        Minimal ilshift(Minimal) # wrap-as:operator<<=
+        Minimal irshift(Minimal) # wrap-as:operator>>=
 
     int top_function(int)
     int sumup(libcpp_vector[int] what)

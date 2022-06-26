@@ -311,3 +311,19 @@ def test_minimal():
     m4 = wrapped.Minimal(3)
     m3 %= m4
     assert m3 == wrapped.Minimal(2)
+
+    # operator lshift
+    assert wrapped.Minimal(10) << wrapped.Minimal(2) == wrapped.Minimal(40)
+
+    m1 = wrapped.Minimal(10)
+    m2 = wrapped.Minimal(1)
+    m1 <<= m2
+    assert m1 == wrapped.Minimal(20)
+
+    # operator rshift
+    assert wrapped.Minimal(10) >> wrapped.Minimal(2) == wrapped.Minimal(2)
+
+    m1 = wrapped.Minimal(10)
+    m2 = wrapped.Minimal(1)
+    m1 >>= m2
+    assert m1 == wrapped.Minimal(5)

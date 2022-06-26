@@ -115,6 +115,14 @@ class Minimal {
         {
             return Minimal(this->_i % that._i);
         }
+        Minimal operator<<(Minimal that)
+        {
+            return Minimal(this->_i << that._i);
+        }
+        Minimal operator>>(Minimal that)
+        {
+            return Minimal(this->_i >> that._i);
+        }
         Minimal operator*=(Minimal that)
         {
             this->_i = this->_i * that._i;
@@ -133,6 +141,16 @@ class Minimal {
         Minimal operator%=(Minimal that)
         {
             this->_i = this->_i % that._i;
+            return *this;
+        }
+        Minimal operator<<=(Minimal that)
+        {
+            this->_i = this->_i << that._i;
+            return *this;
+        }
+        Minimal operator>>=(Minimal that)
+        {
+            this->_i = this->_i >> that._i;
             return *this;
         }
 
