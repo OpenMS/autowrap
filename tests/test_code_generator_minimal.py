@@ -297,3 +297,33 @@ def test_minimal():
     m1 = wrapped.Minimal(3)
     m1 /= m1
     assert m1 == wrapped.Minimal(1)
+
+    # operator mod
+    assert wrapped.Minimal(10) % wrapped.Minimal(2) == wrapped.Minimal(0)
+    assert wrapped.Minimal(10) % wrapped.Minimal(3) == wrapped.Minimal(1)
+
+    m1 = wrapped.Minimal(10)
+    m2 = wrapped.Minimal(2)
+    m1 %= m2
+    assert m1 == wrapped.Minimal(0)
+
+    m3 = wrapped.Minimal(11)
+    m4 = wrapped.Minimal(3)
+    m3 %= m4
+    assert m3 == wrapped.Minimal(2)
+
+    # operator lshift
+    assert wrapped.Minimal(10) << wrapped.Minimal(2) == wrapped.Minimal(40)
+
+    m1 = wrapped.Minimal(10)
+    m2 = wrapped.Minimal(1)
+    m1 <<= m2
+    assert m1 == wrapped.Minimal(20)
+
+    # operator rshift
+    assert wrapped.Minimal(10) >> wrapped.Minimal(2) == wrapped.Minimal(2)
+
+    m1 = wrapped.Minimal(10)
+    m2 = wrapped.Minimal(1)
+    m1 >>= m2
+    assert m1 == wrapped.Minimal(5)

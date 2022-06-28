@@ -24,6 +24,20 @@ template<class A> void _itruediv(A * a1, const A * a2)
     (*a1) /= (*a2);
 }
 
+template<class A> void _imod(A * a1, const A * a2)
+{
+    (*a1) %= (*a2);
+}
+
+template<class A> void _ilshift(A * a1, const A * a2)
+{
+    (*a1) <<= (*a2);
+}
+
+template<class A> void _irshift(A * a1, const A * a2)
+{
+    (*a1) >>= (*a2);
+}
 namespace autowrap {
 
     template <class X>
@@ -35,7 +49,7 @@ namespace autowrap {
 
         public:
 
-            AutowrapRefHolder(X &ref): _ref(ref) 
+            AutowrapRefHolder(X &ref): _ref(ref)
             {
             }
 
@@ -61,7 +75,7 @@ namespace autowrap {
 
             AutowrapPtrHolder() {}
 
-            AutowrapPtrHolder(X *ref): _ptr(ref) 
+            AutowrapPtrHolder(X *ref): _ptr(ref)
             {
             }
 
@@ -87,7 +101,7 @@ namespace autowrap {
 
             AutowrapConstPtrHolder() {}
 
-            AutowrapConstPtrHolder(const X *ref): _ptr(ref) 
+            AutowrapConstPtrHolder(const X *ref): _ptr(ref)
             {
             }
 
