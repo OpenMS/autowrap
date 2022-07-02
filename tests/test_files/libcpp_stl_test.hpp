@@ -207,4 +207,14 @@ class LibCppSTLTest {
             }
             return -1;
         }
+        
+        int process_15_map(std::map<IntWrapper, IntWrapper>& in)
+        {
+            if (!in.empty())
+            {
+                in.begin()->second.i_ += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
+        }
 };
