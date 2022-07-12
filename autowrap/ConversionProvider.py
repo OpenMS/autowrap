@@ -1108,89 +1108,51 @@ class StdMapConverter(TypeConverterBase):
 
         it = mangle("it_" + input_cpp_var)
 
+        cython_text = """
+            |$output_py_var = dict()
+            |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+        """
         # Code for key that is wrapped
         if not cy_tt_key.is_enum and self.is_wrapper_class(py_tt_key.base_type):
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
             value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
             item_key = mangle("itemk_" + output_py_var)
-            code = Code().add(
-                """
-                |$output_py_var = dict()
-                |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
-                |cdef $py_tt_key $item_key
-                |while $it != $input_cpp_var.end():
-                |   #$output_py_var[$key_conv] = $value_conv
-                |   $item_key = $py_tt_key.__new__($py_tt_key)
-                |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
-                |   # $output_py_var[$key_conv] = $value_conv
-                |   $output_py_var[$item_key] = $value_conv
-                |   inc($it)
-                """,
-                locals(),
-            )
-            return code
-        else:
-            key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
-
+            cython_text += "\n|cdef $py_tt_key $item_key"
+            cython_text += "\n|while $it != $input_cpp_var.end():"
+            cython_text += "\n|\t$item_key = $py_tt_key.__new__($py_tt_key)"
+            cython_text += "\n|\t$item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))"
+            cython_text += "\n|\t$output_py_var[$item_key] = $value_conv"
         # Code for value that is wrapped
-        if not cy_tt_value.is_enum and self.is_wrapper_class(tt_value.base_type):
+        elif not cy_tt_value.is_enum and self.is_wrapper_class(tt_value.base_type):
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
-            cy_tt = tt_value.base_type
+            cy_tt_base = tt_value.base_type
             item = mangle("item_" + output_py_var)
-            code = Code().add(
-                """
-                |$output_py_var = dict()
-                |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
-                |cdef $cy_tt $item
-                |while $it != $input_cpp_var.end():
-                |   $item = $cy_tt.__new__($cy_tt)
-                |   $item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
-                |   $output_py_var[$key_conv] = $item
-                |   inc($it)
-                """,
-                locals(),
-            )
-            return code
+            cython_text += "\n|cdef $cy_tt_base $item"
+            cython_text += "\n|while $it != $input_cpp_var.end():"
+            cython_text += "\n|\t$item = $cy_tt_base.__new__($cy_tt_base)"
+            cython_text += "\n|\t$item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))"
+            cython_text += "\n|\t$output_py_var[$key_conv] = $item"
         # Code for value AND key that is wrapped
         elif (
             not cy_tt_value.is_enum
             and self.is_wrapper_class(tt_value.base_type)
             and self.is_wrapper_class(py_tt_key.base_type)
         ):
-            key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
-            cy_tt = tt_value.base_type
             item_key = mangle("itemk_" + output_py_var)
             item_val = mangle("item_" + output_py_var)
-            code = Code().add(
-                """
-                |$output_py_var = dict()
-                |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
-                |cdef $py_tt_key $item_key
-                |while $it != $input_cpp_var.end():
-                |   #$output_py_var[$key_conv] = $value_conv
-                |   $item_key = $py_tt_key.__new__($py_tt_key)
-                |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
-                |   $item_val = $cy_tt.__new__($cy_tt)
-                |   $item_val.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
-                |   inc($it)
-                """,
-                locals(),
-            )
-            return code
+            cython_text += "\n|cdef $py_tt_key $item_key"
+            cython_text += "\n|while $it != $input_cpp_var.end():"
+            cython_text += "\n|\t$item_key = $py_tt_key.__new__($py_tt_key)"
+            cython_text += "\n|\t$item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))"
+            cython_text += "\n|\t$item_val.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))"
         else:
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
             value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
-            code = Code().add(
-                """
-                |$output_py_var = dict()
-                |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
-                |while $it != $input_cpp_var.end():
-                |   $output_py_var[$key_conv] = $value_conv
-                |   inc($it)
-                """,
-                locals(),
-            )
-            return code
+            cython_text += "\n|while $it != $input_cpp_var.end():"
+            cython_text += "\n|\t$output_py_var[$key_conv] = $value_conv"
+        cython_text += "\n|\tinc($it)"
+        cython_text = cython_text.replace("\t", "    ")
+        return Code().add(cython_text, locals())
 
 
 class StdSetConverter(TypeConverterBase):
