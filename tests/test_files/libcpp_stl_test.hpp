@@ -1,4 +1,5 @@
 #include <vector>
+#include <tuple>
 #include <string>
 #include <utility>
 #include <map>
@@ -52,6 +53,18 @@ class MapWrapper {
       {
         map_ = other.map_;
       }
+};
+
+class TupleWrapper {
+    public:
+        std::tuple<int, double> tuple_;
+
+        TupleWrapper() {}
+        TupleWrapper(const TupleWrapper& other)
+        {
+            tuple_ = other.tuple_;
+        }
+
 };
 
 class LibCppSTLVector

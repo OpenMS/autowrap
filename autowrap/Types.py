@@ -42,7 +42,7 @@ from typing import AnyStr, Dict
 class CppType(object):
 
     CTYPES = ["int", "long", "double", "float", "char", "void"]
-    LIBCPPTYPES = ["vector", "string", "list", "pair"]
+    LIBCPPTYPES = ["vector", "string", "list", "pair", "tuple"]
 
     def __init__(
         self,

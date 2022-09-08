@@ -1988,6 +1988,617 @@ class StdVectorConverter(TypeConverterBase):
             return code
 
 
+class StdTupleConverter(TypeConverterBase):
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_tuple"]
+    
+    def matches(self, cpp_type: CppType) -> bool:
+        return True
+    
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        return "tuple"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        return 'tuple'
+        # (tt,) = cpp_type.template_args
+        # try:
+        #     inner_conv = self.converters.get(tt)
+        #     return "Tuple[%s]" % inner_conv.matching_python_type_full(tt)
+        # except NameError:
+        #     return "Tupple[Any]"
+
+    def type_check_expression(self, cpp_type, arg_var):
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        assert inner_conv is not None, "arg type %s not supported" % tt
+        if arg_var[-4:] == "_rec":
+            arg_var_next = "%s_rec" % arg_var
+        else:
+            # first recursion, set element name
+            arg_var_next = "elemt_rec"
+        inner_check = inner_conv.type_check_expression(tt, arg_var_next)
+
+        return (
+            Code()
+            .add(
+                """
+          |isinstance($arg_var, tuple) and all($inner_check for $arg_var_next in $arg_var)
+          """,
+                locals(),
+            )
+            .render()
+        )
+    
+    def _prepare_nonrecursive_cleanup(
+        self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw
+    ):
+        # B) Prepare the post-call
+        if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+            # If the tuple is passed by reference, we need to store the
+            # result for Python.
+            btm_add = ""
+            if recursion_cnt > 0:
+                # If we are inside a recursion, we have to dereference the
+                # _previous_ iterator.
+                a[0]["temp_var_used"] = "deref(%s)" % it_prev
+                tp_add = "$it = $temp_var_used.begin()"
+            else:
+                tp_add = "cdef libcpp_tuple[$inner].iterator $it = $temp_var.begin()"
+                btm_add = """
+                |$argument_var[:] = tuple(replace_$recursion_cnt)
+                |del $temp_var
+                """
+                a[0]["temp_var_used"] = temp_var
+
+            # Add cleanup code (loop through the temporary tuple C++ and
+            # add items to the python replace_n list).
+            cleanup_code = Code().add(
+                tp_add
+                + """
+                |replace_$recursion_cnt = []
+                |while $it != $temp_var_used.end():
+                |    $item = $cy_tt.__new__($cy_tt)
+                |    $item.inst = $instantiation
+                |    replace_$recursion_cnt.append($item)
+                |    inc($it)
+                """
+                + btm_add,
+                *a,
+                **kw
+            )
+        else:
+            if recursion_cnt == 0:
+                if cpp_type.is_ptr:
+                    cleanup_code = Code()
+                else:
+                    cleanup_code = Code().add("del %s" % temp_var)
+            else:
+                cleanup_code = Code()
+                bottommost_code.add("del %s" % temp_var)
+        return cleanup_code
+    
+    def _prepare_recursive_cleanup(
+        self, cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, *a, **kw
+    ):
+        # B) Prepare the post-call
+        if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+            # If the tuple is passed by reference, we need to store the
+            # result for Python.
+            if recursion_cnt > 0:
+                # If we are inside a recursion, we have to dereference the
+                # _previous_ iterator.
+                a[0]["temp_var_used"] = "deref(%s)" % it_prev
+                tp_add = "$it = $temp_var_used.begin()"
+            else:
+                tp_add = "cdef libcpp_tuple[$inner].iterator $it = $temp_var.begin()"
+                a[0]["temp_var_used"] = temp_var
+            cleanup_code = Code().add(
+                tp_add
+                + """
+                |replace_$recursion_cnt = []
+                |while $it != $temp_var_used.end():
+                """,
+                *a,
+                **kw
+            )
+        else:
+            if recursion_cnt == 0:
+                cleanup_code = Code().add("del %s" % temp_var)
+            else:
+                cleanup_code = Code()
+                bottommost_code.add("del %s" % temp_var)
+        return cleanup_code
+    
+    def _prepare_nonrecursive_precall(
+        self, topmost_code, cpp_type, code_top, do_deref, *a, **kw
+    ):
+        # A) Prepare the pre-call
+        if topmost_code is not None:
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+                # add cdef statements for the iterators (part of B, post-call but needs to
+                # be on top)
+                code_top += "|cdef libcpp_tuple[$inner].iterator $it"
+            topmost_code.add(code_top, *a, **kw)
+            code_top = ""
+        # Now prepare the loop itself
+        code = Code().add(
+            code_top
+            + """
+                |for $item in $argument_var:
+                |    $temp_var.push_back($do_deref($item.inst.get()))
+                """,
+            *a,
+            **kw
+        )
+        return code
+    
+    def _perform_recursion(
+        self,
+        cpp_type,
+        tt,
+        arg_num,
+        item,
+        topmost_code,
+        bottommost_code,
+        code,
+        cleanup_code,
+        recursion_cnt,
+        *a,
+        **kw
+    ):
+
+        converter = self.cr.get(tt)
+        py_type = converter.matching_python_type(tt)
+        rec_arg_num = "%s_rec" % arg_num
+        # the current item is the argument var of the recursive call
+        rec_argument_var = item
+        topmost_code_callback = Code()
+        bottommost_code_callback = Code()
+        #
+        # Perform the recursive call
+        #
+        conv_code, call_as, cleanup = converter.input_conversion(
+            tt,
+            rec_argument_var,
+            rec_arg_num,
+            topmost_code_callback,
+            bottommost_code_callback,
+            recursion_cnt + 1,
+        )
+        # undo the "deref" if it was added ...
+        new_item = call_as
+        if call_as.find("deref") != -1:
+            new_item = new_item[6:]
+            new_item = new_item[:-1]
+        a[0]["new_item"] = new_item
+        #
+        # A) Prepare the pre-call, Step 2
+        # add all the "topmost" code from all recursive calls if we are in the topmost recursion
+        #
+        if topmost_code is None:
+            code.content.extend(topmost_code_callback.content)
+        else:
+            topmost_code.content.extend(topmost_code_callback.content)
+
+        #
+        # A) Prepare the pre-call, Step 3
+        # add the outer loop
+        #
+        code.add(
+            """
+            |for $item in $argument_var:
+            """,
+            *a,
+            **kw
+        )
+        #
+        # A) Prepare the pre-call, Step 4
+        # clear the tuple since it needs to be empty before we start the inner loop
+        #
+        code.add(
+            Code().add(
+                """
+            |$new_item = ()""",
+                *a,
+                **kw
+            )
+        )
+        #
+        # A) Prepare the pre-call, Step 5
+        # add the inner loop (may contain more inner loops ... )
+        #
+        code.add(conv_code)
+        #
+        # A) Prepare the pre-call, Step 6
+        # store the tuple from the inner loop in our tuple (since
+        # it is a std::tuple object, there is no "inst" to get).
+        #
+        code.add(
+            """
+            |    $temp_var.push_back(deref($new_item))
+            """,
+            *a,
+            **kw
+        )
+
+        #
+        # B) Prepare the post-call, Step 1
+        # add the inner loop (may contain more inner loops ... )
+        #
+        if hasattr(cleanup, "content"):
+            cleanup_code.add(cleanup)
+        else:
+            cleanup_code.content.append(cleanup)
+
+        #
+        # B) Prepare the post-call, Step 2
+        # append the result from the inner loop iteration to the current result
+        # (only if we actually give back the reference)
+        #
+        if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+            cleanup_code.add(
+                """
+                |    replace_$recursion_cnt.append(replace_$recursion_cnt_next)
+                |    inc($it)
+                             """,
+                *a,
+                **kw
+            )
+
+        #
+        # B) Prepare the post-call, Step 3
+        # append the "bottommost" code
+        #
+        if bottommost_code is None:
+            # we are the outermost loop
+            cleanup_code.content.extend(bottommost_code_callback.content)
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+                cleanup_code.add(
+                    """
+                    |$argument_var[:] = tuple(replace_$recursion_cnt)
+                    |del $temp_var
+                                 """,
+                    *a,
+                    **kw
+                )
+        else:
+            bottommost_code.content.extend(bottommost_code_callback.content)
+    
+    def input_conversion(
+        self,
+        cpp_type: CppType,
+        argument_var: str,
+        arg_num: int,
+        topmost_code: Optional[Code] = None,
+        bottommost_code: Optional[Code] = None,
+        recursion_cnt: int = 0,
+    ) -> Tuple[Code, str, Code]:
+        """Do the input conversion for a std::tuple<T>
+
+        In this case, the template argument is tt (or "inner").
+
+        It is possible to nest or recurse multiple tuples (like in
+        std::tuple< std::tuple< T > > which is detected since the template
+        argument of tt itself is not None).
+        """
+        # If we are inside a recursion, we expect the top-most and bottom most code to be present...
+        if recursion_cnt > 1:
+            assert topmost_code is not None
+            assert bottommost_code is not None
+        (tt,) = cpp_type.template_args
+        temp_var = "v%s" % arg_num
+        inner = self.converters.cython_type(tt)
+        it = mangle("it_" + argument_var)  # + "_%s" % recursion_cnt
+        recursion_cnt_next = recursion_cnt + 1
+        it_prev = ""
+        if recursion_cnt > 0:
+            it_prev = mangle("it_" + argument_var[:-4])
+
+        base_type = tt.base_type
+        cy_tt = tt.base_type
+
+        # Prepare the code that should be at the very outer level of the
+        # function, thus variable declarations (e.g. to prevent a situation
+        # where new is called within a loop multiple times and memory loss
+        # occurs).
+        code_top = """
+            |cdef libcpp_tuple[$inner] * $temp_var
+            + = new libcpp_tuple[$inner]()
+        """
+
+        # If the inner type is templated and contains a class to wrap by us
+        # TODO describe what "to wrap" means. Also typedefs to them etc.?
+        inner_contains_classes_to_wrap = (
+            tt.template_args is not None
+            and len(
+                set(self.converters.names_of_wrapper_classes).intersection(
+                    set(tt.all_occuring_base_types())
+                )
+            )
+            > 0
+        )
+
+        if self.converters.cython_type(tt).is_enum:
+            # Case 1: We wrap a std::tuple<> with an enum base type
+            item = "item%s" % arg_num
+            if topmost_code is not None:
+                raise Exception(
+                    "Recursion in std::tuple<T> not yet implemented for enum"
+                )
+
+            code = Code().add(
+                """
+                |cdef libcpp_tuple[$inner] * $temp_var
+                + = new libcpp_tuple[$inner]()
+                |cdef int $item
+                |for $item in $argument_var:
+                |    $temp_var.push_back(<$inner> $item)
+                """,
+                locals(),
+            )
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+                cleanup_code = Code().add(
+                    """
+                    |replace = []
+                    |cdef libcpp_tuple[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |    replace.append(<int> deref($it))
+                    |    inc($it)
+                    |$argument_var[:] = tuple(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            # Case 2: We wrap a std::tuple<> with a base type we need to wrap
+            item = "item%s" % arg_num
+
+            # Add cdef of the base type to the toplevel code
+            code_top += """
+                |cdef $base_type $item
+            """
+
+            # Only dereference for non-ptr types
+            do_deref = "deref"
+            if inner.is_ptr:
+                do_deref = ""
+
+            instantiation = self._code_for_instantiate_object_from_iter(inner, it)
+            code = self._prepare_nonrecursive_precall(
+                topmost_code, cpp_type, code_top, do_deref, locals()
+            )
+            cleanup_code = self._prepare_nonrecursive_cleanup(
+                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals()
+            )
+
+            if cpp_type.is_ptr:
+                call_fragment = temp_var
+            else:
+                call_fragment = "deref(%s)" % temp_var
+
+            return code, call_fragment, cleanup_code
+
+        elif (
+            tt.template_args is not None
+            and tt.base_type == "shared_ptr"
+            and len(set(tt.template_args[0].all_occuring_base_types())) == 1
+        ):
+            # Case 3: We wrap a std::tuple< shared_ptr<X> > where X needs to be a type that is easy to wrap
+
+            (base_type,) = tt.template_args
+            (cpp_tt,) = inner.template_args
+
+            item = "%s_rec" % argument_var
+            code = Code().add(
+                """
+                |cdef libcpp_tuple[$inner] $temp_var 
+                |cdef $base_type $item
+                |for $item in $argument_var:
+                |    $temp_var.push_back($item.inst)
+                |# call
+                """,
+                locals(),
+            )
+
+            cleanup_code = Code().add("")
+
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+                item2 = "%s_rec_b" % argument_var
+                instantiation = self._code_for_instantiate_object_from_iter(inner, it)
+                # Can't directly append to tuples so on every iteration, we actually use
+                # tuple_we_are_building = (*tuple_we_are_building, new_item)
+                cleanup_code = Code().add(
+                    """
+                    |# gather results
+                    |replace = list()
+                    |cdef libcpp_tule[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   $item = $base_type.__new__($base_type)
+                    |   $item.inst = deref($it)
+                    |   replace.append($item)
+                    |   inc($it)
+                    |# replace old tuple with new contents
+                    |$argument_var[:] = ()
+                    |for $item2 in replace:
+                    |    $argument_var = (*$argument_var, $item2)
+                    """,
+                    locals(),
+                )
+
+            return code, "%s" % temp_var, cleanup_code
+
+        elif inner_contains_classes_to_wrap and tt.base_type != "libcpp_tuple":
+            # Only if the template argument which is neither a class-to-wrap nor a std::tuple
+            # again is a template of something that anywhere in the template hierarchy contains a
+            # class-to-wrap (see CppType.allOccuringBaseTypes), we cannot do it yet.
+            # We would probably need to call the input_coversion code generation methods
+            # of the according ConversionProviders here.
+            # If the inner rest of the template is a pure libcpp_pair<int,int> for example,
+            # cython can do it with a simple assignment automatically. See final else-case.
+            raise Exception(
+                "Recursion in std::tuple<T> is not implemented for other STL methods and wrapped template arguments"
+            )
+
+        elif inner_contains_classes_to_wrap and tt.base_type == "libcpp_tuple":
+            # Case 4: We wrap a std::tuple<> with a base type that contains
+            #         further nested std::tuple<> inside
+            #         -> deal with recursion
+            item = "%s_rec" % argument_var
+
+            # A) Prepare the pre-call
+            code = Code()
+            if topmost_code is not None:
+                if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+                    # add cdef statements for the iterators (part of B, post-call but needs to
+                    # be on top)
+                    code_top += "|cdef libcpp_tuple[$inner].iterator $it"
+                topmost_code.add(code_top, locals())
+                code_top = ""
+            if code_top != "":
+                code.add(code_top, locals())
+
+            cleanup_code = self._prepare_recursive_cleanup(
+                cpp_type, bottommost_code, it_prev, temp_var, recursion_cnt, locals()
+            )
+
+            # Go into recursion (if possible)
+            if hasattr(self, "cr"):
+                self._perform_recursion(
+                    cpp_type,
+                    tt,
+                    arg_num,
+                    item,
+                    topmost_code,
+                    bottommost_code,
+                    code,
+                    cleanup_code,
+                    recursion_cnt,
+                    locals(),
+                )
+            else:
+                raise Exception(
+                    "Error: For recursion in std::tuple<T> to work, we need a ConverterRegistry instance at self.cr"
+                )
+
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+        else:
+            # Case 5: We wrap a regular type
+            inner = self.converters.cython_type(tt)
+            # cython cares for conversion of stl containers with std types:
+            code = Code().add(
+                """
+                |cdef libcpp_tuple[$inner] $temp_var = $argument_var
+                """,
+                locals(),
+            )
+
+            cleanup_code = Code().add("")
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+                cleanup_code = Code().add(
+                    """
+                    |$argument_var[:] = $temp_var
+                    """,
+                    locals(),
+                )
+
+            return code, "%s" % temp_var, cleanup_code
+    
+    def call_method(
+        self, res_type: CppType, cy_call_str: str, with_const: bool = True
+    ) -> str:
+
+        t = self.converters.cython_type(res_type)
+        if t.is_ptr:
+            return "_r = deref(%s)" % (cy_call_str)
+
+        return "_r = %s" % (cy_call_str)
+    
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Code:
+
+        (tt,) = cpp_type.template_args
+        inner = self.converters.cython_type(tt)
+
+        if inner.is_enum:
+            it = mangle("it_" + input_cpp_var)
+            code = Code().add(
+                """
+                |$output_py_var = ()
+                |cdef libcpp_tuple[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var = (*$output_py_var, <int>deref($it))
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+        # TODO recursion missing for outputting list[list[list..[WrappedClass]]..]
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            cy_tt = tt.base_type
+            inner = self.converters.cython_type(tt)
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
+
+            instantiation = self._code_for_instantiate_object_from_iter(inner, it)
+            code = Code().add(
+                """
+                |$output_py_var = ())
+                |cdef libcpp_tuple[$inner].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $cy_tt.__new__($cy_tt)
+                |   $item.inst = $instantiation
+                |   $output_py_var = (*$output_py_var, $item)
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+        elif (
+            tt.base_type == "shared_ptr"
+            and len(set(tt.template_args[0].all_occuring_base_types())) == 1
+        ):
+
+            inner = self.converters.cython_type(tt)
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
+
+            (base_type,) = tt.template_args
+            (cpp_tt,) = inner.template_args
+
+            code = Code().add(
+                """
+                |$output_py_var = ())
+                |cdef libcpp_tuple[$inner].iterator $it = $input_cpp_var.begin()
+                |cdef $base_type $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $base_type.__new__($base_type)
+                |   $item.inst = deref($it)
+                |   $output_py_var = (*$output_py_var, $item)
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+        else:
+            # cython cares for conversion of stl containers with std types:
+            code = Code().add(
+                """
+                |cdef list $output_py_var = $input_cpp_var
+                """,
+                locals(),
+            )
+            return code
+
 class StdStringConverter(TypeConverterBase):
     def get_base_types(self) -> List[str]:
         return ["libcpp_string"]
@@ -2249,6 +2860,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(StdPairConverter())
     converters.register(VoidConverter())
     converters.register(SharedPtrConverter())
+    converters.register(StdTupleConverter())
 
     for clz in classes_to_wrap:
         converters.register(TypeToWrapConverter(clz))
