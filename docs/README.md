@@ -248,14 +248,14 @@ taken with priority.
         # wrap-doc:
         #  Multi line docstring for class
         #    with indentation
-        #
+        #  
         #  and empty line
 
         size_t count(libcpp_vector[double] inpVec) # wrap-doc:Single line docstring that will be overwritten by multi line wrap-doc
         # wrap-doc:
         #  Multi line docstring for method
         #    with indentation
-        #
+        #  
         #  and empty line
 ```
 
