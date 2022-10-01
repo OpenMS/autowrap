@@ -9,16 +9,16 @@ class IntWrapper {
     public:
         int i_;
 
-        IntWrapper(): 
-          i_(0) 
+        IntWrapper():
+          i_(0)
         {}
 
-        IntWrapper(const int i): 
-          i_(i) 
+        IntWrapper(const int i):
+          i_(i)
         {}
 
         // for map
-        bool operator<( const IntWrapper & other ) const 
+        bool operator<( const IntWrapper & other ) const
         {
           return this->i_ < other.i_;
         }
@@ -48,7 +48,7 @@ class MapWrapper {
       std::map<int, double> map_;
 
       MapWrapper() {}
-      MapWrapper(const MapWrapper& other) 
+      MapWrapper(const MapWrapper& other)
       {
         map_ = other.map_;
       }
@@ -203,6 +203,16 @@ class LibCppSTLTest {
             if (!in.empty() && !in.begin()->second.iv_.empty())
             {
                 in.begin()->second.iv_[0] += 10;
+                return in.begin()->first.i_;
+            }
+            return -1;
+        }
+        
+        int process_15_map(std::map<IntWrapper, IntWrapper>& in)
+        {
+            if (!in.empty())
+            {
+                in.begin()->second.i_ += 10;
                 return in.begin()->first.i_;
             }
             return -1;

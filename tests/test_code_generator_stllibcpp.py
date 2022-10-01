@@ -213,3 +213,11 @@ def test_stl_libcpp():
     assert len(map_inp) == 1
     assert list(map_inp.values())[0][0] == 6 + 10
     assert list(map_inp.values())[0][1] == 2
+
+    # Part 9
+    # Test std::map< Widget, Widget >
+    i1 = libcpp_stl.IntWrapper(1)
+    i2 = libcpp_stl.IntWrapper(2)
+    map_inp = {i1: i2}
+    assert t.process_15_map(map_inp) == 1
+    assert list(map_inp.values())[0].i_ == 12
