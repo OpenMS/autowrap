@@ -110,7 +110,7 @@ def test_libcpp():
     print(dir(libcpp))
     assert len(libcpp.LibCppTest.__doc__) == 213
     assert len(libcpp.LibCppTest.twist.__doc__) == 111
-    assert len(libcpp.LibCppTest.gett.__doc__) == 66
+    assert len(libcpp.LibCppTest.gett.__doc__) == 72
     assert len(libcpp.ABS_Impl1.__doc__) == 89
 
     sub_libcpp_copy_constructors(libcpp)
