@@ -560,6 +560,6 @@ def test_multiline_docs():
     lines = ["# wrap-doc:", "#  first line", "#    second line indented", "#  "]
     result = autowrap.PXDParser._parse_multiline_annotations(lines)
 
-    assert result["wrap-doc"][0] == "first line"
-    assert result["wrap-doc"][1] == "  second line indented"
-    assert result["wrap-doc"][2] == ""
+    assert result["wrap-doc"].content[0] == "first line"
+    assert result["wrap-doc"].content[1] == "  second line indented"
+    assert result["wrap-doc"].content[2] == ""

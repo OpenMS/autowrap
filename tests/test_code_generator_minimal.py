@@ -93,7 +93,7 @@ def test_minimal():
 
     minimal = wrapped.Minimal()
 
-    assert len(minimal.compute.__doc__) == 297
+    assert len(minimal.compute.__doc__) == 536
 
     assert len(minimal.run.__doc__) == 111
 

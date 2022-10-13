@@ -1,4 +1,4 @@
-#Generated with autowrap 0.22.9 and Cython (Parser) 3.0.0a10
+#Generated with autowrap 0.22.9 and Cython (Parser) 0.29.32
 #cython: c_string_encoding=ascii
 #cython: embedsignature=False
 from  enum             import Enum as _PyEnum
@@ -49,11 +49,15 @@ cdef class BaseDouble:
             return py_result
     
     def __init__(self):
-        """Cython signature: void BaseDouble()"""
+        """
+        __init__(self) -> None
+        """
         self.inst = shared_ptr[_Base[double]](new _Base[double]())
     
     def foo(self):
-        """Cython signature: double foo()"""
+        """
+        foo(self) -> float
+        """
         cdef double _r = self.inst.get().foo()
         py_result = <double>_r
         return py_result 
@@ -81,11 +85,15 @@ cdef class BaseInt:
             return py_result
     
     def __init__(self):
-        """Cython signature: void BaseInt()"""
+        """
+        __init__(self) -> None
+        """
         self.inst = shared_ptr[_Base[int]](new _Base[int]())
     
     def foo(self):
-        """Cython signature: int foo()"""
+        """
+        foo(self) -> int
+        """
         cdef int _r = self.inst.get().foo()
         py_result = <int>_r
         return py_result 
@@ -113,11 +121,15 @@ cdef class BaseZ:
             return py_result
     
     def __init__(self):
-        """Cython signature: void BaseZ()"""
+        """
+        __init__(self) -> None
+        """
         self.inst = shared_ptr[_BaseZ](new _BaseZ())
     
     def bar(self):
-        """Cython signature: int bar()"""
+        """
+        bar(self) -> int
+        """
         cdef int _r = self.inst.get().bar()
         py_result = <int>_r
         return py_result 
@@ -125,7 +137,7 @@ cdef class BaseZ:
 cdef class InheritedInt:
     """
     Cython implementation of _Inherited[int]
-     -- Inherits from ['Base[A]', 'BaseZ']
+      -- Inherits from ['Base[A]', 'BaseZ']
     """
 
     cdef shared_ptr[_Inherited[int]] inst
@@ -135,29 +147,39 @@ cdef class InheritedInt:
 
     
     def __init__(self):
-        """Cython signature: void InheritedInt()"""
+        """
+        __init__(self) -> None
+        """
         self.inst = shared_ptr[_Inherited[int]](new _Inherited[int]())
     
     def getBase(self):
-        """Cython signature: int getBase()"""
+        """
+        getBase(self) -> int
+        """
         cdef int _r = self.inst.get().getBase()
         py_result = <int>_r
         return py_result
     
     def getBaseZ(self):
-        """Cython signature: int getBaseZ()"""
+        """
+        getBaseZ(self) -> int
+        """
         cdef int _r = self.inst.get().getBaseZ()
         py_result = <int>_r
         return py_result
     
     def foo(self):
-        """Cython signature: int foo()"""
+        """
+        foo(self) -> int
+        """
         cdef int _r = self.inst.get().foo()
         py_result = <int>_r
         return py_result
     
     def bar(self):
-        """Cython signature: int bar()"""
+        """
+        bar(self) -> int
+        """
         cdef int _r = self.inst.get().bar()
         py_result = <int>_r
         return py_result 
@@ -165,7 +187,7 @@ cdef class InheritedInt:
 cdef class InheritedIntDbl:
     """
     Cython implementation of _InheritedTwo[int,double]
-     -- Inherits from ['BaseZ']
+      -- Inherits from ['BaseZ']
     """
 
     cdef shared_ptr[_InheritedTwo[int,double]] inst
@@ -175,29 +197,39 @@ cdef class InheritedIntDbl:
 
     
     def __init__(self):
-        """Cython signature: void InheritedIntDbl()"""
+        """
+        __init__(self) -> None
+        """
         self.inst = shared_ptr[_InheritedTwo[int,double]](new _InheritedTwo[int,double]())
     
     def getBase(self):
-        """Cython signature: int getBase()"""
+        """
+        getBase(self) -> int
+        """
         cdef int _r = self.inst.get().getBase()
         py_result = <int>_r
         return py_result
     
     def getBaseB(self):
-        """Cython signature: double getBaseB()"""
+        """
+        getBaseB(self) -> float
+        """
         cdef double _r = self.inst.get().getBaseB()
         py_result = <double>_r
         return py_result
     
     def getBaseZ(self):
-        """Cython signature: int getBaseZ()"""
+        """
+        getBaseZ(self) -> int
+        """
         cdef int _r = self.inst.get().getBaseZ()
         py_result = <int>_r
         return py_result
     
     def bar(self):
-        """Cython signature: int bar()"""
+        """
+        bar(self) -> int
+        """
         cdef int _r = self.inst.get().bar()
         py_result = <int>_r
         return py_result 

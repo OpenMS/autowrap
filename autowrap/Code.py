@@ -57,9 +57,16 @@ class Code(object):
     def __init__(self):
         self.content: List[Union[Code, str]] = []
 
+    def __len__(self):
+        return sum(len(c) if isinstance(c, Code) else 1 for c in self.content)
+
     def extend(self, other: Code) -> None:
         # keeps indentation
         self.content.extend(other.content)
+
+    def addRawList(self, lst):
+        # keeps indentation
+        self.content.extend(lst)
 
     def add(self, what: Union[str, bytes, Code], *a, **kw) -> Code:
         # may increase indent!
@@ -88,9 +95,11 @@ class Code(object):
             if isinstance(content, basestring):
                 result.append(_indent + content)
             else:
-                for line in content._render(_indent=_indent + "    "):
+                newindent = _indent + " "*4
+                for line in content._render(_indent=newindent):
                     result.append(line)
         return result
 
-    def render(self) -> str:
-        return "\n".join(self._render())
+    def render(self, indent=0) -> str:
+        i = " "*indent
+        return "\n".join(self._render(_indent=i))

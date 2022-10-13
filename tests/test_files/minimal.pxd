@@ -29,6 +29,11 @@ cdef extern from "minimal.hpp":
         libcpp_string compute(libcpp_string)
         Int compute(int number1, int number2) # wrap-doc:This method is essential for foobar
         int compute(Int number)
+        # wrap-doc:
+        #  Test for Multiline Comment in overloaded method
+        #    with indentation
+        #  
+        #  and empty line
         float compute(float number)
         int compute_int(int)
         int compute_int()
