@@ -57,6 +57,7 @@ def test():
     c.add(inner)
 
     result = c.render()
+    assert len(c) == 5
     lines = [line.rstrip() for line in result.split("\n")]
     assert lines[0] == "def fun(x):", repr(lines[0])
     assert lines[1] == "    if x == 3:", repr(lines[1])

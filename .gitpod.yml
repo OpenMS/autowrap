@@ -3,7 +3,7 @@
 # and commit this file to your remote git repository to share the goodness with others.
 
 tasks:
-  - init: pip install .
+  - init: pip install pytest black && pip install -e .
 vscode:
   extensions:
     - ms-python.python

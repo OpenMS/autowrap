@@ -50,6 +50,7 @@ from autowrap.Types import CppType
 import os
 
 from autowrap import logger
+from autowrap.Code import Code as Code
 
 from collections import defaultdict
 from .tools import OrderKeepingDictionary
@@ -103,10 +104,12 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                         value = line[3:].rstrip()  # rstrip to keep indentation in docs
                     else:
                         value = line[1:].strip()
+
                     if (
                         key == "wrap-doc" or value
                     ):  # don't add empty non wrap-doc values
                         result[key].append(value)
+
                     try:
                         line = next(it).lstrip()  # lstrip to keep empty lines in docs
                     except StopIteration:
@@ -116,6 +119,16 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                 result[key] = True
         else:
             break
+
+    # make sure wrap-doc is always a Code object
+    if "wrap-doc" in result.keys():
+        doc = result.get("wrap-doc", [])
+        if isinstance(doc, basestring):
+            doc = [doc]
+
+        c = Code()
+        c.addRawList(doc)
+        result["wrap-doc"] = c
     return result
 
 
@@ -166,13 +179,21 @@ def parse_line_annotations(
                         result[key] += value
         except Exception as e:
             raise ValueError("Cannot parse '{}'".format(line)) from e
-
     # check for multi line annotations after method declaration
     additional_annotations = _parse_multiline_annotations(lines[end:])
     # add multi line doc string to result (overwrites single line wrap-doc, if exists)
     if "wrap-doc" in additional_annotations.keys():
-        result["wrap-doc"] = "\n" + "\n".join(additional_annotations["wrap-doc"])
+        result["wrap-doc"] = additional_annotations["wrap-doc"]
+    else:
+        # make sure wrap-doc is always a Code object
+        if "wrap-doc" in result.keys():
+            doc = result.get("wrap-doc", [])
+            if isinstance(doc, basestring):
+                doc = [doc]
 
+            c = Code()
+            c.addRawList(doc)
+            result["wrap-doc"] = c
     return result
 
 

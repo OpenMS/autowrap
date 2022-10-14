@@ -471,9 +471,9 @@ class CodeGenerator(object):
         else:
             name = decl.name
 
-        doc = decl.cpp_decl.annotations.get("wrap-doc", "")
-        if doc:
-            doc = '"""\n    ' + "\n    ".join(doc) + '\n    """'
+        doc = decl.cpp_decl.annotations.get("wrap-doc", None)
+        if doc is not None:
+            doc = '"""\n    ' + doc.render(indent=4) + '\n    """'
 
         L.info("create wrapper for enum %s" % name)
         code = Code()
@@ -543,7 +543,7 @@ class CodeGenerator(object):
                     |
                     |    def getMapping(self):
                     |        return dict([ (v, k) for k, v in self.__class__.__dict__.items()
-                    +if isinstance(v, int) ])"""
+                    + if isinstance(v, int) ])"""
             )
             stub_code.add(
                 """
@@ -604,13 +604,13 @@ class CodeGenerator(object):
         docstring += special_class_doc % locals()
         if r_class.cpp_decl.annotations.get("wrap-inherits", "") != "":
             docstring += (
-                "     -- Inherits from %s\n"
+                "      -- Inherits from %s\n"
                 % r_class.cpp_decl.annotations.get("wrap-inherits", "")
             )
 
-        extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", "")
-        for extra_doc_line in extra_doc:
-            docstring += "\n    " + extra_doc_line
+        extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", None)
+        if extra_doc is not None:
+            docstring += extra_doc.render(indent=4)
 
         self.typestub_codes[cname] = typestub_code
         typestub_code.add(
@@ -906,27 +906,11 @@ class CodeGenerator(object):
         if use_kwargs:
             kwargs = ", **kwargs"
 
-        docstrings = "\n"
+        docstrings = Code()
+        signatures = []
         for method in methods:
-            # Prepare docstring
-            docstrings += " " * 8 + "  - Cython signature: %s" % method
-            extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
-            if len(extra_doc) > 0:
-                docstrings += "\n" + " " * 12 + extra_doc
-            docstrings += "\n"
-
-        method_code.add(
-            """
-                          |
-                          |def $py_name(self, *args $kwargs):
-                          |    \"\"\"$docstrings\"\"\"
-                        """,
-            locals(),
-        )
-
-        first_iteration = True
-
-        for (dispatched_m_name, method) in zip(dispatched_m_names, methods):
+            ## TODO refactor this part as something like getTypingSignature or getTypingSignatureParts
+            ##  or maybe save them for the after-the-next for-loop that generates them again
             args = augment_arg_names(method)
             py_typing_signature_parts = []
             for arg_num, (t, n) in enumerate(args):
@@ -939,22 +923,65 @@ class CodeGenerator(object):
             )
 
             if return_type:
+                return_type = "-> " + return_type
+            else:
+                return_type = ""
+
+            # Add autodoc docstring signatures first: https://github.com/sphinx-doc/sphinx/pull/7748
+            sig = f"{py_name}(self, {args_typestub_str}) {return_type}"
+            signatures.append(sig)
+            docstrings.add(sig)
+
+        docstrings.add("")
+
+        for method, sig in zip(methods, signatures):
+            # Now add Cython signatures with additional description for each overload (if available)
+            extra_doc = method.cpp_decl.annotations.get("wrap-doc", None)
+            if extra_doc is not None:
+                docstrings.add("- Overload: %s" % sig)
+                docstrings.add(extra_doc)
+            docstrings.add("")
+
+        docstring_as_str = docstrings.render(indent=8)
+        method_code.add(
+            """
+                          |
+                          |def $py_name(self, *args $kwargs):
+                          |    \"\"\"\n$docstring_as_str
+                          |    \"\"\"
+                        """,
+            locals(),
+        )
+
+        first_iteration = True
+
+        for (dispatched_m_name, method, sig) in zip(
+            dispatched_m_names, methods, signatures
+        ):
+            args = augment_arg_names(method)
+            return_type = self.cr.get(method.result_type).matching_python_type_full(
+                method.result_type
+            )
+
+            if return_type:
                 return_type = "-> " + return_type + ":"
             else:
                 return_type = ":"
 
-            # Prepare docstring for typestubs (TODO only prepare once?)
+            # Prepare docstring for typestubs
             docstring = "Cython signature: %s" % method
-            extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
-            if len(extra_doc) > 0:
-                docstring += "\n" + " " * 8 + extra_doc
+            extra_doc = method.cpp_decl.annotations.get("wrap-doc", None)
+            if extra_doc is not None:
+                docstring += "\n" + extra_doc.render(indent=8)
 
             typestub_code.add(
                 """
                           |
                           |@overload
-                          |def $py_name(self, $args_typestub_str) $return_type
-                          |    \"\"\"$docstring\"\"\"
+                          |def $sig:
+                          |    \"\"\"
+                          |    $docstring
+                          |    \"\"\"
                           |    ...
                         """,
                 locals(),
@@ -1163,21 +1190,34 @@ class CodeGenerator(object):
             py_signature_parts.insert(0, "self")
             py_typing_signature_parts.insert(0, "self")
 
-        # Prepare docstring
-        docstring = "Cython signature: %s" % method
-        extra_doc = method.cpp_decl.annotations.get("wrap-doc", "")
-        if len(extra_doc) > 0:
-            docstring += "\n" + " " * 8 + extra_doc
-
         py_signature = ", ".join(py_signature_parts)
         py_typing_signature = ", ".join(py_typing_signature_parts)
+        return_type = self.cr.get(method.result_type).matching_python_type_full(
+            method.result_type
+        )
+        if return_type:
+            return_type = "-> " + return_type
+        else:
+            return_type = ""
+
+        # Prepare docstring
+        docstring = f"{py_name}({py_typing_signature}) {return_type}"
+        stubdocstring = "Cython signature: %s" % method
+
+        extra_doc = method.cpp_decl.annotations.get("wrap-doc", None)
+        if extra_doc is not None:
+            docstring += "\n" + extra_doc.render(indent=8)
+            stubdocstring += "\n" + extra_doc.render(indent=8)
+
         if method.is_static:
             code.add(
                 """
                        |
                        |@staticmethod
                        |def $py_name($py_signature):
-                       |    \"\"\"$docstring\"\"\"
+                       |    \"\"\"
+                       |    $docstring
+                       |    \"\"\"
                        """,
                 locals(),
             )
@@ -1186,28 +1226,24 @@ class CodeGenerator(object):
                 """
                        |
                        |def $py_name($py_signature):
-                       |    \"\"\"$docstring\"\"\"
+                       |    \"\"\"
+                       |    $docstring
+                       |    \"\"\"
                        """,
                 locals(),
             )
 
         stub = Code()
 
-        return_type = self.cr.get(method.result_type).matching_python_type_full(
-            method.result_type
-        )
-        if return_type:
-            return_type = "-> " + return_type + ":"
-        else:
-            return_type = ":"
-
         if method.is_static:
             stub.add(
                 """
                        |
                        |@staticmethod
-                       |def $py_name($py_typing_signature) $return_type
-                       |    \"\"\"$docstring\"\"\"
+                       |def $py_name($py_typing_signature) $return_type:
+                       |    \"\"\"
+                       |    $stubdocstring
+                       |    \"\"\"
                        |    ...
                        """,
                 locals(),
@@ -1216,8 +1252,10 @@ class CodeGenerator(object):
             stub.add(
                 """
                        |
-                       |def $py_name($py_typing_signature) $return_type
-                       |    \"\"\"$docstring\"\"\"
+                       |def $py_name($py_typing_signature) $return_type:
+                       |    \"\"\"
+                       |    $stubdocstring
+                       |    \"\"\"
                        |    ...
                        """,
                 locals(),
@@ -1793,9 +1831,9 @@ class CodeGenerator(object):
 
         # Prepare docstring
         docstring = "Cython signature: %s" % mdcl
-        extra_doc = mdcl.cpp_decl.annotations.get("wrap-doc", "")
-        if len(extra_doc) > 0:
-            docstring += "\n" + " " * 8 + extra_doc
+        extra_doc = mdcl.cpp_decl.annotations.get("wrap-doc", None)
+        if extra_doc is not None:
+            docstring += "\n" + extra_doc.render(indent=8)
 
         stub_code.add(
             """
