@@ -934,7 +934,7 @@ class CodeGenerator(object):
 
         docstrings.add("")
 
-        for method, sig in zip(methods,signatures):
+        for method, sig in zip(methods, signatures):
             # Now add Cython signatures with additional description for each overload (if available)
             extra_doc = method.cpp_decl.annotations.get("wrap-doc", None)
             if extra_doc is not None:
@@ -955,7 +955,9 @@ class CodeGenerator(object):
 
         first_iteration = True
 
-        for (dispatched_m_name, method, sig) in zip(dispatched_m_names, methods, signatures):
+        for (dispatched_m_name, method, sig) in zip(
+            dispatched_m_names, methods, signatures
+        ):
             args = augment_arg_names(method)
             return_type = self.cr.get(method.result_type).matching_python_type_full(
                 method.result_type

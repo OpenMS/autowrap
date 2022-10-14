@@ -105,7 +105,9 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                     else:
                         value = line[1:].strip()
 
-                    if (key == "wrap-doc" or value):  # don't add empty non wrap-doc values
+                    if (
+                        key == "wrap-doc" or value
+                    ):  # don't add empty non wrap-doc values
                         result[key].append(value)
 
                     try:
@@ -123,7 +125,7 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
         doc = result.get("wrap-doc", [])
         if isinstance(doc, basestring):
             doc = [doc]
-        
+
         c = Code()
         c.addRawList(doc)
         result["wrap-doc"] = c
@@ -188,7 +190,7 @@ def parse_line_annotations(
             doc = result.get("wrap-doc", [])
             if isinstance(doc, basestring):
                 doc = [doc]
-            
+
             c = Code()
             c.addRawList(doc)
             result["wrap-doc"] = c

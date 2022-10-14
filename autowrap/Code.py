@@ -95,11 +95,11 @@ class Code(object):
             if isinstance(content, basestring):
                 result.append(_indent + content)
             else:
-                newindent = _indent + " "*4
+                newindent = _indent + " " * 4
                 for line in content._render(_indent=newindent):
                     result.append(line)
         return result
 
     def render(self, indent=0) -> str:
-        i = " "*indent
+        i = " " * indent
         return "\n".join(self._render(_indent=i))
