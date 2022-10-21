@@ -610,6 +610,7 @@ class CodeGenerator(object):
 
         extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", None)
         if extra_doc is not None:
+            docstring += "\n"
             docstring += extra_doc.render(indent=4)
 
         self.typestub_codes[cname] = typestub_code
