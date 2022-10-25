@@ -15,10 +15,10 @@ jobs:
   build_publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
@@ -46,7 +46,7 @@ jobs:
         id: version
         
       - name: Create github release
-        uses: actions/create-release@v1
+        uses: actions/create-release@v1.1.4
         id: create_release
         with:
           draft: false
@@ -69,7 +69,7 @@ jobs:
           rm CHANGELOG.md && echo "autowrap $NEXT_VER" > CHANGELOG.md
           sed -i -e "s/^[[:space:]]*__version__.*/__version__ = \(${NEXT_VER//./, }\)/g" autowrap/version.py
           
-      - uses: stefanzweifel/git-auto-commit-action@v4
+      - uses: stefanzweifel/git-auto-commit-action@v4.15.2
         with:
           commit_message: New release cycle
           file_pattern: CHANGELOG.md HISTORY.md autowrap/version.py
