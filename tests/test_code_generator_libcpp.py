@@ -108,7 +108,7 @@ def test_libcpp():
     )
     assert libcpp.__name__ == "libcpp"
     print(dir(libcpp))
-    assert len(libcpp.LibCppTest.__doc__) == 213
+    assert len(libcpp.LibCppTest.__doc__) == 214
     assert len(libcpp.LibCppTest.twist.__doc__) == 111
     assert len(libcpp.LibCppTest.gett.__doc__) == 72
     assert len(libcpp.ABS_Impl1.__doc__) == 90

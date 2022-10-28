@@ -1,4 +1,4 @@
-#Generated with autowrap 0.22.9 and Cython (Parser) 0.29.32
+#Generated with autowrap 0.22.10 and Cython (Parser) 0.29.32
 #cython: c_string_encoding=ascii
 #cython: embedsignature=False
 from  enum             import Enum as _PyEnum
