@@ -931,17 +931,20 @@ class CodeGenerator(object):
             # Add autodoc docstring signatures first: https://github.com/sphinx-doc/sphinx/pull/7748
             sig = f"{py_name}(self, {args_typestub_str}) {return_type}"
             signatures.append(sig)
-            docstrings.add(sig)
+            #docstrings.add(sig)
 
-        docstrings.add("")
+        #docstrings.add("")
 
         for method, sig in zip(methods, signatures):
+            docstrings.add(".. rubric:: Overload:")
+            docstrings.add(".. py:function:: %s" % sig)
+            docstrings.add("  :noindex:")
+            docstrings.add("")
             # Now add Cython signatures with additional description for each overload (if available)
             extra_doc = method.cpp_decl.annotations.get("wrap-doc", None)
             if extra_doc is not None:
-                docstrings.add("- Overload: %s" % sig)
-                docstrings.add(extra_doc)
-            docstrings.add("")
+                docstrings.extend(extra_doc)
+                docstrings.add("")
 
         docstring_as_str = docstrings.render(indent=8)
         method_code.add(
@@ -949,6 +952,7 @@ class CodeGenerator(object):
                           |
                           |def $py_name(self, *args $kwargs):
                           |    \"\"\"\n$docstring_as_str
+                          |    
                           |    \"\"\"
                         """,
             locals(),
