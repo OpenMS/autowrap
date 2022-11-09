@@ -21,7 +21,7 @@ This wrapping process typically consist of four steps:
   files. These give [Cython][] information for calling the library and for
   error checking the code written in the following step.
 
-  2. Write [Cython][] code which wraps the C++ library. This code resists in
+  2. Write [Cython][] code which wraps the C++ library. This code resides in
   one or more `.pyx` files.
 
   3. Translate these `.pyx` files to C++ code with [Cython][].
