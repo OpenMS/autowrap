@@ -276,7 +276,7 @@ class BooleanConverter(TypeConverterBase):
         return "bool"
 
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
-        return "isinstance(%s, bool)" % (argument_var,)
+        return "isinstance(%s, pybool_t)" % (argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num) -> Tuple[str, str, str]:
         code = ""
