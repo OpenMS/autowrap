@@ -236,7 +236,7 @@ class IntegerConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return "" #TODO can't we use int? Especially in py3 only.
+        return ""  #TODO can't we use int? Especially in py3 only.
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "int"
@@ -1999,6 +1999,7 @@ class StdStringConverter(TypeConverterBase):
     should be used to indicate the correct typing for the automatic
     conversion by Cython, which is set to bytes in autowrap.
     """
+    
     def get_base_types(self) -> List[str]:
         return ["libcpp_string"]
 
@@ -2041,6 +2042,7 @@ class StdStringUnicodeConverter(StdStringConverter):
     It can only be used in function parameters (i.e. input).
     It can handle both bytes and unicode strings and converts to bytes internally.
     """
+
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_string"]
 
@@ -2081,6 +2083,7 @@ class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
     It returns unicode strings to python and therefore expects the C++
     function to return something that is decodable from utf8 (including ascii)
     """
+
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_output_string"]
 
