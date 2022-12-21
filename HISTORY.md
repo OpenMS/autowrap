@@ -18,3 +18,9 @@ autowrap 0.22.9
 autowrap 0.22.10
 
 - Revamped docstrings for overloaded methods in generated pyx files. They use RST and sphinx.autodoc syntax now.
+
+autowrap 0.22.11
+
+- Fixes some issues with typing support on python side
+- Added a real C++ bool converter. C++ bools in a pxd will now be real booleans
+  on python side. Not "just" ints and will also be typed like that.
