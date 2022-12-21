@@ -383,7 +383,8 @@ class CodeGenerator(object):
             pxd_code += c.render()
             pxd_code += " \n"
 
-        pyi_code = "from typing import overload, Any, List, Dict, Tuple, Set, Sequence, Union \n\n"
+        pyi_code = "from __future__ import annotations\n"
+        pyi_code += "from typing import overload, Any, List, Dict, Tuple, Set, Sequence, Union\n\n"
         pyi_code += "from enum import Enum as _PyEnum\n\n"
         pyi_code += "\n".join(ci.render() for ci in self.top_level_typestub_code)
         pyi_code += "\n\n"
@@ -910,8 +911,6 @@ class CodeGenerator(object):
         docstrings = Code()
         signatures = []
         for method in methods:
-            ## TODO refactor this part as something like getTypingSignature or getTypingSignatureParts
-            ##  or maybe save them for the after-the-next for-loop that generates them again
             args = augment_arg_names(method)
             py_typing_signature_parts = []
             for arg_num, (t, n) in enumerate(args):
@@ -931,9 +930,6 @@ class CodeGenerator(object):
             # Add autodoc docstring signatures first: https://github.com/sphinx-doc/sphinx/pull/7748
             sig = f"{py_name}(self, {args_typestub_str}) {return_type}"
             signatures.append(sig)
-            #docstrings.add(sig)
-
-        #docstrings.add("")
 
         for method, sig in zip(methods, signatures):
             docstrings.add(".. rubric:: Overload:")

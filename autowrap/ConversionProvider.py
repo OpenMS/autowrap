@@ -215,6 +215,7 @@ class IntegerConverter(TypeConverterBase):
     """
     wraps long and int. "long" base_type is converted to "int" by the
     cython parser!
+    TODO Long does not exist in Python2 anymore. Can we remove stuff?
     """
 
     def get_base_types(self) -> List[str]:
@@ -235,7 +236,7 @@ class IntegerConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return ""
+        return "" #TODO can't we use int? Especially in py3 only.
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "int"
@@ -382,10 +383,11 @@ class EnumConverter(TypeConverterBase):
             return ""
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        if self.enum.cpp_decl.annotations.get("wrap-attach"):
-            if not self.enum.scoped:
-                return "__" + self.enum.name
-            else:
+        if not self.enum.scoped:
+            # TODO add some other hint that this must be an
+            #  int from the class "__" + self.enum.name
+            return "int" 
+        elif self.enum.cpp_decl.annotations.get("wrap-attach"):
                 return "_Py" + self.enum.name
         else:
             return self.enum.name
@@ -1989,6 +1991,14 @@ class StdVectorConverter(TypeConverterBase):
 
 
 class StdStringConverter(TypeConverterBase):
+    """
+    This converter deals with functions that expect/return a C++ std::string.
+    It expects and returns bytes on the python side.
+    Note that this provider will NOT be picked up if it is located inside
+    a container (e.g. std::vector aka libcpp_vector). However, it can and
+    should be used to indicate the correct typing for the automatic
+    conversion by Cython, which is set to bytes in autowrap.
+    """
     def get_base_types(self) -> List[str]:
         return ["libcpp_string"]
 
@@ -2018,20 +2028,34 @@ class StdStringConverter(TypeConverterBase):
         return "%s = <libcpp_string>%s" % (output_py_var, input_cpp_var)
 
 
+# TODO I think we have to be more clear about the use case of this ConvProv
+#  Currently it can be used if you don't know if the incoming
+#  py type is bytes or unicode. We currently have no provider that allows
+#  for specifically unicode only.
 class StdStringUnicodeConverter(StdStringConverter):
+    """
+    This converter deals with functions that expect a C++ std::string.
+    Note that this provider will NOT be picked up if it is located inside
+    a container (e.g. std::vector aka libcpp_vector). Please use the usual
+    StdStringConverter to at least get the typing right.
+    It can only be used in function parameters (i.e. input).
+    It can handle both bytes and unicode strings and converts to bytes internally.
+    """
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_string"]
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return ""
+        return ""  # TODO can we use "basestring"?
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        return "Union[bytes, unicode]"
+        return "Union[bytes, str]"
 
     def input_conversion(
         self, cpp_type: CppType, argument_var: str, arg_num: int
     ) -> Tuple[Code, str, str]:
         code = Code()
+        # although python3 does not have "unicode" as a built-in type anymore,
+        # Cython understands it and uses the Py_IsUnicodeCheck
         code.add(
             """
             |if isinstance($argument_var, unicode):
@@ -2044,12 +2068,24 @@ class StdStringUnicodeConverter(StdStringConverter):
         return code, call_as, cleanup
 
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
-        return "isinstance(%s, (bytes, unicode))" % argument_var
+        return "isinstance(%s, (bytes, str))" % argument_var
 
 
 class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
+    """
+    This converter deals with functions that return a C++ std::string.
+    Note that this provider will NOT be picked up if it is located inside
+    a container (e.g. std::vector aka libcpp_vector). Please use the usual
+    StdStringConverter to at least get the typing right.
+    It should only be used in function returns (i.e. output).
+    It returns unicode strings to python and therefore expects the C++
+    function to return something that is decodable from utf8 (including ascii)
+    """
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_output_string"]
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        return "str" # python3
 
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
