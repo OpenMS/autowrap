@@ -1,6 +1,7 @@
 # cython: language_level=2
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector
+from libcpp cimport bool
 from libc.string cimport const_char
 
 from minimal_td cimport *
