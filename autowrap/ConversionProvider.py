@@ -236,7 +236,7 @@ class IntegerConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return "" # TODO can't we use int? Especially in py3 only.
+        return ""  # TODO can't we use int? Especially in py3 only.
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "int"
@@ -2047,7 +2047,7 @@ class StdStringUnicodeConverter(StdStringConverter):
         return ["libcpp_utf8_string"]
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return "" # TODO can we use "basestring"?
+        return ""  # TODO can we use "basestring"?
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "Union[bytes, str]"
@@ -2088,7 +2088,7 @@ class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
         return ["libcpp_utf8_output_string"]
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        return "str" # python3
+        return "str"  # python3
 
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
