@@ -289,6 +289,7 @@ class BooleanConverter(TypeConverterBase):
     ) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
+
 class UnsignedIntegerConverter(TypeConverterBase):
     """
     wraps unsigned long and int. "long" base_type is converted to "int" by the
