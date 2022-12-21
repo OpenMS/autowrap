@@ -2267,6 +2267,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     )
 
     converters.register(IntegerConverter())
+    converters.register(BooleanConverter())
     converters.register(UnsignedIntegerConverter())
     converters.register(FloatConverter())
     converters.register(DoubleConverter())
