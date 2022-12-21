@@ -220,7 +220,6 @@ class IntegerConverter(TypeConverterBase):
     def get_base_types(self) -> List[str]:
         return [
             "int",
-            "bool",
             "long",
             "int32_t",
             "ptrdiff_t",
@@ -254,6 +253,40 @@ class IntegerConverter(TypeConverterBase):
     ) -> Optional[str]:
         return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
+
+class BooleanConverter(TypeConverterBase):
+    """
+    Wraps a C++ bool. Bools are automatically imported in the beginning of a file with
+    'from libcpp import bool'.
+    """
+
+    def get_base_types(self) -> List[str]:
+        return [
+            "bool",
+        ]
+
+    def matches(self, cpp_type: CppType) -> bool:
+        return not cpp_type.is_ptr
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        return "bool"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        return "bool"
+
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
+        return "isinstance(%s, bool)" % (argument_var,)
+
+    def input_conversion(self, cpp_type, argument_var, arg_num) -> Tuple[str, str, str]:
+        code = ""
+        call_as = "(<%s>%s)" % (cpp_type, argument_var)
+        cleanup = ""
+        return code, call_as, cleanup
+
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
+        return "%s = <%s>%s" % (output_py_var, cpp_type, input_cpp_var)
 
 class UnsignedIntegerConverter(TypeConverterBase):
     """
