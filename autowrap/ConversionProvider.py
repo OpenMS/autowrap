@@ -220,7 +220,7 @@ class IntegerConverter(TypeConverterBase):
     def get_base_types(self) -> List[str]:
         return [
             "int",
-            "bint", # C boolean type
+            "bint",  # C boolean type
             "long",
             "int32_t",
             "ptrdiff_t",
