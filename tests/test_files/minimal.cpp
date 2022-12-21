@@ -1,16 +1,16 @@
 #include <iostream>
 #include "minimal.hpp"
 
-Minimal::Minimal() : _i(0), _mi(), m_accessible(0)
+Minimal::Minimal() : _i(0), _mi(), m_accessible(0), m_bool(false)
 {
 }
 
-Minimal::Minimal(std::vector<int> const & ii): _mi(), m_accessible(0)
+Minimal::Minimal(std::vector<int> const & ii): _mi(), m_accessible(0), m_bool(false)
 {
     _i = ii.size();
 }
 
-Minimal::Minimal(int i) : _i(i), _mi(), m_accessible(0)
+Minimal::Minimal(int i) : _i(i), _mi(), m_accessible(0), m_bool(false)
 {
 }
 
@@ -19,6 +19,7 @@ Minimal::Minimal(const Minimal &m)
     _i = m._i;
     _mi = m._mi;
     m_accessible = m.m_accessible;
+    m_bool = m.m_bool;
 }
 
 
