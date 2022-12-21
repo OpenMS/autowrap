@@ -19,6 +19,7 @@ class Minimal {
         static const int m_const = -1;
         static const int m_constdef = -1;
         int m_accessible;
+        bool m_bool;
 
         Minimal();
         Minimal(Int);

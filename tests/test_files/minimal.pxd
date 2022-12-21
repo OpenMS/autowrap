@@ -22,6 +22,7 @@ cdef extern from "minimal.hpp":
         Minimal(Minimal &)
 
         int m_accessible
+        bool m_bool
         int m_const # wrap-constant
         const int m_constdef
 

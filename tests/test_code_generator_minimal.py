@@ -105,6 +105,10 @@ def test_minimal():
     minimal.m_accessible = 10
     assert minimal.m_accessible == 10
 
+    minimal.m_bool = True
+    assert isinstance(minimal.m_bool, bool)
+    assert minimal.m_bool == True
+
     try:
         minimal.m_const = 10
         assert False
