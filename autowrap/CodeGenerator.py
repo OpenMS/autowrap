@@ -2102,7 +2102,7 @@ class CodeGenerator(object):
                    |#cython: embedsignature=False
                    |from  enum            import Enum as _PyEnum
                    |from  cpython         cimport Py_buffer
-                   |from  cpython         import bool as pybool_t
+                   |from  cpython         cimport bool as pybool_t
                    |from  libcpp.string   cimport string as libcpp_string
                    |from  libcpp.string   cimport string as libcpp_utf8_string
                    |from  libcpp.string   cimport string as libcpp_utf8_output_string
