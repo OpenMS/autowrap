@@ -236,7 +236,7 @@ class IntegerConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return ""  #TODO can't we use int? Especially in py3 only.
+        return ""  # TODO can't we use int? Especially in py3 only.
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "int"
@@ -388,7 +388,7 @@ class EnumConverter(TypeConverterBase):
             #  int from the class "__" + self.enum.name
             return "int" 
         elif self.enum.cpp_decl.annotations.get("wrap-attach"):
-                return "_Py" + self.enum.name
+            return "_Py" + self.enum.name
         else:
             return self.enum.name
 
@@ -1999,7 +1999,7 @@ class StdStringConverter(TypeConverterBase):
     should be used to indicate the correct typing for the automatic
     conversion by Cython, which is set to bytes in autowrap.
     """
-    
+
     def get_base_types(self) -> List[str]:
         return ["libcpp_string"]
 
@@ -2088,7 +2088,7 @@ class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
         return ["libcpp_utf8_output_string"]
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        return "str" # python3
+        return "str"  # python3
 
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
