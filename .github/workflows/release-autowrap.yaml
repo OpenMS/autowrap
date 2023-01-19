@@ -42,7 +42,7 @@ jobs:
           packages_dir: ${{ github.workspace }}/dist
       
       - name: Parse version
-        run: echo "version=$(python3 -c 'from autowrap.version import __version__ as v; print("%d.%d.%d" % v)')" >> GITHUB_OUTPUT
+        run: echo "version=$(python3 -c 'from autowrap.version import __version__ as v; print("%d.%d.%d" % v)')" >> $GITHUB_OUTPUT
         id: version
         
       - name: Create github release
