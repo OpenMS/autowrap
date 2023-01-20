@@ -42,11 +42,11 @@ jobs:
           packages_dir: ${{ github.workspace }}/dist
       
       - name: Parse version
-        run: echo "::set-output name=version::$(python3 -c 'from autowrap.version import __version__ as v; print("%d.%d.%d" % v)')"
+        run: echo "version=$(python3 -c 'from autowrap.version import __version__ as v; print("%d.%d.%d" % v)')" >> $GITHUB_OUTPUT
         id: version
         
       - name: Create github release
-        uses: actions/create-release@v1.1.4
+        uses: softprops/action-gh-release@v1
         id: create_release
         with:
           draft: false
