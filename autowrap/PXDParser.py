@@ -88,7 +88,11 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     it = iter(lines)
     result = defaultdict(list)
     in_annot_context = False
+    beginning = True
     while it:
+        # once a comment started, we do not allow empty lines anymore
+        if beginning and not line.strip(): # continue until the first comment after method/class
+            continue
         if not in_annot_context:  # if we are coming from an annotation context, we already have the next line
             try:
                 line = next(it).strip()
