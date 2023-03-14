@@ -110,7 +110,8 @@ cdef extern from "*":
     expected = dict(a="3", b="4")
     c = Code()
     c.addRawList(["multiline", "for function"])
-    expected["wrap-doc"] = c
+    expected["wrap-doc"] = c.render()
+    mdcl.annotations["wrap-doc"] = mdcl.annotations["wrap-doc"].render()
     assert mdcl.annotations == expected
 
     expected = dict()
@@ -120,6 +121,7 @@ cdef extern from "*":
     expected["wrap-newwrap"] = "blabla"
     expected["secondnewwraprightafterthelast"] = "bla"
     expected["wrap-notext"] = True
+    cdcl.annotations["wrap-doc"] = cdcl.annotations["wrap-doc"].render()
     assert cdcl.annotations == expected
 
 
