@@ -37,6 +37,7 @@ import autowrap.PXDParser
 import os
 
 from autowrap.Types import CppType as CppType
+from autowrap.Code import Code as Code
 from .utils import expect_exception
 
 
@@ -94,7 +95,7 @@ cdef extern from "*":
     #  bla
     # wrap-notext
 
-        fun(int x,    # a:3
+        fun(int x,    # a:3 wrap-doc: Will be overwritten
             float y,  # b:4
            )
         # wrap-doc:
@@ -105,7 +106,17 @@ cdef extern from "*":
     """
     )
     (mdcl,) = cdcl.methods.get("fun")
-    assert mdcl.annotations == dict(a="3", b="4")
+    
+    expected = dict(a="3", b="4")
+    expected["wrap-doc"] = Code(["multiline", "for function"])
+    assert mdcl.annotations == expected
+
+    expected = dict()
+    expected["wrap-doc"] = ""
+    expected["wrap-newwrap"] = ""
+    expected["secondnewwraprightafterthelast"] = ""
+    expected["wrap-notext"] = ""
+    assert cdcl.annotations == expected
 
 
 def test_minimal():
