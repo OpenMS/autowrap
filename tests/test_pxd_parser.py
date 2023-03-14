@@ -95,7 +95,7 @@ cdef extern from "*":
     #  bla
     # wrap-notext
 
-        fun(int x,    # a:3 wrap-doc: Will be overwritten
+        fun(int x,    # a:3 wrap-doc:Will be overwritten
             float y,  # b:4
            )
         # wrap-doc:
@@ -106,7 +106,7 @@ cdef extern from "*":
     """
     )
     (mdcl,) = cdcl.methods.get("fun")
-    
+
     expected = dict(a="3", b="4")
     expected["wrap-doc"] = Code(["multiline", "for function"])
     assert mdcl.annotations == expected
