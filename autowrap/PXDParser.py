@@ -90,14 +90,16 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     in_annot_context = False
     beginning = True
     while it:
-        # once a comment started, we do not allow empty lines anymore
-        if beginning and not line.strip(): # continue until the first comment after method/class
-            continue
         if not in_annot_context:  # if we are coming from an annotation context, we already have the next line
             try:
                 line = next(it).strip()
             except StopIteration:
                 break
+                
+        # once a comment started, we do not allow empty lines anymore
+        if beginning and not line: # continue until the first comment after method/class
+            continue
+
         if line.startswith("#"):  # TODO should we force a certain indentation for the annots themselves?
             line = line[1:].strip()
             if line.endswith(":"):
