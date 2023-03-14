@@ -77,6 +77,37 @@ cdef extern from "*":
     assert mdcl.annotations == dict(a="3", b="4")
 
 
+def test_multiline_annotations_plus_afterdecl():
+    (cdcl,) = autowrap.PXDParser.parse_str(
+        """
+cdef extern from "*":
+
+    cdef cppclass T:
+    # wrap-doc:
+    #  Foobar wrap-wdsadas dsada
+    #  continue
+    # Not enough spaces
+    #  Enough spaces again
+    # wrap-newwrap:
+    #  blabla
+    # wrap-secondnewwraprightafterthelast:
+    #  bla
+    # wrap-notext
+
+        fun(int x,    # a:3
+            float y,  # b:4
+           )
+        # wrap-doc:
+        #  multiline
+        #  for function
+        
+
+    """
+    )
+    (mdcl,) = cdcl.methods.get("fun")
+    assert mdcl.annotations == dict(a="3", b="4")
+
+
 def test_minimal():
     (cld,) = autowrap.PXDParser.parse_str(
         """
