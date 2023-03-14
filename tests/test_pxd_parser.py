@@ -109,13 +109,13 @@ cdef extern from "*":
 
     expected = dict(a="3", b="4")
     c = Code()
-    c.extend(["multiline", "for function"])
+    c.addRawList(["multiline", "for function"])
     expected["wrap-doc"] = c
     assert mdcl.annotations == expected
 
     expected = dict()
     c = Code()
-    c.extend(["Foobar wrap-wdsadas dsada", "continue"])
+    c.addRawList(["Foobar wrap-wdsadas dsada", "continue"])
     expected["wrap-doc"] = c
     expected["wrap-newwrap"] = "blabla"
     expected["secondnewwraprightafterthelast"] = "bla"
