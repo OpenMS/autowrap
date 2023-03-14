@@ -101,6 +101,7 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
             continue
 
         if line.startswith("#"):  # TODO should we force a certain indentation for the annots themselves?
+            beginning = False
             line = line[1:].strip()
             if line.endswith(":"):
                 in_annot_context = True
