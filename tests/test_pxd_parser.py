@@ -117,9 +117,9 @@ cdef extern from "*":
     expected = dict()
     c = Code()
     c.addRawList(["Foobar wrap-wdsadas dsada", "continue"])
-    expected["wrap-doc"] = c
-    expected["wrap-newwrap"] = "blabla"
-    expected["secondnewwraprightafterthelast"] = "bla"
+    expected["wrap-doc"] = c.render()
+    expected["wrap-newwrap"] = ["blabla"]
+    expected["secondnewwraprightafterthelast"] = ["bla"]
     expected["wrap-notext"] = True
     cdcl.annotations["wrap-doc"] = cdcl.annotations["wrap-doc"].render()
     assert cdcl.annotations == expected
