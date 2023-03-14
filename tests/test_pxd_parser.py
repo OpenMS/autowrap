@@ -108,14 +108,18 @@ cdef extern from "*":
     (mdcl,) = cdcl.methods.get("fun")
 
     expected = dict(a="3", b="4")
-    expected["wrap-doc"] = Code(["multiline", "for function"])
+    c = Code()
+    c.extend(["multiline", "for function"])
+    expected["wrap-doc"] = c
     assert mdcl.annotations == expected
 
     expected = dict()
-    expected["wrap-doc"] = ""
-    expected["wrap-newwrap"] = ""
-    expected["secondnewwraprightafterthelast"] = ""
-    expected["wrap-notext"] = ""
+    c = Code()
+    c.extend(["Foobar wrap-wdsadas dsada", "continue"])
+    expected["wrap-doc"] = c
+    expected["wrap-newwrap"] = "blabla"
+    expected["secondnewwraprightafterthelast"] = "bla"
+    expected["wrap-notext"] = True
     assert cdcl.annotations == expected
 
 
