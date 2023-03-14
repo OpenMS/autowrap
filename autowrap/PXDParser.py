@@ -87,21 +87,28 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     """
     it = iter(lines)
     result = defaultdict(list)
+    in_annot_context = False
     while it:
-        try:
-            line = next(it).strip()
-        except StopIteration:
-            break
-        if not line:
-            continue
-        if line.startswith("#"):
+        if not in_annot_context:  # if we are coming from an annotation context, we already have the next line
+            try:
+                line = next(it).strip()
+            except StopIteration:
+                break
+        if line.startswith("#"):  # TODO should we force a certain indentation for the annots themselves?
             line = line[1:].strip()
             if line.endswith(":"):
+                in_annot_context = True
                 key = line.rstrip(":")
-                line = next(it).strip()
+                try:
+                    # TODO this strip leads to requiring a non-empty line. We might want to allow empty lines in the beginning of a doc
+                    line = next(it).strip()
+                except StopIteration:
+                    raise ValueError("No more lines after start of multiline annotation " + line)
+                if not line.startswith("#  "):
+                    raise ValueError("No comment lines with an indentation of at least two whitespaces after start of multiline annotation " + line)
                 while line.startswith("#  "):
                     if key == "wrap-doc":
-                        value = line[3:].rstrip()  # rstrip to keep indentation in docs
+                        value = line[3:].rstrip()  # only rstrip to keep indentation in docs
                     else:
                         value = line[1:].strip()
 
@@ -115,6 +122,7 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                     except StopIteration:
                         break
             else:
+                in_annot_context = False
                 key = line
                 result[key] = True
         else:

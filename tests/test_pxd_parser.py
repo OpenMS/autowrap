@@ -88,9 +88,9 @@ cdef extern from "*":
     #  Foobar wrap-wdsadas dsada
     #  continue
     # Not enough spaces
-    #  Enough spaces again
-    # wrap-newwrap:
-    #  blabla
+    #  Enough spaces again but after a line without colon
+      # wrap-newwrapshiftedcomment:
+      #       str w/ many spaces under an annot that is not wrap-doc
     # wrap-secondnewwraprightafterthelast:
     #  bla
     # wrap-notext
@@ -118,8 +118,10 @@ cdef extern from "*":
     c = Code()
     c.addRawList(["Foobar wrap-wdsadas dsada", "continue"])
     expected["wrap-doc"] = c.render()
-    expected["wrap-newwrap"] = ["blabla"]
-    expected["secondnewwraprightafterthelast"] = ["bla"]
+    expected["wrap-newwrapshiftedcomment"] = ["str w/ many spaces under an annot that is not wrap-doc"]
+    expected["wrap-secondnewwraprightafterthelast"] = ["bla"]
+    expected["Not enough spaces"] = True
+    expected["Enough spaces again but after a line without colon"] = True
     expected["wrap-notext"] = True
     cdcl.annotations["wrap-doc"] = cdcl.annotations["wrap-doc"].render()
     assert cdcl.annotations == expected
