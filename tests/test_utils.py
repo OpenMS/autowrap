@@ -33,7 +33,6 @@ import autowrap.Utils
 
 
 def test_hierarchy_detector0():
-
     dd = dict()
     dd[1] = [2]
     dd[2] = [1]
@@ -45,7 +44,6 @@ def test_hierarchy_detector0():
 
 
 def test_hierarchy_detector1():
-
     dd = dict()
     dd[1] = [2, 3]
     dd[2] = [3]
@@ -53,7 +51,6 @@ def test_hierarchy_detector1():
 
 
 def test_hierarchy_detector2():
-
     dd = dict()
     dd[1] = [2, 3]
     dd[2] = [3]
@@ -63,7 +60,6 @@ def test_hierarchy_detector2():
 
 
 def test_hierarchy_detector3():
-
     dd = dict()
     dd[1] = [2]
     dd[2] = [3, 4]

@@ -77,7 +77,6 @@ def test_enums():
 
 
 def test_number_conv():
-
     target = os.path.join(test_files, "number_conv.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
@@ -97,26 +96,19 @@ def test_number_conv():
     assert not math.isinf(mf2), "somehow overflow happened"
 
     repr_ = "%.13e" % mod.pass_full_precision(0.05)
-    assert repr_.startswith("5.0000000000000"), (
-        "loss of precision during conversion: %s" % repr_
-    )
+    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
 
     inl = [0.05]
     outl = mod.pass_full_precision_vec(inl)
 
     repr_ = "%.13e" % inl[0]
-    assert repr_.startswith("5.0000000000000"), (
-        "loss of precision during conversion: %s" % repr_
-    )
+    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
 
     repr_ = "%.13e" % outl[0]
-    assert repr_.startswith("5.0000000000000"), (
-        "loss of precision during conversion: %s" % repr_
-    )
+    assert repr_.startswith("5.0000000000000"), "loss of precision during conversion: %s" % repr_
 
 
 def test_shared_ptr():
-
     target = os.path.join(test_files, "shared_ptr_test.pyx")
     include_dirs = autowrap.CodeGenerator.fixed_include_dirs(True) + [test_files]
     m = autowrap.Utils.compile_and_import(
@@ -159,7 +151,6 @@ def test_shared_ptr():
 
 
 def test_inherited():
-
     target = os.path.join(test_files, "inherited.pyx")
     include_dirs = autowrap.parse_and_generate_code(
         ["inherited.pxd"], root=test_files, target=target, debug=True
@@ -181,7 +172,6 @@ def test_inherited():
 
 
 def test_templated():
-
     target = os.path.join(test_files, "templated_wrapper.pyx")
 
     decls, instance_map = autowrap.parse(["templated.pxd"], root=test_files)
@@ -201,9 +191,7 @@ def test_templated():
     cpp_source = os.path.join(test_files, "templated.cpp")
     cpp_sources = []
 
-    twrapped = autowrap.Utils.compile_and_import(
-        "twrapped", [target] + cpp_sources, include_dirs
-    )
+    twrapped = autowrap.Utils.compile_and_import("twrapped", [target] + cpp_sources, include_dirs)
     os.remove(target)
     assert twrapped.__name__ == "twrapped"
 
@@ -276,7 +264,6 @@ def test_templated():
 
 
 def test_gil_unlock():
-
     target = os.path.join(test_files, "gil_testing_wrapper.pyx")
     include_dirs = autowrap.parse_and_generate_code(
         ["gil_testing.pxd"], root=test_files, target=target, debug=True

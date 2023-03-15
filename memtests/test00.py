@@ -5,7 +5,6 @@ import os
 
 
 def show_mem(label):
-
     p = free_mem()
     p /= 1024.0 * 1024
     print(label + " ").ljust(50, "."), ": %8.2f MB" % p
@@ -26,20 +25,15 @@ def MemTester(name, use_assert=False):
 
 
 def test00():
-
     import autowrap
 
     source_files = os.path.join(os.path.dirname(__file__), "source_files")
 
     target = os.path.join(source_files, "chunk_wrapper.pyx")
 
-    autowrap.parse_and_generate_code(
-        "chunk.pxd", root=source_files, target=target, debug=True
-    )
+    autowrap.parse_and_generate_code("chunk.pxd", root=source_files, target=target, debug=True)
 
-    wrapped = autowrap.Utils.compile_and_import(
-        "chunk_wrapped", [target], [source_files]
-    )
+    wrapped = autowrap.Utils.compile_and_import("chunk_wrapped", [target], [source_files])
 
     os.remove(target)
     assert wrapped.__name__ == "chunk_wrapped", wrapped.__name__

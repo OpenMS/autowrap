@@ -80,7 +80,6 @@ setup(
 
 
 def compile_and_import(names, source_files, include_dirs=None, extra_files=[], **kws):
-
     if include_dirs is None:
         include_dirs = []
 
@@ -176,16 +175,13 @@ def test_full_lib(tmpdir):
     open("__init__.py", "a").close()
 
     try:
-
         mnames = ["moduleA", "moduleB", "moduleCD"]
 
         # Step 1: parse all header files
         PY_NUM_THREADS = 1
         pxd_files = ["A.pxd", "B.pxd", "C.pxd", "D.pxd"]
         full_pxd_files = [os.path.join(test_files, f) for f in pxd_files]
-        decls, instance_map = autowrap.parse(
-            full_pxd_files, ".", num_processes=int(PY_NUM_THREADS)
-        )
+        decls, instance_map = autowrap.parse(full_pxd_files, ".", num_processes=int(PY_NUM_THREADS))
 
         assert len(decls) == 13, len(decls)
 
@@ -208,8 +204,7 @@ def test_full_lib(tmpdir):
             "files": [full_pxd_files[1]],
         }
         masterDict[mnames[2]] = {
-            "decls": pxd_decl_mapping[full_pxd_files[2]]
-            + pxd_decl_mapping[full_pxd_files[3]],
+            "decls": pxd_decl_mapping[full_pxd_files[2]] + pxd_decl_mapping[full_pxd_files[3]],
             "addons": [],
             "files": [full_pxd_files[2]] + [full_pxd_files[3]],
         }
@@ -218,9 +213,7 @@ def test_full_lib(tmpdir):
         converters = []
         for modname in mnames:
             m_filename = "%s.pyx" % modname
-            cimports, manual_code = autowrap.Main.collect_manual_code(
-                masterDict[modname]["addons"]
-            )
+            cimports, manual_code = autowrap.Main.collect_manual_code(masterDict[modname]["addons"])
             autowrap.Main.register_converters(converters)
             autowrap_include_dirs = autowrap.generate_code(
                 masterDict[modname]["decls"],

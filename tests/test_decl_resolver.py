@@ -174,7 +174,6 @@ def test_simple_mp():
 
 
 def test_singular():
-
     resolved, map_ = _resolve("templates.pxd")
 
     assert len(resolved) == 2, len(resolved)
@@ -478,8 +477,10 @@ def test_cycle_detection_in_class_hierarchy2():
 
 
 def test_nested_templates():
-
-    (i1, i2,), map_ = DeclResolver.resolve_decls_from_string(
+    (
+        i1,
+        i2,
+    ), map_ = DeclResolver.resolve_decls_from_string(
         """
 from libcpp.string cimport string as libcpp_string
 from libcpp.vector cimport vector as libcpp_vector

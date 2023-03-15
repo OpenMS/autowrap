@@ -118,7 +118,9 @@ cdef extern from "*":
     c = Code()
     c.addRawList(["Foobar wrap-wdsadas dsada", "continue"])
     expected["wrap-doc"] = c.render()
-    expected["wrap-newwrapshiftedcomment"] = ["str w/ many spaces under an annot that is not wrap-doc"]
+    expected["wrap-newwrapshiftedcomment"] = [
+        "str w/ many spaces under an annot that is not wrap-doc"
+    ]
     expected["wrap-secondnewwraprightafterthelast"] = ["bla"]
     expected["Not enough spaces"] = True
     expected["Enough spaces again but after a line without colon"] = True
@@ -365,7 +367,6 @@ cdef extern from "A.h":
 
 
 def test_typedef2():
-
     (decl1,) = autowrap.PXDParser.parse_str(
         """
 cdef extern from "A.h":
@@ -378,7 +379,6 @@ cdef extern from "A.h":
 
 @expect_exception
 def test_doubleptr():
-
     autowrap.PXDParser.parse_str(
         """
 cdef extern from "A.h":
@@ -589,7 +589,6 @@ cdef extern from "*":
 
 
 def test_parsing_of_nested_template_args():
-
     td1, td2, td3 = autowrap.PXDParser.parse_str(
         """
 

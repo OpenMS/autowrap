@@ -7,7 +7,6 @@ if sys.platform == "linux2":
     libc = c.CDLL(ctypes.util.find_library("c"))
 
     class SysInfo(c.Structure):
-
         # for libc5: needs padding
         padding = 20 - 2 * c.sizeof(c.c_long) - c.sizeof(c.c_int)
 

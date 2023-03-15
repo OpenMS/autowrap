@@ -51,7 +51,6 @@ test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
 
 def test_stl_libcpp():
-
     target = os.path.join(test_files, "libcpp_stl_test.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(

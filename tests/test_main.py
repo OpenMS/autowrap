@@ -51,7 +51,6 @@ def test_from_command_line():
 
 
 def test_run():
-
     from autowrap.Main import run
     from autowrap.Utils import compile_and_import
 
@@ -69,9 +68,7 @@ def test_run():
     converters = [script_dir + "/test_files/converters"]
 
     extra_includes = [script_dir + "/test_files/includes"]
-    includes = run(
-        pxds, addons, converters, script_dir + "/test_files/out.pyx", extra_includes
-    )
+    includes = run(pxds, addons, converters, script_dir + "/test_files/out.pyx", extra_includes)
 
     mod = compile_and_import("out", [script_dir + "/test_files/out.cpp"], includes)
 
