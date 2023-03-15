@@ -63,7 +63,6 @@ setup(cmdclass = {'build_ext' : build_ext},
 
 
 def compile_and_import(name, source_files, include_dirs=None, **kws):
-
     if include_dirs is None:
         include_dirs = []
 
@@ -81,9 +80,7 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("\n")
     for source_file in source_files:
         if source_file[-4:] != ".pyx" and source_file[-4:] != ".cpp":
-            raise NameError(
-                "Expected pyx and/or cpp files as source files for compilation."
-            )
+            raise NameError("Expected pyx and/or cpp files as source files for compilation.")
         shutil.copy(source_file, tempdir)
         stub = source_file[:-4] + ".pyi"
         if os.path.exists(stub):
@@ -183,10 +180,9 @@ def find_cycle(graph_as_dict):
 
 
 def _check_for_cycles_in_mapping(mapping):
-
     # detect cylces in typedefs
     graph = dict()
-    for (alias, type_) in mapping.items():
+    for alias, type_ in mapping.items():
         successors = type_.all_occuring_base_types()
         graph[alias] = successors
 

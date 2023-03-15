@@ -40,7 +40,6 @@ from typing import AnyStr, Dict
 
 
 class CppType(object):
-
     CTYPES = ["int", "long", "double", "float", "char", "void"]
     LIBCPPTYPES = ["vector", "string", "list", "pair"]
 
@@ -95,7 +94,6 @@ class CppType(object):
         return copied
 
     def _transform(self, typemap, indent):
-
         aliased_t = typemap.get(self.base_type)
         if aliased_t is not None:
             if self.template_args is not None:
@@ -187,9 +185,7 @@ class CppType(object):
         if ptr and ref:
             raise NotImplementedError("can not handle ref and ptr together")
         if self.template_args is not None:
-            inner = "[%s]" % (
-                ",".join(t.toString(withConst) for t in self.template_args)
-            )
+            inner = "[%s]" % (",".join(t.toString(withConst) for t in self.template_args))
         else:
             inner = ""
         result = "%s%s%s %s%s %s" % (
@@ -237,9 +233,7 @@ class CppType(object):
     @staticmethod
     def _from_string(str_: AnyStr) -> CppType:
         # TODO is there a reason why "_" is not in the regex?
-        matched = re.match(
-            r"([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?", str_.strip()
-        )
+        matched = re.match(r"([a-zA-Z0-9][ a-zA-Z0-9_]*)(\[.*\])? *[&\*]?", str_.strip())
         if matched is None:
             raise ValueError("can not parse '%s'" % str_)
         base_type, t_str = matched.groups()

@@ -226,9 +226,7 @@ class ResolvedMethod(object):
     "resolved" means that template parameters are resolved.
     """
 
-    def __init__(
-        self, name, is_static, result_type, arguments, decl, instance_map, local_map
-    ):
+    def __init__(self, name, is_static, result_type, arguments, decl, instance_map, local_map):
         self.name: str = name
         self.is_static: bool = is_static
         self.result_type = result_type
@@ -246,15 +244,12 @@ class ResolvedMethod(object):
 
 
 class ResolvedFunction(ResolvedMethod):
-
     pass
 
 
 def resolve_decls_from_files(paths, root, num_processes=1, cython_warn_level=1):
     if num_processes > 1:
-        return resolve_decls_from_files_multi_thread(
-            paths, root, num_processes, cython_warn_level
-        )
+        return resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_warn_level)
     else:
         return resolve_decls_from_files_single_thread(paths, root, cython_warn_level)
 
@@ -269,9 +264,7 @@ def resolve_decls_from_files_single_thread(paths, root, cython_warn_level=1):
     return _resolve_decls(decls)
 
 
-def resolve_decls_from_files_multi_thread(
-    paths, root, num_processes, cython_warn_level=1
-):
+def resolve_decls_from_files_multi_thread(paths, root, num_processes, cython_warn_level=1):
     """Perform parsing with multiple threads
 
     This function distributes the work on `num_processes` processes and each
@@ -294,9 +287,7 @@ def resolve_decls_from_files_multi_thread(
             "parsing progress %s out of %s with %s processes"
             % (len(paths) - remaining, len(paths), num_processes),
         )
-        parse_pxd_file_warn = partial(
-            PXDParser.parse_pxd_file, warn_level=cython_warn_level
-        )
+        parse_pxd_file_warn = partial(PXDParser.parse_pxd_file, warn_level=cython_warn_level)
         res = pool.map(parse_pxd_file_warn, args)
         for r in res:
             decls.extend(r)
@@ -353,15 +344,11 @@ def _resolve_decls(decls):
 
     # add enum mapping to class instances mapping
     intersecting_names = set(instance_mapping) & set(enum_mapping)
-    assert not intersecting_names, (
-        "enum names and class decls overlap: %s" % intersecting_names
-    )
+    assert not intersecting_names, "enum names and class decls overlap: %s" % intersecting_names
 
     instance_mapping.update(enum_mapping)
 
-    functions = [
-        _resolve_function(f, instance_mapping, typedef_mapping) for f in function_decls
-    ]
+    functions = [_resolve_function(f, instance_mapping, typedef_mapping) for f in function_decls]
 
     enums = [ResolvedEnum(e) for e in enum_decls]
     typedefs = [ResolvedTypeDef(t) for t in typedef_decls]
@@ -444,7 +431,6 @@ def _resolve_inheritance(cdcl, class_decls, inheritance_graph):
 
 
 def _add_inherited_methods(cdcl, super_cld, used_parameters):
-
     logger.info("add_inherited_methods for %s" % cdcl.name)
 
     super_targs = super_cld.template_parameters
@@ -454,9 +440,7 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
 
     # check if parameterization signature matches:
     if len(used_parameters) != len(super_targs):
-        raise Exception(
-            "deriving %s from %s does not match" % (cdcl.name, super_cld.name)
-        )
+        raise Exception("deriving %s from %s does not match" % (cdcl.name, super_cld.name))
 
     # map template parameters in super class to the parameters used in current
     # class:
@@ -508,7 +492,6 @@ def _parse_all_wrap_instances_comments(class_decls: List[PXDParser.CppClassDecl]
 def _parse_wrap_instances_comments(
     cdcl: PXDParser.CppClassDecl,
 ) -> Dict[AnyStr, Tuple[Types.CppType, Dict]]:
-
     inst_annotations = cdcl.annotations.get("wrap-instances")
     r = dict()
     if cdcl.template_parameters is None and not inst_annotations:
@@ -555,9 +538,7 @@ def _resolve_class_decls(class_decls, typedef_mapping, instance_mapping):
     """ """
     all_resolved_classes = []
     for class_decl in class_decls:
-        resolved_classes = _resolve_class_decl(
-            class_decl, typedef_mapping, instance_mapping
-        )
+        resolved_classes = _resolve_class_decl(class_decl, typedef_mapping, instance_mapping)
         all_resolved_classes.extend(resolved_classes)
     return all_resolved_classes
 
@@ -577,15 +558,13 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
             r_attributes.append(_resolve_attribute(adcl, i_mapping, local_mapping))
 
         r_methods = []
-        for (mname, mdcls) in class_decl.methods.items():
+        for mname, mdcls in class_decl.methods.items():
             for mdcl in mdcls:
                 ignore = mdcl.annotations.get("wrap-ignore", False)
                 if ignore:
                     continue
                 if mdcl.name == class_decl.name:
-                    r_method = _resolve_constructor(
-                        cinst_name, mdcl, i_mapping, local_mapping
-                    )
+                    r_method = _resolve_constructor(cinst_name, mdcl, i_mapping, local_mapping)
                 else:
                     r_method = _resolve_method(mdcl, i_mapping, local_mapping)
                 r_methods.append(r_method)
@@ -598,9 +577,7 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
 
 def _build_local_typemap(t_param_mapping, typedef_mapping):
     # for resolving typedef'ed types in template instance args:
-    local_map = dict(
-        (n, t.transformed(typedef_mapping)) for (n, t) in t_param_mapping.items()
-    )
+    local_map = dict((n, t.transformed(typedef_mapping)) for (n, t) in t_param_mapping.items())
 
     # for resolving 'free' typedefs in method args and result types:
     if set(local_map) & set(typedef_mapping):
@@ -646,9 +623,7 @@ def _resolve_method_or_function(method_decl, instance_mapping, local_type_map, c
     """
     resolves aliases in return and argument types
     """
-    result_type = _resolve_alias(
-        method_decl.result_type, instance_mapping, local_type_map
-    )
+    result_type = _resolve_alias(method_decl.result_type, instance_mapping, local_type_map)
     args = []
     for arg_name, arg_type in method_decl.arguments:
         arg_type = _resolve_alias(arg_type, instance_mapping, local_type_map)
