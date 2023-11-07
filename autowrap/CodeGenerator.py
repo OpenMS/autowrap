@@ -105,8 +105,7 @@ def augment_arg_names(method):
     """replaces missing arg_names with "in_%d" % i, where i is the position
     number of the arg"""
     return [
-        (t, n if (n and n != "self") else "in_%d" % i)
-        for i, (n, t) in enumerate(method.arguments)
+        (t, n if (n and n != "self") else "in_%d" % i) for i, (n, t) in enumerate(method.arguments)
     ]
 
 
@@ -115,9 +114,7 @@ def fixed_include_dirs(include_boost: bool) -> List[AnyStr]:
 
     boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
     data = pkg_resources.resource_filename("autowrap", "data_files")
-    autowrap_internal = pkg_resources.resource_filename(
-        "autowrap", "data_files/autowrap"
-    )
+    autowrap_internal = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
 
     if not include_boost:
         return [autowrap_internal]
@@ -184,7 +181,6 @@ class CodeGenerator(object):
         add_relative=False,
         shared_ptr="boost",
     ):
-
         self.pxd_dir = None
         if all_decl is None:
             all_decl = dict()
@@ -229,24 +225,17 @@ class CodeGenerator(object):
         self.all_decl = all_decl
         # If other external decls were passed:
         if len(all_decl) > 0:
-
             self.all_typedefs = []
             self.all_enums = []
             self.all_functions = []
             self.all_classes = []
             for modname, v in all_decl.items():
-                self.all_classes.extend(
-                    [d for d in v["decls"] if isinstance(d, ResolvedClass)]
-                )
-                self.all_enums.extend(
-                    [d for d in v["decls"] if isinstance(d, ResolvedEnum)]
-                )
+                self.all_classes.extend([d for d in v["decls"] if isinstance(d, ResolvedClass)])
+                self.all_enums.extend([d for d in v["decls"] if isinstance(d, ResolvedEnum)])
                 self.all_functions.extend(
                     [d for d in v["decls"] if isinstance(d, ResolvedFunction)]
                 )
-                self.all_typedefs.extend(
-                    [d for d in v["decls"] if isinstance(d, ResolvedTypeDef)]
-                )
+                self.all_typedefs.extend([d for d in v["decls"] if isinstance(d, ResolvedTypeDef)])
 
             self.all_resolved = []
             self.all_resolved.extend(sorted(self.all_typedefs, key=lambda d: d.name))
@@ -315,9 +304,7 @@ class CodeGenerator(object):
 
         def create_for(
             clazz: Type[ResolvedDecl],
-            method: Callable[
-                [ResolvedDecl, Union[CodeDict, Tuple[CodeDict, CodeDict]]], None
-            ],
+            method: Callable[[ResolvedDecl, Union[CodeDict, Tuple[CodeDict, CodeDict]]], None],
             codez: Union[CodeDict, Tuple[CodeDict, CodeDict]],
         ):
             for resolved in self.resolved:
@@ -334,9 +321,7 @@ class CodeGenerator(object):
             self.create_wrapper_for_enum,
             (self.enum_codes, self.typestub_codes),
         )
-        create_for(
-            ResolvedFunction, self.create_wrapper_for_free_function, self.class_codes
-        )
+        create_for(ResolvedFunction, self.create_wrapper_for_free_function, self.class_codes)
 
         # resolve extra
         for clz, codes in self.class_codes_extra.items():
@@ -533,7 +518,7 @@ class CodeGenerator(object):
                 doc=doc,
             )
 
-        for (optname, value) in decl.items:
+        for optname, value in decl.items:
             code.add("    $name = $value", name=optname, value=value)
             stub_code.add("    $name : int", name=optname, value=value)
 
@@ -569,9 +554,7 @@ class CodeGenerator(object):
             self.typestub_codes[class_name].add(stub_code)
             self.class_codes[class_name].add(code)
 
-    def create_wrapper_for_class(
-        self, r_class: ResolvedClass, out_codes: CodeDict
-    ) -> None:
+    def create_wrapper_for_class(self, r_class: ResolvedClass, out_codes: CodeDict) -> None:
         """Create Cython code for a single class
 
         Note that the cdef class definition and the member variables go into
@@ -604,9 +587,8 @@ class CodeGenerator(object):
         docstring = "Cython implementation of %s\n" % cy_type
         docstring += special_class_doc % locals()
         if r_class.cpp_decl.annotations.get("wrap-inherits", "") != "":
-            docstring += (
-                "      -- Inherits from %s\n"
-                % r_class.cpp_decl.annotations.get("wrap-inherits", "")
+            docstring += "      -- Inherits from %s\n" % r_class.cpp_decl.annotations.get(
+                "wrap-inherits", ""
             )
 
         extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", None)
@@ -722,9 +704,7 @@ class CodeGenerator(object):
             )
 
         if "wrap-buffer-protocol" in r_class.cpp_decl.annotations:
-            buffer_parts = r_class.cpp_decl.annotations["wrap-buffer-protocol"][
-                0
-            ].split(",")
+            buffer_parts = r_class.cpp_decl.annotations["wrap-buffer-protocol"][0].split(",")
             buffer_sourcer = buffer_parts[0]
             buffer_type = buffer_parts[1]
             buffer_sizer = buffer_parts[2]
@@ -802,14 +782,12 @@ class CodeGenerator(object):
 
         iterators, non_iter_methods = self.filterout_iterators(r_class.methods)
 
-        for (name, methods) in non_iter_methods.items():
+        for name, methods in non_iter_methods.items():
             if name == r_class.name:
                 codes, stub_code = self.create_wrapper_for_constructor(r_class, methods)
                 cons_created = True
             else:
-                codes, stub_code = self.create_wrapper_for_method(
-                    r_class, name, methods
-                )
+                codes, stub_code = self.create_wrapper_for_method(r_class, name, methods)
             typestub_code.add(stub_code)
             for ci in codes:
                 class_code.add(ci)
@@ -837,9 +815,7 @@ class CodeGenerator(object):
 
         for class_name in r_class.cpp_decl.annotations.get("wrap-attach", []):
             code = Code()
-            display_name = r_class.cpp_decl.annotations.get("wrap-as", [r_class.name])[
-                0
-            ]
+            display_name = r_class.cpp_decl.annotations.get("wrap-as", [r_class.name])[0]
             code.add("%s = %s" % (display_name, "__" + r_class.name))
             tmp = self.class_codes_extra.get(class_name, [])
             tmp.append(code)
@@ -899,7 +875,6 @@ class CodeGenerator(object):
     def _create_overloaded_method_decl(
         self, py_name, dispatched_m_names, methods, use_return, use_kwargs=False
     ):
-
         L.info("   create wrapper decl for overloaded method %s" % py_name)
 
         method_code = Code()
@@ -956,9 +931,7 @@ class CodeGenerator(object):
 
         first_iteration = True
 
-        for (dispatched_m_name, method, sig) in zip(
-            dispatched_m_names, methods, signatures
-        ):
+        for dispatched_m_name, method, sig in zip(dispatched_m_names, methods, signatures):
             args = augment_arg_names(method)
             return_type = self.cr.get(method.result_type).matching_python_type_full(
                 method.result_type
@@ -1023,7 +996,6 @@ class CodeGenerator(object):
         return method_code, typestub_code
 
     def create_wrapper_for_method(self, cdcl, py_name, methods):
-
         if py_name.startswith("operator"):
             __, __, op = py_name.partition("operator")
             if op in ["!=", "==", "<", "<=", ">", ">="]:
@@ -1041,87 +1013,59 @@ class CodeGenerator(object):
                 return [code_get, code_set], typestub_get
             elif op == "+":
                 assert len(methods) == 1, "overloaded operator+ not supported"
-                code, stubs = self.create_special_op_method(
-                    "add", "+", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_op_method("add", "+", cdcl, methods[0])
                 return [code], stubs
             elif op == "-":
                 assert len(methods) == 1, "overloaded operator- not supported"
-                code, stubs = self.create_special_op_method(
-                    "sub", "-", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_op_method("sub", "-", cdcl, methods[0])
                 return [code], stubs
             elif op == "*":
                 assert len(methods) == 1, "overloaded operator* not supported"
-                code, stubs = self.create_special_op_method(
-                    "mul", "*", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_op_method("mul", "*", cdcl, methods[0])
                 return [code], stubs
             elif op == "/":
                 assert len(methods) == 1, "overloaded operator/ not supported"
-                code, stubs = self.create_special_op_method(
-                    "truediv", "/", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_op_method("truediv", "/", cdcl, methods[0])
                 return [code], stubs
             elif op == "<<":
                 assert len(methods) == 1, "overloaded operator<< not supported"
-                code, stubs = self.create_special_op_method(
-                    "lshift", "<<", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_op_method("lshift", "<<", cdcl, methods[0])
                 return [code], stubs
             elif op == ">>":
                 assert len(methods) == 1, "overloaded operator>> not supported"
-                code, stubs = self.create_special_op_method(
-                    "rshift", ">>", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_op_method("rshift", ">>", cdcl, methods[0])
                 return [code], stubs
             elif op == "%":
                 assert len(methods) == 1, "overloaded operator% no supported"
-                code, stubs = self.create_special_op_method(
-                    "mod", "%", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_op_method("mod", "%", cdcl, methods[0])
                 return [code], stubs
             elif op == "+=":
                 assert len(methods) == 1, "overloaded operator+= not supported"
-                code, stubs = self.create_special_iop_method(
-                    "iadd", "+=", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_iop_method("iadd", "+=", cdcl, methods[0])
                 return [code], stubs
             elif op == "-=":
                 assert len(methods) == 1, "overloaded operator-= not supported"
-                code, stubs = self.create_special_iop_method(
-                    "isub", "-=", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_iop_method("isub", "-=", cdcl, methods[0])
                 return [code], stubs
             elif op == "*=":
                 assert len(methods) == 1, "overloaded operator*= not supported"
-                code, stubs = self.create_special_iop_method(
-                    "imul", "*=", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_iop_method("imul", "*=", cdcl, methods[0])
                 return [code], stubs
             elif op == "/=":
                 assert len(methods) == 1, "overloaded operator/= not supported"
-                code, stubs = self.create_special_iop_method(
-                    "itruediv", "/=", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_iop_method("itruediv", "/=", cdcl, methods[0])
                 return [code], stubs
             elif op == "%=":
                 assert len(methods) == 1, "overloaded operator%= not supported"
-                code, stubs = self.create_special_iop_method(
-                    "imod", "%=", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_iop_method("imod", "%=", cdcl, methods[0])
                 return [code], stubs
             elif op == "<<=":
                 assert len(methods) == 1, "overloaded operator<<= not supported"
-                code, stubs = self.create_special_iop_method(
-                    "ilshift", "<<=", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_iop_method("ilshift", "<<=", cdcl, methods[0])
                 return [code], stubs
             elif op == ">>=":
                 assert len(methods) == 1, "overloaded operator>>= not supported"
-                code, stubs = self.create_special_iop_method(
-                    "irshift", ">>=", cdcl, methods[0]
-                )
+                code, stubs = self.create_special_iop_method("irshift", ">>=", cdcl, methods[0])
                 return [code], stubs
 
         if len(methods) == 1:
@@ -1136,7 +1080,7 @@ class CodeGenerator(object):
             #    -> 2) force method renaming
             codes = []
             dispatched_m_names = []
-            for (i, method) in enumerate(methods):
+            for i, method in enumerate(methods):
                 dispatched_m_name = "_%s_%d" % (py_name, i)
                 dispatched_m_names.append(dispatched_m_name)
                 # We should not need typestubs for the dispatched parent method
@@ -1151,9 +1095,7 @@ class CodeGenerator(object):
             codes.append(code)
             return codes, typestubs
 
-    def _create_fun_decl_and_input_conversion(
-        self, code, py_name, method, is_free_fun=False
-    ):
+    def _create_fun_decl_and_input_conversion(self, code, py_name, method, is_free_fun=False):
         """Creates the function declarations and the input conversion to C++
         and the output conversion back to Python.
 
@@ -1193,9 +1135,7 @@ class CodeGenerator(object):
 
         py_signature = ", ".join(py_signature_parts)
         py_typing_signature = ", ".join(py_typing_signature_parts)
-        return_type = self.cr.get(method.result_type).matching_python_type_full(
-            method.result_type
-        )
+        return_type = self.cr.get(method.result_type).matching_python_type_full(method.result_type)
         if return_type:
             return_type = "-> " + return_type
         else:
@@ -1384,7 +1324,6 @@ class CodeGenerator(object):
         return code, stubs
 
     def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, method):
-
         L.info("   create wrapper for %s ('%s')" % (py_name, method))
         meth_code = Code()
 
@@ -1441,7 +1380,6 @@ class CodeGenerator(object):
         to_py_code = out_converter.output_conversion(res_t, "_r", "py_result")
 
         if to_py_code is not None:  # for non void return value
-
             if isinstance(to_py_code, basestring):
                 to_py_code = "    %s" % to_py_code
             indented.add(to_py_code)
@@ -1452,9 +1390,7 @@ class CodeGenerator(object):
 
         return meth_code, stubs
 
-    def create_wrapper_for_free_function(
-        self, decl: ResolvedFunction, out_codes: CodeDict
-    ) -> None:
+    def create_wrapper_for_free_function(self, decl: ResolvedFunction, out_codes: CodeDict) -> None:
         """
         Creates wrapping code for a free function
         :param decl: The ResolvedFunction decl to be wrapped
@@ -1509,9 +1445,7 @@ class CodeGenerator(object):
             cleanups,
             in_types,
             stubs,
-        ) = self._create_fun_decl_and_input_conversion(
-            fun_code, name, decl, is_free_fun=True
-        )
+        ) = self._create_fun_decl_and_input_conversion(fun_code, name, decl, is_free_fun=True)
 
         call_args_str = ", ".join(call_args)
         mangled_name = "_" + orig_cpp_name + "_" + decl.pxd_import_path
@@ -1542,7 +1476,6 @@ class CodeGenerator(object):
 
         out_vars = ["py_result"]
         if to_py_code is not None:  # for non void return value
-
             if isinstance(to_py_code, basestring):
                 to_py_code = "    %s" % to_py_code
             fun_code.add(to_py_code)
@@ -1563,10 +1496,7 @@ class CodeGenerator(object):
             real_constructors.append(cons)
 
         if len(real_constructors) == 1:
-
-            if real_constructors[0].cpp_decl.annotations.get(
-                "wrap-pass-constructor", False
-            ):
+            if real_constructors[0].cpp_decl.annotations.get("wrap-pass-constructor", False):
                 # We have a single constructor that cannot be called (except
                 # with the magic keyword), simply check the magic word
                 cons_code = Code()
@@ -1590,7 +1520,7 @@ class CodeGenerator(object):
 
         else:
             dispatched_cons_names = []
-            for (i, constructor) in enumerate(real_constructors):
+            for i, constructor in enumerate(real_constructors):
                 dispatched_cons_name = "_init_%d" % i
                 dispatched_cons_names.append(dispatched_cons_name)
                 # we don't need to generate the individual stubs here since
@@ -1607,9 +1537,7 @@ class CodeGenerator(object):
             typestub_code.extend(typestub)
         return codes, typestub_code
 
-    def create_wrapper_for_nonoverloaded_constructor(
-        self, class_decl, py_name, cons_decl
-    ):
+    def create_wrapper_for_nonoverloaded_constructor(self, class_decl, py_name, cons_decl):
         """py_name is the name for constructor, as we dispatch overloaded
         constructors in __init__() the name of the method calling the
         C++ constructor is variable and given by `py_name`.
@@ -1651,19 +1579,13 @@ class CodeGenerator(object):
 
         return cons_code, stub_code
 
-    def create_special_op_method(
-        self, pyname, symbol, cdcl: ResolvedClass, mdcl: ResolvedMethod
-    ):
+    def create_special_op_method(self, pyname, symbol, cdcl: ResolvedClass, mdcl: ResolvedMethod):
         L.info(f"   create wrapper for operator{symbol}")
         assert len(mdcl.arguments) == 1, f"operator{symbol} has wrong signature"
         ((__, t),) = mdcl.arguments
         name = cdcl.name
-        assert (
-            t.base_type == name
-        ), f"can only apply operator{symbol} to object of same type"
-        assert (
-            mdcl.result_type.base_type == name
-        ), f"can only return same type for operator{symbol}"
+        assert t.base_type == name, f"can only apply operator{symbol} to object of same type"
+        assert mdcl.result_type.base_type == name, f"can only return same type for operator{symbol}"
         cy_t = self.cr.cython_type(t)
         code = Code()
         # TODO use make_shared instead of new if C++11 available
@@ -1695,12 +1617,8 @@ class CodeGenerator(object):
         assert len(mdcl.arguments) == 1, f"operator{symbol} has wrong signature"
         ((__, t),) = mdcl.arguments
         name = cdcl.name
-        assert (
-            t.base_type == name
-        ), f"can only apply operator{symbol} to object of same type"
-        assert (
-            mdcl.result_type.base_type == name
-        ), f"can only return same type for operator{symbol}"
+        assert t.base_type == name, f"can only apply operator{symbol} to object of same type"
+        assert mdcl.result_type.base_type == name, f"can only return same type for operator{symbol}"
         cy_t = self.cr.cython_type(t)
         code = Code()
         code.add(
@@ -1801,7 +1719,6 @@ class CodeGenerator(object):
         out_var = "py_result"
         to_py_code = out_converter.output_conversion(res_t, "_r", out_var)
         if to_py_code is not None:  # for non void return value
-
             if isinstance(to_py_code, basestring):
                 to_py_code = "    %s" % to_py_code
             meth_code.add(to_py_code)
@@ -1816,9 +1733,7 @@ class CodeGenerator(object):
         #   Object& operator[](size_t k) -> get and set is implemented
         res_t = mdcl.result_type
         if not res_t.is_ref:
-            L.info(
-                "   skip set wrapper for operator[] since return value is not a reference"
-            )
+            L.info("   skip set wrapper for operator[] since return value is not a reference")
             return Code(), Code()
 
         res_t_base = res_t.base_type
@@ -1896,7 +1811,7 @@ class CodeGenerator(object):
                 raise Exception("wrap-cast annotation not unique for %s" % mdcl)
             py_names.append(name)
         codes = []
-        for (py_name, mdecl) in zip(py_names, mdecls):
+        for py_name, mdecl in zip(py_names, mdecls):
             code = Code()
             res_t = mdecl.result_type
             cy_t = self.cr.cython_type(res_t)
@@ -2033,9 +1948,7 @@ class CodeGenerator(object):
                 mname = "." + module
 
             if os.path.basename(self.target_path).split(".pyx")[0] != module:
-
                 for resolved in self.all_decl[module]["decls"]:
-
                     # We need to import classes and enums that could be used in
                     # the Cython code in the current module
 
@@ -2051,7 +1964,6 @@ class CodeGenerator(object):
                         else:
                             code.add("from $mname cimport $name", locals())
                     if resolved.__class__ in (ResolvedClass,):
-
                         # Skip classes that explicitely should not have a pxd
                         # import statement (abstract base classes and the like)
                         if not resolved.no_pxd_import:

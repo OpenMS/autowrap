@@ -37,6 +37,7 @@ import autowrap.PXDParser
 import os
 
 from autowrap.Types import CppType as CppType
+from autowrap.Code import Code as Code
 from .utils import expect_exception
 
 
@@ -75,6 +76,57 @@ cdef extern from "*":
     )
     (mdcl,) = cdcl.methods.get("fun")
     assert mdcl.annotations == dict(a="3", b="4")
+
+
+def test_multiline_annotations_plus_afterdecl():
+    (cdcl,) = autowrap.PXDParser.parse_str(
+        """
+cdef extern from "*":
+
+    cdef cppclass T:
+    # wrap-doc:
+    #  Foobar wrap-wdsadas dsada
+    #  continue
+    # Not enough spaces
+    #  Enough spaces again but after a line without colon
+      # wrap-newwrapshiftedcomment:
+      #       str w/ many spaces under an annot that is not wrap-doc
+    # wrap-secondnewwraprightafterthelast:
+    #  bla
+    # wrap-notext
+
+        fun(int x,    # a:3 wrap-doc:Will be overwritten
+            float y,  # b:4
+           )
+        # wrap-doc:
+        #  multiline
+        #  for function
+        
+
+    """
+    )
+    (mdcl,) = cdcl.methods.get("fun")
+
+    expected = dict(a="3", b="4")
+    c = Code()
+    c.addRawList(["multiline", "for function"])
+    expected["wrap-doc"] = c.render()
+    mdcl.annotations["wrap-doc"] = mdcl.annotations["wrap-doc"].render()
+    assert mdcl.annotations == expected
+
+    expected = dict()
+    c = Code()
+    c.addRawList(["Foobar wrap-wdsadas dsada", "continue"])
+    expected["wrap-doc"] = c.render()
+    expected["wrap-newwrapshiftedcomment"] = [
+        "str w/ many spaces under an annot that is not wrap-doc"
+    ]
+    expected["wrap-secondnewwraprightafterthelast"] = ["bla"]
+    expected["Not enough spaces"] = True
+    expected["Enough spaces again but after a line without colon"] = True
+    expected["wrap-notext"] = True
+    cdcl.annotations["wrap-doc"] = cdcl.annotations["wrap-doc"].render()
+    assert cdcl.annotations == expected
 
 
 def test_minimal():
@@ -315,7 +367,6 @@ cdef extern from "A.h":
 
 
 def test_typedef2():
-
     (decl1,) = autowrap.PXDParser.parse_str(
         """
 cdef extern from "A.h":
@@ -328,7 +379,6 @@ cdef extern from "A.h":
 
 @expect_exception
 def test_doubleptr():
-
     autowrap.PXDParser.parse_str(
         """
 cdef extern from "A.h":
@@ -539,7 +589,6 @@ cdef extern from "*":
 
 
 def test_parsing_of_nested_template_args():
-
     td1, td2, td3 = autowrap.PXDParser.parse_str(
         """
 

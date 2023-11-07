@@ -51,9 +51,7 @@ The autowrap process consists of two steps:
 def parse(files, root, num_processes=1, cython_warn_level=1):
     import autowrap.DeclResolver
 
-    return DeclResolver.resolve_decls_from_files(
-        files, root, num_processes, cython_warn_level
-    )
+    return DeclResolver.resolve_decls_from_files(files, root, num_processes, cython_warn_level)
 
 
 def generate_code(
@@ -100,11 +98,7 @@ def parse_and_generate_code(
     extra_cimports=None,
     include_boost=True,
 ):
-
-    print(
-        "Autowrap will start to parse and generate code. "
-        "Will parse %s files" % len(files)
-    )
+    print("Autowrap will start to parse and generate code. " "Will parse %s files" % len(files))
     decls, instance_map = parse(files, root)
     print("Done parsing the files, will generate the code...")
     return generate_code(

@@ -51,7 +51,6 @@ test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
 
 def test_minimal():
-
     from autowrap.ConversionProvider import TypeConverterBase, special_converters
 
     class SpecialIntConverter(TypeConverterBase):
@@ -85,9 +84,7 @@ def test_minimal():
         ["minimal.pxd", "minimal_td.pxd"], root=test_files, target=target, debug=True
     )
     cpp_source = os.path.join(test_files, "minimal.cpp")
-    wrapped = autowrap.Utils.compile_and_import(
-        "wrapped", [target, cpp_source], include_dirs
-    )
+    wrapped = autowrap.Utils.compile_and_import("wrapped", [target, cpp_source], include_dirs)
     os.remove(target)
     assert wrapped.__name__ == "wrapped"
 

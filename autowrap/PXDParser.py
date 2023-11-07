@@ -87,27 +87,46 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     """
     it = iter(lines)
     result = defaultdict(list)
+    in_annot_context = False
+    beginning = True
     while it:
-        try:
-            line = next(it).strip()
-        except StopIteration:
-            break
-        if not line:
+        if (
+            not in_annot_context
+        ):  # if we are coming from an annotation context, we already have the next line
+            try:
+                line = next(it).strip()
+            except StopIteration:
+                break
+
+        # once a comment started, we do not allow empty lines anymore
+        if beginning and not line:  # continue until the first comment after method/class
             continue
-        if line.startswith("#"):
+
+        if line.startswith(
+            "#"
+        ):  # TODO should we force a certain indentation for the annots themselves?
+            beginning = False
             line = line[1:].strip()
             if line.endswith(":"):
+                in_annot_context = True
                 key = line.rstrip(":")
-                line = next(it).strip()
+                try:
+                    # TODO this strip leads to requiring a non-empty line. We might want to allow empty lines in the beginning of a doc
+                    line = next(it).strip()
+                except StopIteration:
+                    raise ValueError("No more lines after start of multiline annotation " + line)
+                if not line.startswith("#  "):
+                    raise ValueError(
+                        "No comment lines with an indentation of at least two whitespaces after start of multiline annotation "
+                        + line
+                    )
                 while line.startswith("#  "):
                     if key == "wrap-doc":
-                        value = line[3:].rstrip()  # rstrip to keep indentation in docs
+                        value = line[3:].rstrip()  # only rstrip to keep indentation in docs
                     else:
                         value = line[1:].strip()
 
-                    if (
-                        key == "wrap-doc" or value
-                    ):  # don't add empty non wrap-doc values
+                    if key == "wrap-doc" or value:  # don't add empty non wrap-doc values
                         result[key].append(value)
 
                     try:
@@ -115,6 +134,7 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                     except StopIteration:
                         break
             else:
+                in_annot_context = False
                 key = line
                 result[key] = True
         else:
@@ -132,9 +152,7 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     return result
 
 
-def parse_line_annotations(
-    node: Cython.Compiler.Nodes.Node, lines: Sequence[str]
-) -> AnnotDict:
+def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str]) -> AnnotDict:
     """
     parses comments at end of line, in most cases the lines of
     method declarations.
@@ -165,9 +183,11 @@ def parse_line_annotations(
                         continue
                     if ":" in f:
                         key, value = f.split(":", 1)
-                        assert value.strip(), (
-                            "empty value (or excess space?) for key '%s' in line '%s'"
-                            % (key, line.rstrip())
+                        assert (
+                            value.strip()
+                        ), "empty value (or excess space?) for key '%s' in line '%s'" % (
+                            key,
+                            line.rstrip(),
                         )
                         result[key] = value
                     elif f.find("wrap-") != -1:
@@ -209,9 +229,7 @@ def _extract_template_args(node: Cython.Compiler.Nodes.Node) -> CppType:
     elif isinstance(node.index, NameNode):
         args = [CppType(node.index.name)]
     else:
-        raise Exception(
-            "Can not handle node %s in template argument declaration" % node.index
-        )
+        raise Exception("Can not handle node %s in template argument declaration" % node.index)
     return CppType(name, args)
 
 
@@ -238,13 +256,9 @@ def _extract_type(
                 is_ptr = isinstance(arg_decl, CPtrDeclaratorNode)
                 is_ref = isinstance(arg_decl, CReferenceDeclaratorNode)
                 is_unsigned = (
-                    hasattr(arg_node.base_type, "signed")
-                    and not arg_node.base_type.signed
+                    hasattr(arg_node.base_type, "signed") and not arg_node.base_type.signed
                 )
-                is_long = (
-                    hasattr(arg_node.base_type, "longness")
-                    and arg_node.base_type.longness
-                )
+                is_long = hasattr(arg_node.base_type, "longness") and arg_node.base_type.longness
 
                 # Handle const template arguments which do not have a name
                 # themselves, only their base types have name attribute (see
@@ -258,9 +272,7 @@ def _extract_type(
                 args = None
                 template_args = getattr(arg_node.base_type, "positional_args", None)
                 if template_args:
-                    args = [
-                        _extract_type(t.base_type, t.declarator) for t in template_args
-                    ]
+                    args = [_extract_type(t.base_type, t.declarator) for t in template_args]
                     name = arg_node.base_type.base_type_node.name
                 ttype = CppType(
                     name,
@@ -305,9 +317,7 @@ def _extract_type(
 
 
 class BaseDecl(object):
-    def __init__(
-        self, name: str, annotations: Dict[str, Union[bool, List[str]]], pxd_path: str
-    ):
+    def __init__(self, name: str, annotations: Dict[str, Union[bool, List[str]]], pxd_path: str):
         self.name: str = name
         self.annotations: AnnotDict = annotations
         self.pxd_path: str = pxd_path
@@ -370,18 +380,14 @@ class CppClassDecl(BaseDecl):
     attributes: List[CppAttributeDecl]
     template_parameters: List[AnyStr]
 
-    def __init__(
-        self, name, template_parameters, methods, attributes, annotations, pxd_path
-    ):
+    def __init__(self, name, template_parameters, methods, attributes, annotations, pxd_path):
         super(CppClassDecl, self).__init__(name, annotations, pxd_path)
         self.methods = methods
         self.attributes = attributes
         self.template_parameters = template_parameters
 
     @classmethod
-    def parseTree(
-        cls, node: Cython.Compiler.Nodes.CppClassNode, lines: Collection[str], pxd_path
-    ):
+    def parseTree(cls, node: Cython.Compiler.Nodes.CppClassNode, lines: Collection[str], pxd_path):
         name = node.name
         template_parameters = node.templates
         if (
@@ -430,9 +436,7 @@ class CppClassDecl(BaseDecl):
                     # attributes.append(decl)
                     pass
 
-        return cls(
-            name, template_parameters, methods, attributes, class_annotations, pxd_path
-        )
+        return cls(name, template_parameters, methods, attributes, class_annotations, pxd_path)
 
     def __str__(self):
         rv = ["cppclass %s: " % (self.name,)]
@@ -525,9 +529,7 @@ class MethodOrAttributeDecl(object):
             # Handle regular declarations
             return CppAttributeDecl(decl.name, result_type, annotations, pxd_path)
 
-        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(
-            decl.base, CFuncDeclaratorNode
-        ):
+        if isinstance(decl, CPtrDeclaratorNode) and not isinstance(decl.base, CFuncDeclaratorNode):
             # Handle raw pointer declarations (call with base name)
             return CppAttributeDecl(decl.base.name, result_type, annotations, pxd_path)
 
@@ -561,9 +563,7 @@ class MethodOrAttributeDecl(object):
             tt = _extract_type(arg.base_type, argdecl)
             args.append((argname, tt))
 
-        return CppMethodOrFunctionDecl(
-            result_type, name, args, is_static, annotations, pxd_path
-        )
+        return CppMethodOrFunctionDecl(result_type, name, args, is_static, annotations, pxd_path)
 
 
 def parse_str(what):
@@ -657,7 +657,6 @@ def parse_pxd_file(path, warn_level=1):
 
 
 if __name__ == "__main__":
-
     import sys
 
     if len(sys.argv) == 3:

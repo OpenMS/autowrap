@@ -154,7 +154,6 @@ def test_base_type_collecting():
 
 
 def test_transform():
-
     A = CppType("A")
     B = CppType("B")
     X = CppType("X")
