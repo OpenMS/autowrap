@@ -47,9 +47,9 @@ cdef extern from "libcpp_stl_test.hpp":
         libcpp_vector[IntWrapper*] process_6_vector(IntWrapper* in_)
 
         int process_7_map(libcpp_map[IntWrapper, int] & in_)
-        libcpp_map[IntWrapper, int] process_8_map(int in_)
+        libcpp_map[IntWrapper, int] process_8_map(int in_) nogil # wrap-with-no-gil
 
-        int process_9_map(libcpp_map[int, IntWrapper] & in_)
+        int process_9_map(libcpp_map[int, IntWrapper] & in_) nogil # wrap-with-no-gil
         libcpp_map[int, IntWrapper] process_10_map(int in_)
 
         shared_ptr[const IntWrapper] process_11_const()

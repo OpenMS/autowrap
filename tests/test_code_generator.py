@@ -279,6 +279,8 @@ def test_gil_unlock():
     g = wrapped.GilTesting(b"Jack")
     g.do_something(b"How are you?")
     assert g.get_greetings() == b"Hello Jack, How are you?"
+    g.do_something2(b"How are you2?")
+    assert g.get_greetings() == b"Hello Jack, How are you2?"
 
 
 def test_automatic_string_conversion():

@@ -229,7 +229,7 @@ class ResolvedMethod(object):
     def __init__(self, name, is_static, result_type, arguments, decl, instance_map, local_map):
         self.name: str = name
         self.is_static: bool = is_static
-        self.result_type = result_type
+        self.result_type: Types.CppType = result_type
         self.arguments = arguments
         self.cpp_decl = decl
         self.wrap_ignore: bool = decl.annotations.get("wrap-ignore", False)

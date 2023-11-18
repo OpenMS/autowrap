@@ -68,11 +68,12 @@ def test_minimal():
 
         def input_conversion(self, cpp_type, argument_var, arg_num):
             code = ""
-            # here we inject special behavoir for testing if this converter
+            # here we inject special behavior for testing if this converter
             # was called !
             call_as = "(1 + <int>%s)" % argument_var
+            decl = ("cdef int %s = %s" % ("c_" + argument_var, call_as), "c_" + argument_var)
             cleanup = ""
-            return code, call_as, cleanup
+            return code, call_as, cleanup, decl
 
         def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
             return "%s = <int>%s" % (output_py_var, input_cpp_var)
