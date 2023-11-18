@@ -1196,18 +1196,22 @@ class CodeGenerator(object):
         call_args = []
         checks = []
         in_types = []
+        decls = []
+        decl_calls = []
         for arg_num, (t, n) in enumerate(args):
             # get new ConversionProvider using the converter registry
             converter = self.cr.get(t)
             converter.cr = self.cr
             py_type = converter.matching_python_type(t)
             py_typing_type = converter.matching_python_type_full(t)
-            conv_code, call_as, cleanup = converter.input_conversion(t, n, arg_num)
+            conv_code, call_as, cleanup, (decl, decl_call) = converter.input_conversion(t, n, arg_num)
             py_signature_parts.append("%s %s " % (py_type, n))
             py_typing_signature_parts.append("%s: %s " % (n, py_typing_type))
             input_conversion_codes.append(conv_code)
             cleanups.append(cleanup)
             call_args.append(call_as)
+            decls.append(decl)
+            decl_calls.append(decl_call)
             in_types.append(t)
             checks.append((n, converter.type_check_expression(t, n)))
 
@@ -1298,7 +1302,7 @@ class CodeGenerator(object):
         for conv_code in input_conversion_codes:
             code.add(conv_code)
 
-        return call_args, cleanups, in_types, stub
+        return call_args, cleanups, in_types, stub, decls, decl_calls
 
     def _create_wrapper_for_attribute(self, attribute):
         code = Code()
@@ -1315,7 +1319,7 @@ class CodeGenerator(object):
         converter = self.cr.get(t)
         py_type = converter.matching_python_type(t)
         py_typing_type = converter.matching_python_type_full(t)
-        conv_code, call_as, cleanup = converter.input_conversion(t, name, 0)
+        conv_code, call_as, cleanup, (decl, decl_call) = converter.input_conversion(t, name, 0)
 
         code.add(
             """
@@ -1410,7 +1414,7 @@ class CodeGenerator(object):
         code.add("        return py_result")
         return code, stubs
 
-    def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, method, inherited_from=None):
+    def create_wrapper_for_nonoverloaded_method(self, cdcl, py_name, method: ResolvedMethod, inherited_from=None):
         L.info("   create wrapper for %s ('%s')" % (py_name, method))
         meth_code = Code()
 
@@ -1419,10 +1423,22 @@ class CodeGenerator(object):
             cleanups,
             in_types,
             stubs,
+            decls,
+            decl_calls
         ) = self._create_fun_decl_and_input_conversion(meth_code, py_name, method, inherited_from=inherited_from)
+
+        init = ""
+        c_call_args = []
+        for decl, decl_call in zip(decls, decl_calls):
+            init = init + decl + "\n"
+            c_call_args.append(decl_call)
 
         # call wrapped method and convert result value back to python
         cpp_name = method.cpp_decl.name
+
+        if method.with_nogil and init.strip("\n"):
+            call_args = c_call_args
+
         call_args_str = ", ".join(call_args)
         if method.is_static:
             cy_call_str = "%s.%s(%s)" % (
@@ -1435,13 +1451,15 @@ class CodeGenerator(object):
 
         res_t = method.result_type
         out_converter = self.cr.get(res_t)
-        full_call_stmt = out_converter.call_method(res_t, cy_call_str)
+        full_call_stmt = out_converter.call_method(res_t, cy_call_str, True, not method.with_nogil)
 
         if method.with_nogil:
             meth_code.add(
                 """
+              |    $init
               |    with nogil:
-              """
+              |
+              """, locals()
             )
             indented = Code()
         else:
@@ -1457,6 +1475,10 @@ class CodeGenerator(object):
         else:
             indented.add(full_call_stmt)
 
+        if method.with_nogil:
+            meth_code.add(indented)
+            indented = meth_code
+
         for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
@@ -1471,9 +1493,6 @@ class CodeGenerator(object):
                 to_py_code = "    %s" % to_py_code
             indented.add(to_py_code)
             indented.add("    return py_result")
-
-        if method.with_nogil:
-            meth_code.add(indented)
 
         return meth_code, stubs
 
@@ -1532,6 +1551,8 @@ class CodeGenerator(object):
             cleanups,
             in_types,
             stubs,
+            decls,
+            decl_calls
         ) = self._create_fun_decl_and_input_conversion(fun_code, name, decl, is_free_fun=True)
 
         call_args_str = ", ".join(call_args)
@@ -1639,6 +1660,8 @@ class CodeGenerator(object):
             cleanups,
             in_types,
             stubs,
+            decls,
+            decl_calls
         ) = self._create_fun_decl_and_input_conversion(cons_code, py_name, cons_decl)
 
         stub_code.extend(stubs)
@@ -1763,6 +1786,8 @@ class CodeGenerator(object):
             cleanups,
             (in_type,),
             stubs,
+            decls,
+            decl_calls
         ) = self._create_fun_decl_and_input_conversion(meth_code, "__getitem__", mdcl)
 
         # Only apply integer-specific bounds checking for integral types
@@ -1892,7 +1917,7 @@ class CodeGenerator(object):
         #  CppObject[ idx ] = value
         #
         cy_call_str = "deref(self.inst.get())[%s]" % call_arg
-        code, call_as, cleanup = out_converter.input_conversion(res_t, value_arg, 0)
+        code, call_as, cleanup, (decl, decl_call) = out_converter.input_conversion(res_t, value_arg, 0)
         meth_code.add(
             """
                  |    $cy_call_str = $call_as
