@@ -978,7 +978,7 @@ class StdMapConverter(TypeConverterBase):
 
     def input_conversion(
         self, cpp_type: CppType, argument_var: str, arg_num: int
-    ) -> Tuple[Code, str, Code | str, Tuple[str, str]]:
+    ) -> Tuple[Code, str, Union[Code, str], Tuple[str, str]]:
         tt_key, tt_value = cpp_type.template_args
         temp_var = "v%d" % arg_num
 
@@ -1341,7 +1341,7 @@ class StdSetConverter(TypeConverterBase):
 
     def input_conversion(
         self, cpp_type: CppType, argument_var: str, arg_num: int
-    ) -> Tuple[Code, str, Code | str, Tuple[str, str]]:
+    ) -> Tuple[Code, str, Union[Code, str], Tuple[str, str]]:
         (tt,) = cpp_type.template_args
         temp_var = "v%d" % arg_num
         inner = self.converters.cython_type(tt)
@@ -1781,7 +1781,7 @@ class StdVectorConverter(TypeConverterBase):
         topmost_code: Optional[Code] = None,
         bottommost_code: Optional[Code] = None,
         recursion_cnt: int = 0,
-    ) -> Tuple[Code, str, Code | str, Tuple[str, str]]:
+    ) -> Tuple[Code, str, Union[Code, str], Tuple[str, str]]:
         """Do the input conversion for a std::vector<T>
 
         In this case, the template argument is tt (or "inner").
@@ -2250,7 +2250,7 @@ class SharedPtrConverter(TypeConverterBase):
 
     def input_conversion(
         self, cpp_type: CppType, argument_var: str, arg_num: int
-    ) -> Tuple[Code, str, Union[Code, str]]:
+    ) -> Tuple[Code, str, Union[Code, str], Tuple[str, str]]:
         (tt,) = cpp_type.template_args
         inner = self.converters.cython_type(tt)
         # Cython expects us to get a C++ type (we cannot just stick var.inst into the function)
