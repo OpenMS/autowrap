@@ -4,6 +4,19 @@ This document is displayed because you either opened an issue or you want to pro
 When interacting with other developers, users or anyone else from our community, please adhere to
 [the OpenMS CODE OF CONDUCT](https://github.com/OpenMS/OpenMS/blob/develop/CODE_OF_CONDUCT.md)
 
+# Setting up dev environment
+Install conda/mamba (or use a venv).
+Install git.
+Install a C++ compiler.
+
+```bash
+git clone https://github.com/OpenMS/autowrap
+cd autowrap
+mamba create -n autowrap -f environment.yml
+python -m pytest
+```
+
+
 # Reporting an Issue:
 
 You most likely came here to:
@@ -18,10 +31,10 @@ If you found a bug, e.g. an autowrap tool crashes during code generation, it is 
   - how you installed autowrap (e.g., from source, pip)
   - a description on how to reproduce the bug
   - relevant tool output (e.g., error messages)
-  - data to repoduce the bug (If possible as a GitHub gist. Other platforms like Dropbox, Google Drive links also work. If you can't share the data publicly please indicate this and we will contact you in private.)
+  - data to reproduce the bug (If possible as a GitHub gist. Other platforms like Dropbox, Google Drive links also work. If you can't share the data publicly please indicate this and we will contact you in private.)
 
-If you are an official OpenMS team meber:
-  - label your issue using github labels (e.g. as: question, defect) that indicate the type of issue and which components of autowrap (blue labels) are affected. The severity is usually assigned by OpenMS maintainers and used internally to e.g. indicate if a bug is a blocker for a new release.
+If you are an official OpenMS team member:
+  - label your issue using GitHub labels (e.g. as: question, defect) that indicate the type of issue and which components of autowrap (blue labels) are affected. The severity is usually assigned by OpenMS maintainers and used internally to e.g. indicate if a bug is a blocker for a new release.
 
 # Opening a Pull Request
 

@@ -55,7 +55,7 @@ from autowrap.Code import Code as Code
 from collections import defaultdict
 from .tools import OrderKeepingDictionary
 
-AnnotDict = Dict[str, Union[bool, List[str]]]
+AnnotDict = Dict[str, Union[bool, List[str], Code]]
 
 """
 Methods in this module use Cythons Parser to build an Cython syntax tree
@@ -81,6 +81,7 @@ def parse_class_annotations(node, lines: Collection[str]) -> AnnotDict:
     return _parse_multiline_annotations(lines[start_at_line:])
 
 
+# TODO we should really unify the value type of the return value here to either Code or list of str.
 def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     """does the hard work for parse_class_annotations, and is
     better testable than this.
@@ -317,7 +318,7 @@ def _extract_type(
 
 
 class BaseDecl(object):
-    def __init__(self, name: str, annotations: Dict[str, Union[bool, List[str]]], pxd_path: str):
+    def __init__(self, name: str, annotations: Dict[str, Union[bool, List[str], Code]], pxd_path: str):
         self.name: str = name
         self.annotations: AnnotDict = annotations
         self.pxd_path: str = pxd_path
