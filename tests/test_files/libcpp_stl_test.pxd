@@ -4,6 +4,7 @@ from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
 from libcpp.pair  cimport pair  as libcpp_pair 
 from libcpp.map  cimport map  as libcpp_map 
+from libcpp.unordered_map cimport unordered_map as libcpp_unordered_map
 from smart_ptr cimport shared_ptr
 
 cdef extern from "libcpp_stl_test.hpp":
@@ -25,6 +26,11 @@ cdef extern from "libcpp_stl_test.hpp":
         libcpp_map[int, double] map_
         MapWrapper()
         MapWrapper(MapWrapper&)
+
+    cdef cppclass UnorderedMapWrapper:
+        libcpp_unordered_map[int, double] un_map_
+        UnorderedMapWrapper()
+        UnorderedMapWrapper(UnorderedMapWrapper&)
 
     cdef cppclass LibCppSTLVector:
 
@@ -58,3 +64,14 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_13_map(libcpp_map[IntWrapper, libcpp_vector[int] ]& in_)
 
         int process_14_map(libcpp_map[IntWrapper, IntVecWrapper]& in_)
+
+        int process_15_unordered_map(libcpp_unordered_map[IntWrapper, int] & in_)
+        # libcpp_unordered_map[IntWrapper, int] process_16_unordered_map(int in_)
+
+        int process_17_unordered_map(libcpp_unordered_map[int, IntWrapper] & in_)
+        libcpp_unordered_map[int, IntWrapper] process_18_unordered_map(int in_)
+
+        int process_19_unordered_map(libcpp_unordered_map[libcpp_string, IntWrapper ]& in_)
+        int process_20_unordered_map(libcpp_unordered_map[IntWrapper, libcpp_vector[int] ]& in_)
+
+        int process_21_unordered_map(libcpp_unordered_map[IntWrapper, IntVecWrapper]& in_)
