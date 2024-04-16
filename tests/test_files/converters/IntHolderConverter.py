@@ -16,19 +16,20 @@ class IntHolderConverter(TypeConverterBase):
         return "isinstance(%s, int)" % (argument_var,)
 
     def input_conversion(self, cpp_type, argument_var, arg_num):
-        # here we inject special behavoir for testing if this converter
+        # here we inject special behavior for testing if this converter
         # was called !
         ih_name = "ih_" + argument_var
         code = Code().add(
             """
-                          |cdef _Holder[int] $ih_name
-                          |$ih_name.set(<int>$argument_var)
-                          """,
+                  |cdef _Holder[int] $ih_name
+                  |$ih_name.set(<int>$argument_var)
+                  """,
             locals(),
         )
         call_as = "(%s)" % ih_name
+        decl = ("", call_as)
         cleanup = ""
-        return code, call_as, cleanup
+        return code, call_as, cleanup, decl
 
     def output_conversion(self, cpp_type, input_cpp_var, output_py_var):
         return "%s = <int>(%s.get())" % (output_py_var, input_cpp_var)

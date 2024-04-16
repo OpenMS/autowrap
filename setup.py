@@ -9,7 +9,7 @@ except ImportError:
 from setuptools import find_packages, setup
 
 versionfile = "autowrap/version.py"
-try:
+try:  # py2
     execfile(versionfile)
 except:
     exec(open(versionfile).read())

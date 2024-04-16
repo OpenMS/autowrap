@@ -1,9 +1,0 @@
-Activate the project in "development mode" first:
-
-   $ python setup.py develop
-
-For testing run
-
-   $ py.test tests
-
-from the projects directory.
