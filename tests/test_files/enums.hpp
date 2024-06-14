@@ -21,3 +21,12 @@ public:
        }
     };
 };
+
+namespace Foo2
+{
+
+    enum class MyEnum
+    {
+      A,C,D
+    };
+};
