@@ -232,7 +232,7 @@ class IntegerConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return ""  # TODO can't we use int? Especially in py3 only.
+        return "int"
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "int"

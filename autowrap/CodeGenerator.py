@@ -1653,10 +1653,16 @@ class CodeGenerator(object):
 
         return code, stubs
 
-    # TODO allow getitem for any key. Not just size_t and similar.
+
     def create_special_getitem_method(self, mdcl):
         L.info("   create get wrapper for operator[]")
         meth_code = Code()
+
+        if len(mdcl.arguments) != 1:
+            raise Exception("getitem method currently only supports a single argument.")
+
+        # TODO make sure it is a basic type (class or builtin, no list/dict)
+        ctype, _ = mdcl.arguments[0]
 
         (
             (call_arg,),
@@ -1667,19 +1673,10 @@ class CodeGenerator(object):
 
         meth_code.add(
             """
-                     |    cdef long _idx = $call_arg
+                     |    cdef $ctype _idx = $call_arg
                      """,
             locals(),
         )
-
-        if in_type.is_unsigned:
-            meth_code.add(
-                """
-                        |    if _idx < 0:
-                        |        raise IndexError("invalid index %d" % _idx)
-                        """,
-                locals(),
-            )
 
         size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
         if size_guard:
@@ -1726,15 +1723,24 @@ class CodeGenerator(object):
 
         return meth_code, stubs
 
-    # TODO allow setitem for any key. Not just size_t and similar.
+
     def create_special_setitem_method(self, mdcl):
         # Note: setting will only work with a ref signature
         #   Object operator[](size_t k)  -> only get is implemented
         #   Object& operator[](size_t k) -> get and set is implemented
+
         res_t = mdcl.result_type
         if not res_t.is_ref:
             L.info("   skip set wrapper for operator[] since return value is not a reference")
             return Code(), Code()
+
+        if len(mdcl.arguments) != 1:
+            raise Exception("setitem method currently only supports a single argument.")
+
+        # TODO make sure it is a basic type (class or builtin, no list/dict)
+        ctype_in, _ = mdcl.arguments[0]
+        in_converter = self.cr.get(ctype_in)
+        in_t_py = in_converter.matching_python_type_full(ctype_in)
 
         res_t_base = res_t.base_type
 
@@ -1753,7 +1759,7 @@ class CodeGenerator(object):
 
         stub_code.add(
             """
-                     |def __setitem__(self, key: int, value: $res_t_typing ) -> None:
+                     |def __setitem__(self, key: $in_t_py , value: $res_t_typing ) -> None:
                      |    \"\"\"$docstring\"\"\"
                      |    ...
                      """,
@@ -1765,7 +1771,7 @@ class CodeGenerator(object):
 
         meth_code.add(
             """
-                     |def __setitem__(self, key, $res_t_base value):
+                     |def __setitem__(self, $ctype_in key, $res_t_base value):
                      |    \"\"\"$docstring\"\"\"
                      |    assert isinstance(key, int), 'arg index wrong type'
                      |
