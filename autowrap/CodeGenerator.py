@@ -1662,7 +1662,7 @@ class CodeGenerator(object):
             raise Exception("getitem method currently only supports a single argument.")
 
         # TODO make sure it is a basic type (class or builtin, no list/dict)
-        ctype, _ = mdcl.arguments[0]
+        _, ctype = mdcl.arguments[0]
 
         (
             (call_arg,),
@@ -1738,7 +1738,7 @@ class CodeGenerator(object):
             raise Exception("setitem method currently only supports a single argument.")
 
         # TODO make sure it is a basic type (class or builtin, no list/dict)
-        ctype_in, _ = mdcl.arguments[0]
+        _, ctype = mdcl.arguments[0]
         in_converter = self.cr.get(ctype_in)
         in_t_py = in_converter.matching_python_type_full(ctype_in)
 
