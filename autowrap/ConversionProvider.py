@@ -40,22 +40,6 @@ from autowrap.Code import Code
 import logging as L
 import string
 
-try:
-    unicode = unicode
-except NameError:
-    # 'unicode' is undefined, must be Python 3
-    str = str
-    unicode = str
-    bytes = bytes
-    basestring = (str, bytes)
-else:
-    # 'unicode' exists, must be Python 2
-    str = str
-    unicode = unicode
-    bytes = str
-    basestring = basestring
-
-
 def mangle(s):
     s = s.replace("(", "_l_")
     s = s.replace(")", "_r_")
@@ -2036,7 +2020,7 @@ class StdStringUnicodeConverter(StdStringConverter):
         # Cython understands it and uses the Py_IsUnicodeCheck
         code.add(
             """
-            |if isinstance($argument_var, unicode):
+            |if isinstance($argument_var, str):
             |    $argument_var = $argument_var.encode('utf-8')
             """,
             locals(),
@@ -2222,7 +2206,7 @@ class ConverterRegistry(object):
             return False
 
     def cython_type(self, type_: Union[CppType, AnyStr]) -> CppType:
-        if isinstance(type_, basestring):
+        if isinstance(type_, (str, bytes)):
             type_ = CppType(type_)
         return type_.transformed(self.instance_mapping)
 

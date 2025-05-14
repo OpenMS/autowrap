@@ -792,7 +792,7 @@ cdef extern from "":
     )
 
     assert A.name == "A"
-    (method,) = A.methods.values()[0]
+    (method,) = list(A.methods.values())[0]
     assert method.name == "A"
     assert len(method.arguments) == 0
 
