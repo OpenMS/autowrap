@@ -53,7 +53,6 @@ from autowrap import logger
 from autowrap.Code import Code as Code
 
 from collections import defaultdict
-from .tools import OrderKeepingDictionary
 
 AnnotDict = Dict[str, Union[bool, List[str]]]
 
@@ -143,7 +142,7 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     # make sure wrap-doc is always a Code object
     if "wrap-doc" in result.keys():
         doc = result.get("wrap-doc", [])
-        if isinstance(doc, basestring):
+        if isinstance(doc, (str, bytes)):
             doc = [doc]
 
         c = Code()
@@ -208,7 +207,7 @@ def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str
         # make sure wrap-doc is always a Code object
         if "wrap-doc" in result.keys():
             doc = result.get("wrap-doc", [])
-            if isinstance(doc, basestring):
+            if isinstance(doc, (str, bytes)):
                 doc = [doc]
 
             c = Code()
@@ -401,7 +400,7 @@ class CppClassDecl(BaseDecl):
             template_parameters = [t[0] for t in template_parameters]
 
         class_annotations = parse_class_annotations(node, lines)
-        methods = OrderKeepingDictionary()
+        methods = dict()
         attributes = []
         for att in node.attributes:
             decl = None
@@ -583,10 +582,10 @@ def parse_pxd_file(path, warn_level=1):
 
     options, sources = parse_command_line(["--cplus", path])
 
-    import pkg_resources
+    from importlib.resources import files
 
     # TODO sync with CodeGenerator.py function fixed_include_dirs
-    data = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
+    data = files("autowrap").joinpath("data_files/autowrap")
     options.include_path = [data]
     options.language_level = sys.version_info.major
 

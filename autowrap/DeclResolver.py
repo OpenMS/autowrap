@@ -37,7 +37,6 @@ import autowrap.Types as Types
 import autowrap.Utils as Utils
 import os
 from collections import defaultdict
-from autowrap.tools import OrderKeepingDictionary
 
 
 __doc__ = """
@@ -170,7 +169,7 @@ class ResolvedClass(object):
     """
 
     name: str
-    methods: OrderKeepingDictionary
+    methods: dict
     attributes: List[ResolvedAttribute]
     cpp_decl: PXDParser.CppClassDecl
     ns: AnyStr
@@ -185,7 +184,7 @@ class ResolvedClass(object):
     def __init__(self, name, methods, attributes, decl, instance_map, local_map):
         self.name: str = name
         # resolve overloads
-        self.methods: OrderKeepingDictionary = OrderKeepingDictionary()
+        self.methods: dict = {}
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
         self.attributes = attributes
