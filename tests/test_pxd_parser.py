@@ -344,7 +344,7 @@ cdef extern from "A.h":
     )
     assert inst1.name == "A"
     assert inst1.template_parameters == ["B", "C"]
-    assert inst1.methods.keys() == ["run"]
+    assert list(inst1.methods.keys()) == ["run"]
     assert inst2.name == "C"
     assert inst2.template_parameters == [
         "E",
