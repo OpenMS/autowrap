@@ -420,7 +420,7 @@ class CppClassDecl(BaseDecl):
             )
             raise ValueError(
                 f"Failed to parse class annotations in {pxd_path}:{node.pos[1]}"
-                ) from e
+            ) from e
         methods = dict()
         attributes = []
         for att in node.attributes:
