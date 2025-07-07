@@ -612,3 +612,33 @@ def test_multiline_docs():
     assert result["wrap-doc"].content[0] == "first line"
     assert result["wrap-doc"].content[1] == "  second line indented"
     assert result["wrap-doc"].content[2] == ""
+
+
+def test_consecutive_multiline_annotations():
+    """Test that consecutive multiline annotations separated by empty lines are parsed correctly."""
+    (cdcl,) = autowrap.PXDParser.parse_str(
+        """
+cdef extern from "*":
+    cdef cppclass LinearInterpolation[V,W]:
+        # wrap-doc:
+        #  Linear interpolation for gridded data
+        #  Supports various interpolation methods
+        
+        # wrap-instances:
+        #   LinearInterpolation := LinearInterpolation[double, double]
+        
+        pass
+    """
+    )
+    
+    # Verify both annotations were parsed
+    assert "wrap-doc" in cdcl.annotations
+    assert "wrap-instances" in cdcl.annotations
+    
+    # Verify wrap-doc content
+    expected_doc_content = ["Linear interpolation for gridded data", "Supports various interpolation methods"]
+    assert cdcl.annotations["wrap-doc"].content == expected_doc_content
+    
+    # Verify wrap-instances content
+    expected_instances = ["LinearInterpolation := LinearInterpolation[double, double]"]
+    assert cdcl.annotations["wrap-instances"] == expected_instances

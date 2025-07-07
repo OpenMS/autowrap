@@ -137,7 +137,11 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                 key = line
                 result[key] = True
         else:
-            break
+            # Allow empty lines between annotations, but stop on non-empty non-comment lines
+            if line.strip():
+                break
+            # Continue parsing if it's just an empty line
+            in_annot_context = False
 
     # make sure wrap-doc is always a Code object
     if "wrap-doc" in result.keys():
