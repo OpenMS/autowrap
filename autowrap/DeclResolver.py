@@ -162,7 +162,6 @@ def get_namespace(pxd, default_namespace: str) -> str:
 
 
 class ResolvedClass(object):
-
     """contains all info for generating wrapping code of
     resolved class.
     "Resolved" means that template parameters and typedefs are resolved.
@@ -219,7 +218,6 @@ class ResolvedClass(object):
 
 
 class ResolvedMethod(object):
-
     """contains all info for generating wrapping code of
     resolved class.
     "resolved" means that template parameters are resolved.

@@ -40,6 +40,7 @@ from autowrap.Code import Code
 import logging as L
 import string
 
+
 def mangle(s):
     s = s.replace("(", "_l_")
     s = s.replace(")", "_r_")

@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import string
 import re
 
+
 class Code(object):
     def __init__(self):
         self.content: List[Union[Code, str]] = []

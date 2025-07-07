@@ -32,7 +32,14 @@ setup(
     long_description="""
 autowrap automatically generates python extension modules for wrapping
 C++ libraries based on annotated (commented) cython pxd files. """,
-    packages=find_namespace_packages(include=['autowrap*'], exclude=['autowrap.data_files.examples', 'autowrap.data_files.tests', 'autowrap.data_files.ez_setup']),
+    packages=find_namespace_packages(
+        include=["autowrap*"],
+        exclude=[
+            "autowrap.data_files.examples",
+            "autowrap.data_files.tests",
+            "autowrap.data_files.ez_setup",
+        ],
+    ),
     include_package_data=True,  # see MANIFEST.in
     zip_safe=False,
     test_suite="nose.collector",
