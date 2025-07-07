@@ -418,7 +418,9 @@ class CppClassDecl(BaseDecl):
             logger.warning(
                 "Failed to parse class annotations in %s:%d: %s", pxd_path, node.pos[1], e
             )
-            raise ValueError(f"Failed to parse class annotations in {pxd_path}:{node.pos[1]}") from e
+            raise ValueError(
+                f"Failed to parse class annotations in {pxd_path}:{node.pos[1]}"
+                ) from e
         methods = dict()
         attributes = []
         for att in node.attributes:
