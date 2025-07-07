@@ -1,8 +1,9 @@
-#Generated with autowrap 0.22.10 and Cython (Parser) 0.29.32
+#Generated with autowrap 0.22.12 and Cython (Parser) 3.1.0
 #cython: c_string_encoding=ascii
 #cython: embedsignature=False
-from  enum             import Enum as _PyEnum
-from cpython cimport Py_buffer
+from  enum            import Enum as _PyEnum
+from  cpython         cimport Py_buffer
+from  cpython         cimport bool as pybool_t
 from  libcpp.string   cimport string as libcpp_string
 from  libcpp.string   cimport string as libcpp_utf8_string
 from  libcpp.string   cimport string as libcpp_utf8_output_string

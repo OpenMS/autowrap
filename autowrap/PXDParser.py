@@ -116,8 +116,8 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                     raise ValueError("No more lines after start of multiline annotation " + line)
                 if not line.startswith("#  "):
                     raise ValueError(
-                        "No comment lines with an indentation of at least two whitespaces after start of multiline annotation "
-                        + line
+                        "No comment lines with an indentation of at least two whitespaces after start of multiline annotation:\n "
+                        + line + "\n"
                     )
                 while line.startswith("#  "):
                     if key == "wrap-doc":
@@ -199,7 +199,11 @@ def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str
         except Exception as e:
             raise ValueError("Cannot parse '{}'".format(line)) from e
     # check for multi line annotations after method declaration
-    additional_annotations = _parse_multiline_annotations(lines[end:])
+    try:
+        additional_annotations = _parse_multiline_annotations(lines[end:])
+    except ValueError as e:
+        raise ValueError(f"Failed to parse additional annotations on line {end}\n{e}")
+
     # add multi line doc string to result (overwrites single line wrap-doc, if exists)
     if "wrap-doc" in additional_annotations.keys():
         result["wrap-doc"] = additional_annotations["wrap-doc"]
@@ -335,7 +339,11 @@ class CTypeDefDecl(BaseDecl):
         else:
             new_name = decl.name
         type_ = _extract_type(node.base_type, node.declarator)
-        annotations = parse_line_annotations(node, lines)
+        try:
+            annotations = parse_line_annotations(node, lines)
+        except ValueError as e:
+            logger.warning(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}\n{e}")
+            raise ValueError(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}\n{e}")
         return cls(new_name, type_, annotations, pxd_path)
 
 
@@ -354,8 +362,13 @@ class EnumDecl(BaseDecl):
             scoped = node.scoped
         except AttributeError:
             scoped = False
-        annotations = parse_class_annotations(node, lines)
+        try:
+            annotations = parse_class_annotations(node, lines)
+        except ValueError as e:
+            logger.warning(" Failed to parse annotations in %s:%d\n%s", pxd_path, node.pos[1], e)
+            raise ValueError(f"Failed to parse annotations in {pxd_path}:{node.pos[1]}\n{e}")
         current_value = 0
+
         for item in node.items:
             if item.value is not None:
                 current_value = item.value.constant_result
@@ -398,8 +411,11 @@ class CppClassDecl(BaseDecl):
             # template argument is required or optional.
             # For now, convert to pre-0.24 format
             template_parameters = [t[0] for t in template_parameters]
-
-        class_annotations = parse_class_annotations(node, lines)
+        try:
+            class_annotations = parse_class_annotations(node, lines)
+        except ValueError as e:
+            logger.warning(" Failed to parse class annotations in %s:%d\n%s", pxd_path, node.pos[1], e)
+            raise ValueError(f"Failed to parse class annotations in {pxd_path}:{node.pos[1]}\n{e}")
         methods = dict()
         attributes = []
         for att in node.attributes:
@@ -514,8 +530,12 @@ class MethodOrAttributeDecl(object):
     def parseTree(cls, node: CVarDefNode, lines, pxd_path):
         if isinstance(node, CEnumDefNode):
             return EnumDecl.parseTree(node, lines, pxd_path)
+        try:
+            annotations = parse_line_annotations(node, lines)
+        except ValueError as e:
+            logger.warning(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}\n{e}")
+            raise ValueError(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}\n{e}")
 
-        annotations = parse_line_annotations(node, lines)
         if isinstance(node, CppClassNode):
             return None  # nested classes only can be declared in pxd
 
