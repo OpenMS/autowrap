@@ -84,6 +84,7 @@ special_class_doc = ""
 def namespace_handler(ns):
     return ns
 
+
 def augment_arg_names(method):
     """replaces missing arg_names with "in_%d" % i, where i is the position
     number of the arg"""

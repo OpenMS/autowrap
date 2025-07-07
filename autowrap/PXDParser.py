@@ -117,7 +117,8 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
                 if not line.startswith("#  "):
                     raise ValueError(
                         "No comment lines with an indentation of at least two whitespaces after start of multiline annotation:\n "
-                        + line + "\n"
+                        + line
+                        + "\n"
                     )
                 while line.startswith("#  "):
                     if key == "wrap-doc":
@@ -414,7 +415,9 @@ class CppClassDecl(BaseDecl):
         try:
             class_annotations = parse_class_annotations(node, lines)
         except ValueError as e:
-            logger.warning(" Failed to parse class annotations in %s:%d\n%s", pxd_path, node.pos[1], e)
+            logger.warning(
+                " Failed to parse class annotations in %s:%d\n%s", pxd_path, node.pos[1], e
+            )
             raise ValueError(f"Failed to parse class annotations in {pxd_path}:{node.pos[1]}\n{e}")
         methods = dict()
         attributes = []
