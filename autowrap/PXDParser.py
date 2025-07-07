@@ -203,8 +203,8 @@ def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str
     try:
         additional_annotations = _parse_multiline_annotations(lines[end:])
     except ValueError as e:
-        raise ValueError(f"Failed to parse additional annotations on line {end}\n{e}")
-
+        logger.warning(f"Failed to parse additional annotations on line {end}: {e}")
+        raise ValueError(f"Failed to parse additional annotations on line {end}") from e
     # add multi line doc string to result (overwrites single line wrap-doc, if exists)
     if "wrap-doc" in additional_annotations.keys():
         result["wrap-doc"] = additional_annotations["wrap-doc"]
