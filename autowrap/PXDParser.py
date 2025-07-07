@@ -343,8 +343,8 @@ class CTypeDefDecl(BaseDecl):
         try:
             annotations = parse_line_annotations(node, lines)
         except ValueError as e:
-            logger.warning(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}\n{e}")
-            raise ValueError(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}\n{e}")
+            logger.warning(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}: {e}")
+            raise ValueError(f"Failed to parse line annotations in {pxd_path}:{node.pos[1]}") from e
         return cls(new_name, type_, annotations, pxd_path)
 
 
