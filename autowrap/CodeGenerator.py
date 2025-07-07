@@ -94,11 +94,12 @@ def augment_arg_names(method):
 
 
 def fixed_include_dirs(include_boost: bool) -> List[AnyStr]:
-    import pkg_resources
+    from importlib.resources import files
 
-    boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
-    data = pkg_resources.resource_filename("autowrap", "data_files")
-    autowrap_internal = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
+    autowrap_files = files("autowrap")
+    boost = str(autowrap_files.joinpath("data_files/boost"))
+    data = str(autowrap_files.joinpath("data_files"))
+    autowrap_internal = str(autowrap_files.joinpath("data_files/autowrap"))
 
     if not include_boost:
         return [autowrap_internal]

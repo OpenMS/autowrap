@@ -101,12 +101,11 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
         if beginning and not line:  # continue until the first comment after method/class
             continue
 
-        if line.startswith(
-            "#"
-        ):  # TODO should we force a certain indentation for the annots themselves?
+        if line.startswith("#"):
+            # TODO should we force a certain indentation for the annots themselves?
             beginning = False
             line = line[1:].strip()
-            if line.endswith(":"):
+            if line.endswith(":") and line.rstrip(":").startswith("wrap-"):
                 in_annot_context = True
                 key = line.rstrip(":")
                 try:
