@@ -35,23 +35,31 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Upgrade pip version
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Upgrade pip and install build tools
         run: |
-          python -m pip install -U pip
-      - name: Install pytest
-        run: |
-          python -m pip install pytest
-      - name: Install setuptools
-        run: |
-          python -m pip install setuptools
-      - name: Upgrade cython version
+          python -m pip install -U pip build setuptools wheel
+
+      - name: Install Cython
         run: |
           python -m pip install "Cython${{ matrix.CYTHON }}"
-      - name: run tests
+
+      - name: Install package in development mode
         run: |
-          python setup.py develop
-          py.test tests/
+          python -m pip install -e .[test]
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v

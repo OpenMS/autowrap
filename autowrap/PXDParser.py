@@ -56,6 +56,21 @@ from collections import defaultdict
 
 AnnotDict = Dict[str, Union[bool, List[str]]]
 
+# Define keywords so we don't try to parse anything with : as an annotation
+MULTILINE_ANNOTATION_KEYWORDS = {
+    'wrap-instances',
+    'wrap-inherits',
+    'wrap-doc',
+    'wrap-attach',
+    'wrap-hash',
+    'wrap-manual-memory',
+    'wrap-buffer-protocol',
+    'wrap-iter-begin',
+    'wrap-iter-end',
+    'wrap-cast',
+    'wrap-as'
+}
+
 """
 Methods in this module use Cythons Parser to build an Cython syntax tree
 from the annotated .pxd files and creates a representation of the
@@ -101,12 +116,11 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
         if beginning and not line:  # continue until the first comment after method/class
             continue
 
-        if line.startswith(
-            "#"
-        ):  # TODO should we force a certain indentation for the annots themselves?
+        if line.startswith("#"):
+            # TODO should we force a certain indentation for the annots themselves?
             beginning = False
             line = line[1:].strip()
-            if line.endswith(":"):
+            if line.endswith(":") and line.rstrip(":") in MULTILINE_ANNOTATION_KEYWORDS:
                 in_annot_context = True
                 key = line.rstrip(":")
                 try:
