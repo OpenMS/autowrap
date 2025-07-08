@@ -1652,7 +1652,7 @@ class CodeGenerator(object):
 
         meth_code.add(
             """
-                     |    cdef long _idx = $call_arg
+                     |    cdef int _idx = $call_arg
                      """,
             locals(),
         )
@@ -1754,7 +1754,7 @@ class CodeGenerator(object):
                      |    \"\"\"$docstring\"\"\"
                      |    assert isinstance(key, int), 'arg index wrong type'
                      |
-                     |    cdef long _idx = $call_arg
+                     |    cdef int _idx = $call_arg
                      |    if _idx < 0:
                      |        raise IndexError("invalid index %d" % _idx)
                      """,
