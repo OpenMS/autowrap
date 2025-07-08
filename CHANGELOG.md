@@ -1,1 +1,1 @@
-autowrap 0.22.12
+autowrap 0.23.0
