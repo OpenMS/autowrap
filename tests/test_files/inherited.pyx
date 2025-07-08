@@ -75,7 +75,7 @@ cdef class BaseInt:
 
     
     property a:
-        def __set__(self,  a):
+        def __set__(self, int a):
         
             self.inst.get().a = (<int>a)
         
@@ -111,7 +111,7 @@ cdef class BaseZ:
 
     
     property a:
-        def __set__(self,  a):
+        def __set__(self, int a):
         
             self.inst.get().a = (<int>a)
         
