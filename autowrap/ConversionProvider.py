@@ -883,17 +883,17 @@ class StdMapConverter(TypeConverterBase):
 
             if self.converters.cython_type(tt).is_enum:
                 # Case 1: We wrap a std::vector<> with an enum base type
-                raise Exception("Not Implemented")
+                raise Exception("Not Implemented: can't wrap a std::vector<> with an enum base type")
             elif tt.base_type in self.converters.names_of_wrapper_classes:
                 # Case 2: We wrap a std::vector<> with a base type we need to wrap
-                raise Exception("Not Implemented")
+                raise Exception("Not Implemented: can't wrap a std::vector<> with a base type we need to wrap")
             elif (
                 tt.template_args is not None
                 and tt.base_type == "shared_ptr"
                 and len(set(tt.template_args[0].all_occuring_base_types())) == 1
             ):
                 # Case 3: We wrap a std::vector< shared_ptr<X> > where X needs to be a type that is easy to wrap
-                raise Exception("Not Implemented")
+                raise Exception("Not Implemented: can't wrap a std::vector< shared_ptr<X> > where X needs to be a type that is easy to wrap")
             elif (
                 tt.template_args is not None
                 and tt.base_type != "libcpp_vector"
@@ -918,7 +918,7 @@ class StdMapConverter(TypeConverterBase):
                 # Case 4: We wrap a std::vector<> with a base type that contains
                 #         further nested std::vector<> inside
                 #         -> deal with recursion
-                raise Exception("Not Implemented")
+                raise Exception("Not Implemented: can't wrap a std::vector<> with a base type that contains further nested std::vector<> inside")
             else:
                 # Case 5: We wrap a regular type
                 inner = self.converters.cython_type(tt)

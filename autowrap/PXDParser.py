@@ -89,9 +89,8 @@ def _parse_multiline_annotations(lines: Collection[str]) -> AnnotDict:
     in_annot_context = False
     beginning = True
     while it:
-        if (
-            not in_annot_context
-        ):  # if we are coming from an annotation context, we already have the next line
+        # if we are coming from an annotation context, we already have the next line
+        if not in_annot_context:
             try:
                 line = next(it).strip()
             except StopIteration:
