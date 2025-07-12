@@ -1951,7 +1951,15 @@ class CodeGenerator(object):
                     if resolved.__class__ in (ResolvedClass,):
                         # Skip classes that explicitely should not have a pxd
                         # import statement (abstract base classes and the like)
-                        if not resolved.no_pxd_import:
+                        ignore_base = False
+                        # Check if this class has a base class and that base class is wrap-ignored
+                        if resolved.cpp_decl.parent:
+                            base_class = resolved.cpp_decl.parent
+                            if base_class.annotations.get("wrap-ignore"):
+                                ignore_base = True
+                                print(f"[autowrap] Skipping pxd import for derived class '{resolved.name}' "
+                                f"because base '{base_class.name}' is wrap-ignored.")
+                        if not resolved.no_pxd_import and not ignore_base:
                             if resolved.cpp_decl.annotations.get("wrap-attach"):
                                 code.add("from $mname cimport __$name", locals())
                             else:
