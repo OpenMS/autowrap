@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools >= 77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,6 +8,7 @@ dynamic = ["version"]
 description = "Generates Python Extension modules from commented Cython PXD files"
 readme = "README.md"
 license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 authors = [
     {name = "OpenMS Inc.", email = "webmaster@openms.de"}
 ]
