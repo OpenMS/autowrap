@@ -397,4 +397,11 @@ class LibCppTest {
         {
             return in->get();
         }
+
+        std::tuple<int, float> process41(int i)
+        {
+          std::tuple<int, float> tuple;
+          tup[i] = LibCppTest(i);
+          return tuple;
+        }
 };
