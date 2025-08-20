@@ -1,8 +1,10 @@
-import os, pkg_resources
+import os
+from importlib.resources import files
 from distutils.core import setup, Extension
 from Cython.Distutils import build_ext
 
-data_dir = pkg_resources.resource_filename("autowrap", "data_files")
+# Replace pkg_resources.resource_filename("autowrap", "data_files")
+data_dir = str(files("autowrap") / "data_files")
 include_dir = os.path.join(data_dir, "autowrap")
 
 ext = Extension(
