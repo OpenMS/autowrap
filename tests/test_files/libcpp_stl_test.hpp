@@ -207,4 +207,14 @@ class LibCppSTLTest {
             }
             return -1;
         }
+
+        std::map<IntWrapper, IntVecWrapper> process_15_map(int key_val, int vec_val)
+        {
+            std::map<IntWrapper, IntVecWrapper> res;
+            IntWrapper key(key_val);
+            IntVecWrapper value;
+            value.push_back(vec_val);
+            res[key] = value;
+            return res;
+        }
 };

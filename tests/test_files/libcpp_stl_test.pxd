@@ -58,3 +58,4 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_13_map(libcpp_map[IntWrapper, libcpp_vector[int] ]& in_)
 
         int process_14_map(libcpp_map[IntWrapper, IntVecWrapper]& in_)
+        libcpp_map[IntWrapper, IntVecWrapper] process_15_map(int key_val, int vec_val)

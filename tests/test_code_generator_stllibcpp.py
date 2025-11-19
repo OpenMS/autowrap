@@ -212,3 +212,12 @@ def test_stl_libcpp():
     assert len(map_inp) == 1
     assert list(map_inp.values())[0][0] == 6 + 10
     assert list(map_inp.values())[0][1] == 2
+
+    # Part 9
+    # Test std::map< Widget, Widget2 > returned from function
+    res = t.process_15_map(5, 42)
+    assert len(res) == 1
+    keys = list(res.keys())
+    values = list(res.values())
+    assert keys[0].i_ == 5
+    assert values[0][0] == 42
