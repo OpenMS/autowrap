@@ -84,6 +84,7 @@ special_class_doc = ""
 def namespace_handler(ns):
     return ns
 
+
 def augment_arg_names(method):
     """replaces missing arg_names with "in_%d" % i, where i is the position
     number of the arg"""
@@ -93,11 +94,12 @@ def augment_arg_names(method):
 
 
 def fixed_include_dirs(include_boost: bool) -> List[AnyStr]:
-    import pkg_resources
+    from importlib.resources import files
 
-    boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
-    data = pkg_resources.resource_filename("autowrap", "data_files")
-    autowrap_internal = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
+    autowrap_files = files("autowrap")
+    boost = str(autowrap_files.joinpath("data_files/boost"))
+    data = str(autowrap_files.joinpath("data_files"))
+    autowrap_internal = str(autowrap_files.joinpath("data_files/autowrap"))
 
     if not include_boost:
         return [autowrap_internal]
@@ -1650,7 +1652,7 @@ class CodeGenerator(object):
 
         meth_code.add(
             """
-                     |    cdef long _idx = $call_arg
+                     |    cdef int _idx = $call_arg
                      """,
             locals(),
         )
@@ -1752,7 +1754,7 @@ class CodeGenerator(object):
                      |    \"\"\"$docstring\"\"\"
                      |    assert isinstance(key, int), 'arg index wrong type'
                      |
-                     |    cdef long _idx = $call_arg
+                     |    cdef int _idx = $call_arg
                      |    if _idx < 0:
                      |        raise IndexError("invalid index %d" % _idx)
                      """,

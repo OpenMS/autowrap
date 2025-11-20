@@ -40,6 +40,7 @@ from autowrap.Code import Code
 import logging as L
 import string
 
+
 def mangle(s):
     s = s.replace("(", "_l_")
     s = s.replace(")", "_r_")
@@ -193,20 +194,16 @@ class VoidConverter(TypeConverterBase):
 
 class IntegerConverter(TypeConverterBase):
     """
-    wraps long and int. "long" base_type is converted to "int" by the
-    cython parser!
-    TODO Long does not exist in Python2 anymore. Can we remove stuff?
+    wraps int.
     """
 
     def get_base_types(self) -> List[str]:
         return [
             "int",
             "bint",  # C boolean type
-            "long",
             "int32_t",
             "ptrdiff_t",
             "int64_t",
-            "long int",
             "uint32_t",
             "uint64_t",
             "size_t",
@@ -216,7 +213,7 @@ class IntegerConverter(TypeConverterBase):
         return not cpp_type.is_ptr
 
     def matching_python_type(self, cpp_type: CppType) -> str:
-        return ""  # TODO can't we use int? Especially in py3 only.
+        return "int"
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "int"
@@ -273,14 +270,12 @@ class BooleanConverter(TypeConverterBase):
 
 class UnsignedIntegerConverter(TypeConverterBase):
     """
-    wraps unsigned long and int. "long" base_type is converted to "int" by the
-    cython parser!
+    wraps unsigned int.
     """
 
     def get_base_types(self) -> List[str]:
         return [
             "unsigned int",
-            "unsigned long",
             "ptrdiff_t",
             "uint32_t",
             "uint64_t",
