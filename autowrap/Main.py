@@ -172,20 +172,14 @@ def register_converters(converters):
 def run_cython(inc_dirs, extra_opts, out, warn_level=1):
     from Cython.Compiler.Main import compile, CompilationOptions
     import Cython.Compiler.Errors
+    import Cython.Compiler.Options as CythonOptions
 
     Cython.Compiler.Errors.LEVEL = warn_level
 
-    # Try to get directive_defaults (API differs from 0.25 on)
-    try:
-        from Cython.Compiler.Options import directive_defaults
-    except ImportError:
-        # Cython 0.25
-        import Cython.Compiler.Options
-
-        directive_defaults = Cython.Compiler.Options.get_directive_defaults()
-
+    # Start from Cython's default compiler directives
+    directive_defaults = CythonOptions.get_directive_defaults()
     # TODO merge these options, if compiler_directives is given in extra_opts? Otherwise they are overwritten
-    directive_defaults["binding"] = False  # For backwards-compat to Cython 0.X
+    directive_defaults["binding"] = False
     directive_defaults["boundscheck"] = False
     directive_defaults["wraparound"] = False
     directive_defaults["language_level"] = sys.version_info.major

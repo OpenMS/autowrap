@@ -41,7 +41,6 @@ import autowrap.PXDParser
 import autowrap.Utils
 import autowrap.Code
 import autowrap
-from Cython.Compiler.Version import version as cython_version
 import os
 import math
 import sys
@@ -73,8 +72,6 @@ def test_enums():
 
     See tests/test_files/enums.pxd for the full example.
     """
-    if int(cython_version[0]) < 3:
-        return
     target = os.path.join(test_files, "enums.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
@@ -287,9 +284,6 @@ def test_templated():
     assert templated_o.xi[1].get() == 12
 
     # Test (wrap-attached) free functions = old way to wrap static functions (can only be called with class)
-    if int(str(cython_version).split(".")[0]) < 3:
-        assert templated.computeEight() == 8
-        assert templated_o.computeEight() == 8
     assert twrapped.Templated.computeEight() == 8
     assert twrapped.Templated_other.computeEight() == 8
 

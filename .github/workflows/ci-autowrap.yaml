@@ -15,10 +15,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - CYTHON: "<=0.29.21"
-            python-version: "3.9" # Cython < 0.29.21 not compatible with 3.10, so neither are we
-          - CYTHON: ">0.29.21"
-            python-version: "3.10"
           - CYTHON: "==3.0.0"
             python-version: "3.10"
           - CYTHON: "==3.0.0"

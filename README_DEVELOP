@@ -1,9 +1,34 @@
-Activate the project in "development mode" first:
+Development setup
+=================
 
-   $ python setup.py develop
+The recommended way to work on `autowrap` is to use a virtual environment,
+install the package in editable mode, and run the tests from the project root.
 
-For testing run
+1. Create and activate a virtual environment (optional but recommended):
 
-   $ py.test tests
+   $ python -m venv .venv
+   $ source .venv/bin/activate         # on Windows: .venv\Scripts\activate
+
+2. Install `autowrap` with development dependencies:
+
+   $ python -m pip install -U pip
+   $ python -m pip install -e .[dev]
+
+   (Use `python3` instead of `python` if needed on your system.)
+
+3. Run the test suite from the project root:
+
+   $ pytest tests/ -v
+
+   For local coverage, you can also use:
+
+   $ ./run_test_coverage.sh
+
+4. Verify the CLI is available:
+
+   $ autowrap --help
+
+These commands have been verified to work with the current `pyproject.toml`
+configuration and are the preferred starting point for developing on `autowrap`.
 
 from the projects directory.

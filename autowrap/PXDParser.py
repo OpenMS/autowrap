@@ -411,9 +411,7 @@ class CppClassDecl(BaseDecl):
             and isinstance(template_parameters, list)
             and isinstance(template_parameters[0], tuple)
         ):
-            # Cython 0.24 uses [(string, bool)] to indicate name and whether
-            # template argument is required or optional.
-            # For now, convert to pre-0.24 format
+            # Convert Cython's (name, required_flag) tuples to just the name
             template_parameters = [t[0] for t in template_parameters]
         try:
             class_annotations = parse_class_annotations(node, lines)
@@ -624,10 +622,7 @@ def parse_pxd_file(path, warn_level=1):
     source = CompilationSource(source_desc, name, os.getcwd())
     result = create_default_resultobj(source, options)
 
-    try:  # Cython 0.X
-        context = options.create_context()
-    except:  # Cython 3.X
-        context = Context.from_options(options)
+    context = Context.from_options(options)
     pipeline = Pipeline.create_pyx_pipeline(context, options, result)
     context.setup_errors(options, result)
     root = pipeline[0](source)  # only parser

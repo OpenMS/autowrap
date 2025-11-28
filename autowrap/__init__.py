@@ -40,6 +40,21 @@ import logging as L
 logger = L.getLogger(__name__)
 logger.setLevel(L.INFO)
 
+try:
+    from Cython.Compiler.Version import version as _cython_version
+except ImportError:
+    _cython_version = "0"
+else:
+    try:
+        _major_str = str(_cython_version).split(".")[0]
+        if int(_major_str) < 3:
+            raise RuntimeError(
+                "autowrap requires Cython >= 3.0; found Cython %s" % _cython_version
+            )
+    except Exception:
+        # If parsing the version fails for some reason, do not block import here.
+        pass
+
 """
 The autowrap process consists of two steps:
     i) parsing of files (done by DeclResolver, which in turn uses the PXDParser

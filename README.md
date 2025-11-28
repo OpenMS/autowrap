@@ -14,6 +14,12 @@ writing a wrapper can be learned easily. Further [Cython][] prevents you from
 many typical errors which might get in your way if you write such a wrapper in
 C++.
 
+Requirements
+------------
+
+- Python ≥ 3.9
+- Cython ≥ 3.0
+
 
 This wrapping process typically consist of four steps:
 

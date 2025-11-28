@@ -9,6 +9,12 @@ annotations in the header files to generate correct Cython code. For an
 example, please have a look at `examples/int_holder.h` and
 `example/int_holder.pxd` which together form the input to the program.
 
+Requirements
+------------
+
+- Python ≥ 3.9
+- Cython ≥ 3.0
+
 Simple example
 ---------------------
 
@@ -84,12 +90,12 @@ You can build the final Python extension module by running
 And you can use the final module running
 
 ```python
-    >>> import py_int_holder
-    >>> ih = py_int_holder.IntHolder(42)
-    >>> print ih.i_
-    42
-    >>> print ih.add(ih)
-    84
+>>> import py_int_holder
+>>> ih = py_int_holder.IntHolder(42)
+>>> print(ih.i_)
+42
+>>> print(ih.add(ih))
+84
 ```
 
 To get some insight how `autowrap` works, you can inspect files
