@@ -1103,7 +1103,28 @@ class StdMapConverter(TypeConverterBase):
         ) and (
             not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes
         ):
-            raise Exception("Converter can not handle wrapped classes as keys and values in map")
+            # Both key and value are wrapped classes
+            cy_tt_val = tt_value.base_type
+            cy_tt_k = tt_key.base_type
+            item_key = mangle("itemk_" + output_py_var)
+            item_val = mangle("itemv_" + output_py_var)
+            code = Code().add(
+                """
+                |$output_py_var = dict()
+                |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt_k $item_key
+                |cdef $cy_tt_val $item_val
+                |while $it != $input_cpp_var.end():
+                |   $item_key = $cy_tt_k.__new__($cy_tt_k)
+                |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                |   $item_val = $cy_tt_val.__new__($cy_tt_val)
+                |   $item_val.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
+                |   $output_py_var[$item_key] = $item_val
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
 
         elif not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
             key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
@@ -2236,21 +2257,100 @@ class StdUnorderedMapConverter(TypeConverterBase):
 
         if cpp_type.is_ref and not cpp_type.is_const:
             it = mangle("it_" + argument_var)
+            py_tt_key = tt_key
+
             key_conv_out = "<%s> deref(%s).first" % (cy_tt_key, it)
-            value_conv_out = "<%s> deref(%s).second" % (cy_tt_value, it)
-            cleanup_code = Code().add(
-                """
-                |replace = dict()
-                |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
-                |while $it != $temp_var.end():
-                |   replace[$key_conv_out] = $value_conv_out
-                |   inc($it)
-                |$argument_var.clear()
-                |$argument_var.update(replace)
-                |del $temp_var
-                """,
-                locals(),
-            )
+
+            # Handle key that is wrapped
+            if (
+                tt_key.base_type in self.converters.names_of_wrapper_classes
+                and not tt_value.base_type in self.converters.names_of_wrapper_classes
+            ):
+                value_conv_out = "<%s> deref(%s).second" % (cy_tt_value, it)
+                item_key = mangle("itemk_" + argument_var)
+                cleanup_code = Code().add(
+                    """
+                    |replace = dict()
+                    |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
+                    |cdef $py_tt_key $item_key
+                    |while $it != $temp_var.end():
+                    |   $item_key = $py_tt_key.__new__($py_tt_key)
+                    |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                    |   replace[$item_key] = $value_conv_out
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            # Handle value that is wrapped
+            elif (
+                not cy_tt_value.is_enum
+                and tt_value.base_type in self.converters.names_of_wrapper_classes
+                and not tt_key.base_type in self.converters.names_of_wrapper_classes
+            ):
+                cy_tt = tt_value.base_type
+                item = mangle("item_" + argument_var)
+                cleanup_code = Code().add(
+                    """
+                    |replace = dict()
+                    |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
+                    |cdef $cy_tt $item
+                    |while $it != $temp_var.end():
+                    |   $item = $cy_tt.__new__($cy_tt)
+                    |   $item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
+                    |   replace[$key_conv_out] = $item
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            # Handle both key AND value that are wrapped
+            elif (
+                not cy_tt_value.is_enum
+                and tt_value.base_type in self.converters.names_of_wrapper_classes
+                and tt_key.base_type in self.converters.names_of_wrapper_classes
+            ):
+                cy_tt = tt_value.base_type
+                item_val = mangle("itemv_" + argument_var)
+                item_key = mangle("itemk_" + argument_var)
+                cleanup_code = Code().add(
+                    """
+                    |replace = dict()
+                    |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
+                    |cdef $py_tt_key $item_key
+                    |cdef $cy_tt $item_val
+                    |while $it != $temp_var.end():
+                    |   $item_key = $py_tt_key.__new__($py_tt_key)
+                    |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                    |   $item_val = $cy_tt.__new__($cy_tt)
+                    |   $item_val.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
+                    |   replace[$item_key] = $item_val
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                value_conv_out = "<%s> deref(%s).second" % (cy_tt_value, it)
+                cleanup_code = Code().add(
+                    """
+                    |replace = dict()
+                    |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   replace[$key_conv_out] = $value_conv_out
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
         else:
             cleanup_code = "del %s" % temp_var
 
@@ -2265,22 +2365,96 @@ class StdUnorderedMapConverter(TypeConverterBase):
         tt_key, tt_value = cpp_type.template_args
         cy_tt_key = self.converters.cython_type(tt_key)
         cy_tt_value = self.converters.cython_type(tt_value)
+        py_tt_key = tt_key
 
         it = mangle("it_" + input_cpp_var)
-        key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
-        value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
 
-        code = Code().add(
-            """
-            |$output_py_var = dict()
-            |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
-            |while $it != $input_cpp_var.end():
-            |   $output_py_var[$key_conv] = $value_conv
-            |   inc($it)
-            """,
-            locals(),
-        )
-        return code
+        # Both key and value are wrapped classes
+        if (
+            not cy_tt_value.is_enum
+            and tt_value.base_type in self.converters.names_of_wrapper_classes
+        ) and (
+            not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes
+        ):
+            cy_tt_val = tt_value.base_type
+            cy_tt_k = tt_key.base_type
+            item_key = mangle("itemk_" + output_py_var)
+            item_val = mangle("itemv_" + output_py_var)
+            code = Code().add(
+                """
+                |$output_py_var = dict()
+                |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt_k $item_key
+                |cdef $cy_tt_val $item_val
+                |while $it != $input_cpp_var.end():
+                |   $item_key = $cy_tt_k.__new__($cy_tt_k)
+                |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                |   $item_val = $cy_tt_val.__new__($cy_tt_val)
+                |   $item_val.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
+                |   $output_py_var[$item_key] = $item_val
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+        # Only key is wrapped
+        elif not cy_tt_key.is_enum and tt_key.base_type in self.converters.names_of_wrapper_classes:
+            value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
+            item_key = mangle("itemk_" + output_py_var)
+            code = Code().add(
+                """
+                |$output_py_var = dict()
+                |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                |cdef $py_tt_key $item_key
+                |while $it != $input_cpp_var.end():
+                |   $item_key = $py_tt_key.__new__($py_tt_key)
+                |   $item_key.inst = shared_ptr[$cy_tt_key](new $cy_tt_key((deref($it)).first))
+                |   $output_py_var[$item_key] = $value_conv
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+        # Only value is wrapped
+        elif (
+            not cy_tt_value.is_enum
+            and tt_value.base_type in self.converters.names_of_wrapper_classes
+        ):
+            cy_tt = tt_value.base_type
+            key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
+            item = mangle("item_" + output_py_var)
+            code = Code().add(
+                """
+                |$output_py_var = dict()
+                |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $cy_tt.__new__($cy_tt)
+                |   $item.inst = shared_ptr[$cy_tt_value](new $cy_tt_value((deref($it)).second))
+                |   $output_py_var[$key_conv] = $item
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+        # Neither key nor value is wrapped
+        else:
+            key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
+            value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
+            code = Code().add(
+                """
+                |$output_py_var = dict()
+                |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var[$key_conv] = $value_conv
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
 
 
 class StdUnorderedSetConverter(TypeConverterBase):
@@ -2386,15 +2560,16 @@ class StdUnorderedSetConverter(TypeConverterBase):
                 locals(),
             )
             if cpp_type.is_ref and not cpp_type.is_const:
+                item_out = mangle("item_" + argument_var)
                 cleanup_code = Code().add(
                     """
                     |replace = set()
                     |cdef libcpp_unordered_set[$inner].iterator $it = $temp_var.begin()
-                    |cdef $cy_tt $item
+                    |cdef $cy_tt $item_out
                     |while $it != $temp_var.end():
-                    |   $item = $cy_tt.__new__($cy_tt)
-                    |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
-                    |   replace.add($item)
+                    |   $item_out = $cy_tt.__new__($cy_tt)
+                    |   $item_out.inst = shared_ptr[$inner](new $inner(deref($it)))
+                    |   replace.add($item_out)
                     |   inc($it)
                     |$argument_var.clear()
                     |$argument_var.update(replace)
