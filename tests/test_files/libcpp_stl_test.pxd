@@ -2,10 +2,10 @@
 from libcpp.string cimport string as libcpp_string
 from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
-from libcpp.pair  cimport pair  as libcpp_pair
-from libcpp.map  cimport map  as libcpp_map
+from libcpp.pair  cimport pair  as libcpp_pair 
+from libcpp.map  cimport map  as libcpp_map 
+from libcpp.memory cimport shared_ptr
 from libcpp cimport bool
-from smart_ptr cimport shared_ptr
 
 cdef extern from "libcpp_stl_test.hpp":
 

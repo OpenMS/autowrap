@@ -2,7 +2,7 @@
 #include <string>
 #include <utility>
 #include <map>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 class IntWrapper {
 
@@ -96,9 +96,9 @@ class LibCppSTLTest {
             return res;
         }
 
-        int process_3_vector(std::vector< boost::shared_ptr<IntWrapper> > & in)
+        int process_3_vector(std::vector< std::shared_ptr<IntWrapper> > & in)
         {
-            boost::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
+            std::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
             in.push_back(ptr);
 
             if (!in.empty() )
@@ -110,10 +110,10 @@ class LibCppSTLTest {
             return -1;
         }
 
-        std::vector< boost::shared_ptr<IntWrapper> > process_4_vector(boost::shared_ptr<IntWrapper> & in)
+        std::vector< std::shared_ptr<IntWrapper> > process_4_vector(std::shared_ptr<IntWrapper> & in)
         {
             in->i_ += 10;
-            std::vector< boost::shared_ptr<IntWrapper> > res;
+            std::vector< std::shared_ptr<IntWrapper> > res;
             res.push_back(in);
             return res;
         }
@@ -172,10 +172,10 @@ class LibCppSTLTest {
             return res;
         }
 
-        boost::shared_ptr<const IntWrapper> process_11_const()
+        std::shared_ptr<const IntWrapper> process_11_const()
         {
-            boost::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
-            return boost::static_pointer_cast<const IntWrapper>(ptr);
+            std::shared_ptr<IntWrapper> ptr(new IntWrapper(42));
+            return std::static_pointer_cast<const IntWrapper>(ptr);
         }
 
         int process_12_map(std::map<std::string, IntWrapper >& in)
