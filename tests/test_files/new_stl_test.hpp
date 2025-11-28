@@ -68,6 +68,13 @@ public:
         return sum;
     }
 
+    // Mutable reference test - doubles each element
+    void doubleDequeElements(std::deque<int>& d) {
+        for (size_t i = 0; i < d.size(); i++) {
+            d[i] *= 2;
+        }
+    }
+
     // =========================================================================
     // std::list tests
     // =========================================================================
@@ -82,6 +89,13 @@ public:
             sum += v;
         }
         return sum;
+    }
+
+    // Mutable reference test - doubles each element
+    void doubleListElements(std::list<double>& l) {
+        for (auto& v : l) {
+            v *= 2;
+        }
     }
 
     // =========================================================================

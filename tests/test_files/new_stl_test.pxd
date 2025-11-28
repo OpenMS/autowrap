@@ -42,10 +42,12 @@ cdef extern from "new_stl_test.hpp":
         # deque tests
         libcpp_deque[int] getDeque()
         int sumDeque(libcpp_deque[int]& d)
+        void doubleDequeElements(libcpp_deque[int]& d)
 
         # list tests
         libcpp_list[double] getList()
         double sumList(libcpp_list[double]& l)
+        void doubleListElements(libcpp_list[double]& l)
 
         # optional tests
         libcpp_optional[int] getOptionalValue(bool hasValue)
