@@ -32,6 +32,26 @@ Before you open the pull request, make sure you
  - have [unit tests and functional tests](https://github.com/OpenMS/OpenMS/wiki/Write-tests)
  - Have [proper documentation](https://github.com/OpenMS/OpenMS/wiki/Coding-conventions#doxygen)
 
+## Code Style (Optional Pre-commit Hooks)
+
+We use [Black](https://black.readthedocs.io/) for code formatting and [Ruff](https://docs.astral.sh/ruff/) for linting. You can optionally set up pre-commit hooks to automatically check your code before each commit:
+
+```bash
+# Install pre-commit (if not already installed)
+pip install pre-commit
+
+# Install the git hooks
+pre-commit install
+```
+
+Once installed, the hooks will run automatically on each commit. To run the hooks manually on all files:
+
+```bash
+pre-commit run --all-files
+```
+
+**Note:** Installing pre-commit hooks is optional. The CI will also check code style on pull requests.
+
 A core developer will review your changes to the main development branch (develop) and approve them (or ask for modifications). You may indicate the prefered reviewer(s) by adding links to them in a comment section (e.g., @cbielow @hendrikweisser @hroest @jpfeuffer @timosachsenberg)
 
 Also consider getting in contact with the core developers early. They might provide additional guidance and valuable information on how your specific aim is achieved. This might give you a head start in, for example, developing novel tools or algorithms.

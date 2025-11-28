@@ -1,0 +1,41 @@
+# Pre-commit hooks for autowrap
+# This is an optional configuration for developers who want to use pre-commit hooks.
+# To use these hooks, install pre-commit and run:
+#   pip install pre-commit
+#   pre-commit install
+#
+# The hooks will then run automatically on each commit.
+# To run manually on all files:
+#   pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: ["--line-length", "88"]
+        exclude: ^autowrap/data_files/
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        exclude: ^autowrap/data_files/
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies: []
+        args: ["--ignore-missing-imports"]
+        exclude: ^(autowrap/data_files/|tests/)
