@@ -93,18 +93,14 @@ def augment_arg_names(method):
     ]
 
 
-def fixed_include_dirs(include_boost: bool) -> List[AnyStr]:
+def fixed_include_dirs() -> List[AnyStr]:
     from importlib.resources import files
 
     autowrap_files = files("autowrap")
-    boost = str(autowrap_files.joinpath("data_files/boost"))
     data = str(autowrap_files.joinpath("data_files"))
     autowrap_internal = str(autowrap_files.joinpath("data_files/autowrap"))
 
-    if not include_boost:
-        return [autowrap_internal]
-    else:
-        return [boost, data, autowrap_internal]
+    return [data, autowrap_internal]
 
 
 class CodeGenerator(object):
@@ -121,7 +117,6 @@ class CodeGenerator(object):
     pxd_dir: Optional[AnyStr]
     manual_code: Dict[str, Code]
     extra_cimports: Collection[str]
-    include_shared_ptr: str
     include_refholder: bool
     include_numpy: bool
     add_relative: bool
@@ -164,7 +159,6 @@ class CodeGenerator(object):
         extra_cimports=None,
         all_decl=None,
         add_relative=False,
-        shared_ptr="boost",
     ):
         self.pxd_dir = None
         if all_decl is None:
@@ -174,7 +168,6 @@ class CodeGenerator(object):
 
         self.manual_code: Dict[str, Code] = manual_code
         self.extra_cimports: Collection[str] = extra_cimports
-        self.include_shared_ptr: str = shared_ptr
         self.include_refholder: bool = True
         self.include_numpy: bool = False
         self.add_relative: bool = add_relative
@@ -251,11 +244,11 @@ class CodeGenerator(object):
         self.wrapped_classes_cnt: int = 0
         self.wrapped_methods_cnt: int = 0
 
-    def get_include_dirs(self, include_boost: bool) -> List[AnyStr]:
+    def get_include_dirs(self) -> List[AnyStr]:
         if self.pxd_dir is not None:
-            return fixed_include_dirs(include_boost) + [self.pxd_dir]
+            return fixed_include_dirs() + [self.pxd_dir]
         else:
-            return fixed_include_dirs(include_boost)
+            return fixed_include_dirs()
 
     def setup_cimport_paths(self) -> None:
         """
@@ -2039,18 +2032,11 @@ class CodeGenerator(object):
                    |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
                    """
             )
-        if self.include_shared_ptr == "boost":
-            code.add(
-                """
-                   |from  smart_ptr       cimport shared_ptr
-                   """
-            )
-        elif self.include_shared_ptr == "std":
-            code.add(
-                """
+        code.add(
+            """
                    |from  libcpp.memory   cimport shared_ptr
                    """
-            )
+        )
         if self.include_numpy:
             code.add(
                 """
