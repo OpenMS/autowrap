@@ -93,15 +93,13 @@ def augment_arg_names(method):
     ]
 
 
-def fixed_include_dirs(include_boost: bool) -> List[AnyStr]:
+def fixed_include_dirs() -> List[AnyStr]:
     from importlib.resources import files
 
     autowrap_files = files("autowrap")
     data = str(autowrap_files.joinpath("data_files"))
     autowrap_internal = str(autowrap_files.joinpath("data_files/autowrap"))
 
-    # The include_boost flag is kept for backwards-compatibility but is ignored.
-    # We always use only the autowrap data directories and do not ship Boost anymore.
     return [data, autowrap_internal]
 
 
@@ -119,7 +117,6 @@ class CodeGenerator(object):
     pxd_dir: Optional[AnyStr]
     manual_code: Dict[str, Code]
     extra_cimports: Collection[str]
-    include_shared_ptr: str
     include_refholder: bool
     include_numpy: bool
     add_relative: bool
@@ -162,7 +159,6 @@ class CodeGenerator(object):
         extra_cimports=None,
         all_decl=None,
         add_relative=False,
-        shared_ptr="std",
     ):
         self.pxd_dir = None
         if all_decl is None:
@@ -172,10 +168,6 @@ class CodeGenerator(object):
 
         self.manual_code: Dict[str, Code] = manual_code
         self.extra_cimports: Collection[str] = extra_cimports
-        # Use C++ standard shared_ptr by default. Boost shared_ptr is no longer supported.
-        if shared_ptr not in ("std", None):
-            raise ValueError("Only std::shared_ptr is supported; use shared_ptr='std' or omit it.")
-        self.include_shared_ptr: str = "std"
         self.include_refholder: bool = True
         self.include_numpy: bool = False
         self.add_relative: bool = add_relative
@@ -252,11 +244,11 @@ class CodeGenerator(object):
         self.wrapped_classes_cnt: int = 0
         self.wrapped_methods_cnt: int = 0
 
-    def get_include_dirs(self, include_boost: bool) -> List[AnyStr]:
+    def get_include_dirs(self) -> List[AnyStr]:
         if self.pxd_dir is not None:
-            return fixed_include_dirs(include_boost) + [self.pxd_dir]
+            return fixed_include_dirs() + [self.pxd_dir]
         else:
-            return fixed_include_dirs(include_boost)
+            return fixed_include_dirs()
 
     def setup_cimport_paths(self) -> None:
         """
