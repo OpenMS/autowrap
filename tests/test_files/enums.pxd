@@ -1,4 +1,4 @@
-# cython: language_level=2
+# cython: language_level=3
 #
 # =============================================================================
 # Example: Wrapping C++ Enums in Different Namespaces

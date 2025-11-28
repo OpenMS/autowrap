@@ -1,4 +1,4 @@
-#cython: language_level=2
+#cython: language_level=3
 from cython.operator cimport dereference as deref, preincrement as preinc
 from libcpp.list cimport list as cpplist
 
@@ -12,7 +12,7 @@ cdef class IterTest:
         self.inst = NULL
 
     def __dealloc__(self):
-        print "dealloc called"
+        print("dealloc called")
         if self.inst != NULL:
             del self.inst
 

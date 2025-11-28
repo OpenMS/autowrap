@@ -29,7 +29,7 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "Cython>=0.19",
+    "Cython>=3.0",
     "setuptools",
 ]
 
