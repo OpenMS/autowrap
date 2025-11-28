@@ -208,3 +208,23 @@ class LibCppSTLTest {
             return -1;
         }
 };
+
+// Class to test string-keyed operator[] (arbitrary type getitem/setitem)
+class StringKeyMap {
+    std::map<std::string, int> m_map;
+
+public:
+    StringKeyMap() {}
+
+    int& operator[](const std::string& key) {
+        return m_map[key];
+    }
+
+    size_t size() const {
+        return m_map.size();
+    }
+
+    bool contains(const std::string& key) const {
+        return m_map.find(key) != m_map.end();
+    }
+};

@@ -2,8 +2,9 @@
 from libcpp.string cimport string as libcpp_string
 from libcpp.set cimport set as libcpp_set
 from libcpp.vector cimport vector as libcpp_vector
-from libcpp.pair  cimport pair  as libcpp_pair 
-from libcpp.map  cimport map  as libcpp_map 
+from libcpp.pair  cimport pair  as libcpp_pair
+from libcpp.map  cimport map  as libcpp_map
+from libcpp cimport bool
 from smart_ptr cimport shared_ptr
 
 cdef extern from "libcpp_stl_test.hpp":
@@ -58,3 +59,10 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_13_map(libcpp_map[IntWrapper, libcpp_vector[int] ]& in_)
 
         int process_14_map(libcpp_map[IntWrapper, IntVecWrapper]& in_)
+
+    # Class to test string-keyed operator[] (arbitrary type getitem/setitem)
+    cdef cppclass StringKeyMap:
+        StringKeyMap()
+        int& operator[](libcpp_string key)
+        size_t size()
+        bool contains(libcpp_string key)
