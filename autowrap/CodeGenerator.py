@@ -1967,12 +1967,18 @@ class CodeGenerator(object):
                             # usually in the same pxd file and should not be
                             # globally exported.
                             pass
+                        elif resolved.wrap_ignore:
+                            # Skip wrap-ignored enums as they won't have pxd files
+                            L.info("Skip pxd import for wrap-ignored enum %s" % name)
                         else:
                             code.add("from $mname cimport $name", locals())
                     if resolved.__class__ in (ResolvedClass,):
-                        # Skip classes that explicitely should not have a pxd
+                        # Skip classes that explicitly should not have a pxd
                         # import statement (abstract base classes and the like)
-                        if not resolved.no_pxd_import:
+                        # Also skip wrap-ignored classes as they won't have pxd files
+                        if resolved.wrap_ignore:
+                            L.info("Skip pxd import for wrap-ignored class %s" % name)
+                        elif not resolved.no_pxd_import:
                             if resolved.cpp_decl.annotations.get("wrap-attach"):
                                 code.add("from $mname cimport __$name", locals())
                             else:
