@@ -279,7 +279,17 @@ def _extract_type(
                 args = None
                 template_args = getattr(arg_node.base_type, "positional_args", None)
                 if template_args:
-                    args = [_extract_type(t.base_type, t.declarator) for t in template_args]
+                    args = []
+                    for t in template_args:
+                        if isinstance(t, NameNode):
+                            # Simple type name like "Item" in map[int, Item]
+                            args.append(CppType(t.name))
+                        elif isinstance(t, IndexNode):
+                            # Nested template like vector[int] in map[int, vector[int]]
+                            args.append(_extract_template_args(t))
+                        else:
+                            # CComplexBaseTypeNode with base_type and declarator
+                            args.append(_extract_type(t.base_type, t.declarator))
                     name = arg_node.base_type.base_type_node.name
                 ttype = CppType(
                     name,
