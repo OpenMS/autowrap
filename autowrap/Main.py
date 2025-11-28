@@ -199,7 +199,6 @@ def create_wrapper_code(
     out,
     extra_inc_dirs,
     extra_opts,
-    include_boost=True,
     allDecl=[],
 ):
     cimports, manual_code = collect_manual_code(addons)
@@ -211,7 +210,6 @@ def create_wrapper_code(
         debug=False,
         manual_code=manual_code,
         extra_cimports=cimports,
-        include_boost=include_boost,
         all_decl=allDecl,
     )
 

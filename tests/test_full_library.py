@@ -222,7 +222,6 @@ def test_full_lib(tmpdir):
                 debug=False,
                 manual_code=manual_code,
                 extra_cimports=cimports,
-                include_boost=True,
                 all_decl=masterDict,
                 add_relative=True,
             )
