@@ -50,6 +50,29 @@ test_files = os.path.join(os.path.dirname(__file__), "test_files")
 
 
 def test_enums():
+    """
+    Test wrapping of C++ enums, including enums with the same name in different namespaces.
+
+    This test demonstrates how autowrap handles:
+    1. Scoped enums (enum class) from C++ mapped to Python Enum classes
+    2. Enums with the same name in different namespaces (Foo::MyEnum vs Foo2::MyEnum)
+    3. Type-safe enum validation (passing wrong enum type raises AssertionError)
+    4. Enum documentation via wrap-doc annotation
+
+    Pattern for wrapping namespaced enums in .pxd files:
+        cpdef enum class Foo_MyEnum "Foo::MyEnum":
+            # wrap-attach:
+            #   Foo
+            # wrap-as:
+            #   MyEnum
+            A
+            B
+            C
+
+    This creates Foo.MyEnum in Python that maps to Foo::MyEnum in C++.
+
+    See tests/test_files/enums.pxd for the full example.
+    """
     if int(cython_version[0]) < 3:
         return
     target = os.path.join(test_files, "enums.pyx")
@@ -66,17 +89,26 @@ def test_enums():
         include_dirs,
     )
 
+    # Test 1: Enums with same name in different namespaces are both accessible
+    # Foo.MyEnum and Foo2.MyEnum are separate enum types
     assert mod.Foo.MyEnum
     assert mod.Foo.MyEnum.B
     assert mod.Foo2.MyEnum
     assert mod.Foo2.MyEnum.D
 
+    # Test 2: Enum documentation is preserved via wrap-doc
     foo = mod.Foo()
     my_enum = mod.Foo.MyEnum
     assert "Testing Enum documentation." in my_enum.__doc__
+
+    # Test 3: Correct enum type is accepted
     myenum_a = mod.Foo.MyEnum.A
-    myenum2_a = mod.Foo.MyEnum2.A
     assert foo.enumToInt(myenum_a) == 1
+
+    # Test 4: Wrong enum type raises AssertionError (type-safe validation)
+    # Even though MyEnum2.A has the same numeric value as MyEnum.A,
+    # it's a different enum type and should be rejected
+    myenum2_a = mod.Foo.MyEnum2.A
     with pytest.raises(AssertionError):
         foo.enumToInt(myenum2_a)
 
