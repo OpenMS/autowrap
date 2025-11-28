@@ -211,9 +211,9 @@ cdef class _NewSTLTest:
         py_result = <int>_r
         return py_result
     
-    def getStringViewLength(self, bytes sv ):
+    def getStringViewLength(self, sv ):
         """
-        getStringViewLength(self, sv: bytes ) -> int
+        getStringViewLength(self, sv: Union[bytes, str] ) -> int
         """
         assert isinstance(sv, (bytes, str)), 'arg sv wrong type'
         cdef bytes v0
@@ -225,9 +225,9 @@ cdef class _NewSTLTest:
         py_result = <size_t>_r
         return py_result
     
-    def stringViewToString(self, bytes sv ):
+    def stringViewToString(self, sv ):
         """
-        stringViewToString(self, sv: bytes ) -> bytes
+        stringViewToString(self, sv: Union[bytes, str] ) -> bytes
         """
         assert isinstance(sv, (bytes, str)), 'arg sv wrong type'
         cdef bytes v0
