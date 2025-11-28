@@ -1017,6 +1017,18 @@ class CodeGenerator(object):
                 assert len(methods) == 1, "overloaded operator% no supported"
                 code, stubs = self.create_special_op_method("mod", "%", cdcl, methods[0])
                 return [code], stubs
+            elif op == "&":
+                assert len(methods) == 1, "overloaded operator& not supported"
+                code, stubs = self.create_special_op_method("and", "&", cdcl, methods[0])
+                return [code], stubs
+            elif op == "|":
+                assert len(methods) == 1, "overloaded operator| not supported"
+                code, stubs = self.create_special_op_method("or", "|", cdcl, methods[0])
+                return [code], stubs
+            elif op == "^":
+                assert len(methods) == 1, "overloaded operator^ not supported"
+                code, stubs = self.create_special_op_method("xor", "^", cdcl, methods[0])
+                return [code], stubs
             elif op == "+=":
                 assert len(methods) == 1, "overloaded operator+= not supported"
                 code, stubs = self.create_special_iop_method("iadd", "+=", cdcl, methods[0])
@@ -1044,6 +1056,18 @@ class CodeGenerator(object):
             elif op == ">>=":
                 assert len(methods) == 1, "overloaded operator>>= not supported"
                 code, stubs = self.create_special_iop_method("irshift", ">>=", cdcl, methods[0])
+                return [code], stubs
+            elif op == "&=":
+                assert len(methods) == 1, "overloaded operator&= not supported"
+                code, stubs = self.create_special_iop_method("iand", "&=", cdcl, methods[0])
+                return [code], stubs
+            elif op == "|=":
+                assert len(methods) == 1, "overloaded operator|= not supported"
+                code, stubs = self.create_special_iop_method("ior", "|=", cdcl, methods[0])
+                return [code], stubs
+            elif op == "^=":
+                assert len(methods) == 1, "overloaded operator^= not supported"
+                code, stubs = self.create_special_iop_method("ixor", "^=", cdcl, methods[0])
                 return [code], stubs
 
         if len(methods) == 1:

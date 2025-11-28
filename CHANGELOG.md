@@ -20,6 +20,8 @@ Other Changes:
   scoped enum declarations with `wrap-as` annotation for renaming
 - Support for arbitrary key types in `operator[]` (getitem/setitem), not
   just integer types like `size_t`
+- Added support for bitwise operators (`&`, `|`, `^`) and in-place bitwise
+  operators (`&=`, `|=`, `^=`)
 
 autowrap 0.23.0
 
