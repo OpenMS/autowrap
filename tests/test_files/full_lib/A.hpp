@@ -2,7 +2,7 @@
 #include <string>
 #include <utility>
 #include <map>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #ifndef HEADER_A
 #define HEADER_A
