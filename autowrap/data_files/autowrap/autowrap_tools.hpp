@@ -38,6 +38,21 @@ template<class A> void _irshift(A * a1, const A * a2)
 {
     (*a1) >>= (*a2);
 }
+
+template<class A> void _iand(A * a1, const A * a2)
+{
+    (*a1) &= (*a2);
+}
+
+template<class A> void _ior(A * a1, const A * a2)
+{
+    (*a1) |= (*a2);
+}
+
+template<class A> void _ixor(A * a1, const A * a2)
+{
+    (*a1) ^= (*a2);
+}
 namespace autowrap {
 
     template <class X>
