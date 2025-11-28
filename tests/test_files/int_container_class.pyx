@@ -1,4 +1,4 @@
-#cython: language_level=2
+#cython: language_level=3
 from int_container_class cimport X as X_, XContainer as XContainer_
 from cython.operator import dereference as deref
 

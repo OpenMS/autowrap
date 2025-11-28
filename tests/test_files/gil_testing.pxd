@@ -1,4 +1,4 @@
-# cython: language_level=2
+# cython: language_level=3
 from libc.string cimport const_char
 
 cdef extern from "gil_testing.hpp":
