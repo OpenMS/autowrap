@@ -3,7 +3,7 @@
 cdef extern from "enums.hpp":
      cdef cppclass Foo:
 
-        int enumToInt(Foo__MyEnum e)
+        int enumToInt(Foo_MyEnum e)
 
 cdef extern from "enums.hpp":
      cdef cppclass Foo2:
@@ -12,7 +12,7 @@ cdef extern from "enums.hpp":
 
 cdef extern from "enums.hpp" namespace "Foo":
 
-    cpdef enum Foo__MyEnum "Foo::MyEnum":
+    cpdef enum class Foo_MyEnum "Foo::MyEnum":
         # wrap-attach:
         #  Foo
         #
@@ -25,16 +25,19 @@ cdef extern from "enums.hpp" namespace "Foo":
         B
         C
 
-    cpdef enum MyEnum2 "Foo::MyEnum2":
+    cpdef enum class Foo_MyEnum2 "Foo::MyEnum2":
         # wrap-attach:
         #  Foo
+        #
+        # wrap-as:
+        #  MyEnum2
         A
         B
         C
 
 cdef extern from "enums.hpp" namespace "Foo2":
 
-    cpdef enum Foo2__MyEnum "Foo2::MyEnum":
+    cpdef enum class Foo2_MyEnum "Foo2::MyEnum":
         # wrap-attach:
         #  Foo2
         #
