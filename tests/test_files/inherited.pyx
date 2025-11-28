@@ -17,7 +17,7 @@ from  cython.operator cimport dereference as deref, preincrement as inc, address
 from  AutowrapRefHolder      cimport AutowrapRefHolder
 from  AutowrapPtrHolder      cimport AutowrapPtrHolder
 from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
-from  smart_ptr       cimport shared_ptr
+from  libcpp.memory   cimport shared_ptr
 from inherited cimport Base as _Base
 from inherited cimport Base as _Base
 from inherited cimport BaseZ as _BaseZ

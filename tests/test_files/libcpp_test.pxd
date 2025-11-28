@@ -5,7 +5,7 @@ from libcpp.vector cimport vector as libcpp_vector
 from libcpp cimport bool
 from libcpp.pair  cimport pair  as libcpp_pair 
 from libcpp.map  cimport map  as libcpp_map 
-from smart_ptr cimport shared_ptr
+from libcpp.memory cimport shared_ptr
 
 ctypedef unsigned int UInt
 

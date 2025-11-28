@@ -1,4 +1,4 @@
-from smart_ptr cimport shared_ptr
+from libcpp.memory cimport shared_ptr
 from libcpp.string cimport string as std_string
 from cython.operator cimport dereference as deref
 

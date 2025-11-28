@@ -97,14 +97,12 @@ def fixed_include_dirs(include_boost: bool) -> List[AnyStr]:
     from importlib.resources import files
 
     autowrap_files = files("autowrap")
-    boost = str(autowrap_files.joinpath("data_files/boost"))
     data = str(autowrap_files.joinpath("data_files"))
     autowrap_internal = str(autowrap_files.joinpath("data_files/autowrap"))
 
-    if not include_boost:
-        return [autowrap_internal]
-    else:
-        return [boost, data, autowrap_internal]
+    # The include_boost flag is kept for backwards-compatibility but is ignored.
+    # We always use only the autowrap data directories and do not ship Boost anymore.
+    return [data, autowrap_internal]
 
 
 class CodeGenerator(object):
@@ -164,7 +162,7 @@ class CodeGenerator(object):
         extra_cimports=None,
         all_decl=None,
         add_relative=False,
-        shared_ptr="boost",
+        shared_ptr="std",
     ):
         self.pxd_dir = None
         if all_decl is None:
@@ -174,7 +172,10 @@ class CodeGenerator(object):
 
         self.manual_code: Dict[str, Code] = manual_code
         self.extra_cimports: Collection[str] = extra_cimports
-        self.include_shared_ptr: str = shared_ptr
+        # Use C++ standard shared_ptr by default. Boost shared_ptr is no longer supported.
+        if shared_ptr not in ("std", None):
+            raise ValueError("Only std::shared_ptr is supported; use shared_ptr='std' or omit it.")
+        self.include_shared_ptr: str = "std"
         self.include_refholder: bool = True
         self.include_numpy: bool = False
         self.add_relative: bool = add_relative
@@ -2018,18 +2019,11 @@ class CodeGenerator(object):
                    |from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
                    """
             )
-        if self.include_shared_ptr == "boost":
-            code.add(
-                """
-                   |from  smart_ptr       cimport shared_ptr
-                   """
-            )
-        elif self.include_shared_ptr == "std":
-            code.add(
-                """
+        code.add(
+            """
                    |from  libcpp.memory   cimport shared_ptr
                    """
-            )
+        )
         if self.include_numpy:
             code.add(
                 """

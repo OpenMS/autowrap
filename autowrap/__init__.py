@@ -80,7 +80,7 @@ def generate_code(
     include_numpy=False,
     all_decl=[],
     add_relative=False,
-    shared_ptr="boost",
+    shared_ptr="std",
 ):
     import autowrap.CodeGenerator
 
