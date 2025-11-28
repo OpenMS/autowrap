@@ -58,3 +58,10 @@ cdef extern from "libcpp_stl_test.hpp":
         int process_13_map(libcpp_map[IntWrapper, libcpp_vector[int] ]& in_)
 
         int process_14_map(libcpp_map[IntWrapper, IntVecWrapper]& in_)
+
+    # Class to test string-keyed operator[] (arbitrary type getitem/setitem)
+    cdef cppclass StringKeyMap:
+        StringKeyMap()
+        int& operator[](libcpp_string key)
+        size_t size()
+        bool contains(libcpp_string key)
