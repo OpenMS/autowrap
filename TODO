@@ -1,66 +1,36 @@
-- mehr klassen wrappen
+Autowrap TODO
+=============
 
-- attribut zugriff ! ( ->ProteinIdentification::ProteinGroup z.b.)
+- Internal code generator refactor
 
-- wrap-attach auch für klassen !
+  Consider splitting `CodeGenerator` into smaller, focused classes
+  (e.g. for class generation, iterator support, reference handling)
+  to improve maintainability and make future extensions easier.
 
-- codegen refak: 
-  extra klasse fürs eigentliche codegen.
-  ziel: via vererbung auch iteratoren udn ref-zugriffen wrappen
+- Improved iterator support
 
-- iteratoren und referenzen (siehe ungen)
+  Support parameterized iterator ranges (e.g. methods like
+  `beginRT(rtmin)` / `endRT(rtmax)` annotated with `wrap-iter-begin`
+  / `wrap-iter-end`) and expose them as dedicated Python iterator or
+  range methods instead of only supporting parameterless `begin()` /
+  `end()`.
 
-- DPosition(mit numerischen template argument)
+- Reference semantics for methods returning references
 
-- statische methoden direkt an die klassen hängen, bevor "wrap-inherits"
-  aufgelöst wird !
+  For methods that return references to other wrapped objects, explore
+  using holder / proxy objects (using the existing
+  `AutowrapRefHolder` / `AutowrapPtrHolder` infrastructure) to model
+  true reference semantics, rather than always copying values into new
+  wrapper instances. The goals are:
 
-- config extra cimport statments
+  - Preserve the lifetime of the referred-to object safely.
+  - Allow attribute/method access on the referenced object to affect
+    the original C++ object where appropriate.
 
-- begin(), end() mit param, eg
-     beginRT(rtmin)  # wrap-iter-begin rtrange
-     endRT(rtmax)    # wrap-iter-end   rtrange
+- Safe wrapping of non-const iterators
 
-  -> methode  rtrange(rtmin, rtmax)
-
-- neu: ClassGenerator (zum code erzeugen), 
-       RefProxyClassGenerator, IterProxyClassGenerator
-
-ideen:
-
-  1) wenn methode M von X eine Ref auf Y zurückgibt:
-
-     idee: reference holder objekt als pointer sollte mit cython
-     (cython schiebt variable dekl im c++ code nach vorne, z.b
-      T & x;
-      was so nicht geht, da referenz ja initalisierte werdne muss
-      statt desen:
-      holder[T] * X;
-
-      und später:
-
-        X.setReference(wrapped.inst.method_which_returns_ref(..))
-
-     als holder im wrappeb object.
-     original objekt als shared_ptr mitspeichern damit die gespeicherte
-     refernz (hoffentlich) erhalten bleibt.
-
-     -----------
-
-     - alle wrapped objekte haben shared_ptr
-     - methode M returns Proxy mit shared_ptr to X und name von M
-     - proxy wrapped methoden von R durch impliziten aufruf der methode M
-
-       der einfach heit halber: proxy objekt hat keine methoden die
-       referenzen auf zu wrappende objekte zurückliefern
-       ansonsten: --- chaining !?
-
-
-  2) sicheres wrappen von non const iteratoren:
-
-     - iterobject speichert shared_ptr auf das orignal objekt
-
-     - iterobject speicher iterator selbst, damit kann man
-       methoden des referenzierten objekts deim iterobjekt anhängen
-       und so bleiben inplace modifiationen erhalten
+  Investigate iterator wrappers that store both a reference to the
+  original container and the iterator state, so that in-place
+  modifications through iterator access are reflected in the
+  underlying C++ container (instead of always iterating over copies).
 
