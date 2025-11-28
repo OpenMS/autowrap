@@ -52,10 +52,14 @@ def test_new_stl_code_generation():
         "getDeque method should be generated"
     assert "def sumDeque(" in pyx_content, \
         "sumDeque method should be generated"
+    assert "def doubleDequeElements(" in pyx_content, \
+        "doubleDequeElements method should be generated"
     assert "def getList(" in pyx_content, \
         "getList method should be generated"
     assert "def sumList(" in pyx_content, \
         "sumList method should be generated"
+    assert "def doubleListElements(" in pyx_content, \
+        "doubleListElements method should be generated"
     assert "def getOptionalValue(" in pyx_content, \
         "getOptionalValue method should be generated"
     assert "def unwrapOptional(" in pyx_content, \
@@ -104,6 +108,11 @@ def test_new_stl_code_generation():
     sum_deque_result = obj.sumDeque([5, 10, 15])
     assert sum_deque_result == 30, f"sumDeque returned {sum_deque_result}"
 
+    # Test deque mutable reference (cleanup code)
+    deque_data = [1, 2, 3, 4]
+    obj.doubleDequeElements(deque_data)
+    assert deque_data == [2, 4, 6, 8], f"doubleDequeElements should modify list in place: {deque_data}"
+
     # Test list (std::list)
     result_list = obj.getList()
     assert isinstance(result_list, list), "std::list should return list"
@@ -113,6 +122,13 @@ def test_new_stl_code_generation():
 
     sum_list_result = obj.sumList([1.0, 2.0, 3.0])
     assert abs(sum_list_result - 6.0) < 0.0001, f"sumList returned {sum_list_result}"
+
+    # Test list mutable reference (cleanup code)
+    list_data = [1.0, 2.0, 3.0]
+    obj.doubleListElements(list_data)
+    expected_doubled = [2.0, 4.0, 6.0]
+    for i, (r, e) in enumerate(zip(list_data, expected_doubled)):
+        assert abs(r - e) < 0.0001, f"doubleListElements should modify list in place: {list_data}"
 
     # Test optional
     opt_with_value = obj.getOptionalValue(True)
