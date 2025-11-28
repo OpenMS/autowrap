@@ -1639,6 +1639,14 @@ class CodeGenerator(object):
         return code, stubs
 
 
+    def _is_integral_type(self, cpp_type):
+        """Check if a CppType represents an integral (integer-like) type."""
+        integral_base_types = {'int', 'long', 'short', 'char', 'size_t', 'ptrdiff_t',
+                               'int8_t', 'int16_t', 'int32_t', 'int64_t',
+                               'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t',
+                               'ssize_t'}
+        return cpp_type.base_type in integral_base_types
+
     def create_special_getitem_method(self, mdcl):
         L.info("   create get wrapper for operator[]")
         meth_code = Code()
@@ -1646,7 +1654,6 @@ class CodeGenerator(object):
         if len(mdcl.arguments) != 1:
             raise Exception("getitem method currently only supports a single argument.")
 
-        # TODO make sure it is a basic type (class or builtin, no list/dict)
         _, ctype = mdcl.arguments[0]
 
         (
@@ -1656,17 +1663,16 @@ class CodeGenerator(object):
             stubs,
         ) = self._create_fun_decl_and_input_conversion(meth_code, "__getitem__", mdcl)
 
-        meth_code.add(
-            """
-                     |    cdef int _idx = $call_arg
-                     """,
-            locals(),
-        )
-
+        # Only apply integer-specific bounds checking for integral types
+        is_integral = self._is_integral_type(in_type)
         size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
-        if size_guard:
+
+        if is_integral and size_guard:
             meth_code.add(
                 """
+                     |    cdef int _idx = $call_arg
+                     |    if _idx < 0:
+                     |        raise IndexError("invalid index %d" % _idx)
                      |    if _idx >= self.inst.get().$size_guard:
                      |        raise IndexError("invalid index %d" % _idx)
                      """,
@@ -1722,10 +1728,10 @@ class CodeGenerator(object):
         if len(mdcl.arguments) != 1:
             raise Exception("setitem method currently only supports a single argument.")
 
-        # TODO make sure it is a basic type (class or builtin, no list/dict)
         _, ctype_in = mdcl.arguments[0]
         in_converter = self.cr.get(ctype_in)
         in_t_py = in_converter.matching_python_type_full(ctype_in)
+        in_t_cy = in_converter.matching_python_type(ctype_in)
 
         res_t_base = res_t.base_type
 
@@ -1744,7 +1750,7 @@ class CodeGenerator(object):
 
         stub_code.add(
             """
-                     |def __setitem__(self, key: $in_t_py , value: $res_t_typing ) -> None:
+                     |def __setitem__(self, key: $in_t_py, value: $res_t_typing) -> None:
                      |    \"\"\"$docstring\"\"\"
                      |    ...
                      """,
@@ -1754,25 +1760,34 @@ class CodeGenerator(object):
         call_arg = "key"
         value_arg = "value"
 
-        meth_code.add(
-            """
-                     |def __setitem__(self, $ctype_in key, $res_t_base value):
+        # Check if the key type is integral for bounds checking
+        is_integral = self._is_integral_type(ctype_in)
+        size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
+
+        if is_integral:
+            meth_code.add(
+                """
+                     |def __setitem__(self, $in_t_cy key, $res_t_base value):
                      |    \"\"\"$docstring\"\"\"
-                     |    assert isinstance(key, int), 'arg index wrong type'
-                     |
+                     """,
+                locals(),
+            )
+            if size_guard:
+                meth_code.add(
+                    """
                      |    cdef int _idx = $call_arg
                      |    if _idx < 0:
                      |        raise IndexError("invalid index %d" % _idx)
-                     """,
-            locals(),
-        )
-
-        size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
-        if size_guard:
-            meth_code.add(
-                """
                      |    if _idx >= self.inst.get().$size_guard:
                      |        raise IndexError("invalid index %d" % _idx)
+                     """,
+                    locals(),
+                )
+        else:
+            meth_code.add(
+                """
+                     |def __setitem__(self, $in_t_cy key, $res_t_base value):
+                     |    \"\"\"$docstring\"\"\"
                      """,
                 locals(),
             )
