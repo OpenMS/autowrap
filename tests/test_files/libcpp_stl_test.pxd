@@ -5,6 +5,7 @@ from libcpp.vector cimport vector as libcpp_vector
 from libcpp.pair  cimport pair  as libcpp_pair 
 from libcpp.map  cimport map  as libcpp_map 
 from libcpp.memory cimport shared_ptr
+from libcpp cimport bool
 
 cdef extern from "libcpp_stl_test.hpp":
 
