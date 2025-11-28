@@ -13,7 +13,7 @@ Requirements
 ------------
 
 - Python ≥ 3.9
-- Cython ≥ 3.0
+- Cython ≥ 3.1
 
 Simple example
 ---------------------
