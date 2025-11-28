@@ -1,5 +1,6 @@
 autowrap 0.24.0 (unreleased)
 
+
 New STL Container Support (C++17):
 
 - Added `std::unordered_map<K,V>` converter - maps to Python `dict`
@@ -15,6 +16,10 @@ Other Changes:
   (required for `std::optional` and `std::string_view` support)
 - Fixed converter architecture to properly handle `None` values for
   `std::optional<T>` input parameters
+- Support for enums with the same name in different C++ namespaces using
+  scoped enum declarations with `wrap-as` annotation for renaming
+- Support for arbitrary key types in `operator[]` (getitem/setitem), not
+  just integer types like `size_t`
 
 autowrap 0.23.0
 
