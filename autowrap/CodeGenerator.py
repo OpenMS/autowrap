@@ -85,22 +85,6 @@ def namespace_handler(ns):
     return ns
 
 
-try:
-    unicode = unicode
-except NameError:
-    # 'unicode' is undefined, must be Python 3
-    str = str
-    unicode = str
-    bytes = bytes
-    basestring = (str, bytes)
-else:
-    # 'unicode' exists, must be Python 2
-    str = str
-    unicode = unicode
-    bytes = str
-    basestring = basestring
-
-
 def augment_arg_names(method):
     """replaces missing arg_names with "in_%d" % i, where i is the position
     number of the arg"""
@@ -110,11 +94,12 @@ def augment_arg_names(method):
 
 
 def fixed_include_dirs(include_boost: bool) -> List[AnyStr]:
-    import pkg_resources
+    from importlib.resources import files
 
-    boost = pkg_resources.resource_filename("autowrap", "data_files/boost")
-    data = pkg_resources.resource_filename("autowrap", "data_files")
-    autowrap_internal = pkg_resources.resource_filename("autowrap", "data_files/autowrap")
+    autowrap_files = files("autowrap")
+    boost = str(autowrap_files.joinpath("data_files/boost"))
+    data = str(autowrap_files.joinpath("data_files"))
+    autowrap_internal = str(autowrap_files.joinpath("data_files/autowrap"))
 
     if not include_boost:
         return [autowrap_internal]
@@ -1276,7 +1261,7 @@ class CodeGenerator(object):
             )
             indented = Code()
 
-            if isinstance(cleanup, basestring):
+            if isinstance(cleanup, (str, bytes)):
                 cleanup = "    %s" % cleanup
 
             indented.add(cleanup)
@@ -1288,10 +1273,10 @@ class CodeGenerator(object):
 
         cy_type = self.cr.cython_type(t)
 
-        if isinstance(to_py_code, basestring):
+        if isinstance(to_py_code, (str, bytes)):
             to_py_code = "    %s" % to_py_code
 
-        if isinstance(access_stmt, basestring):
+        if isinstance(access_stmt, (str, bytes)):
             access_stmt = "    %s" % access_stmt
 
         if t.is_ptr:
@@ -1360,7 +1345,7 @@ class CodeGenerator(object):
         else:
             indented = meth_code
 
-        if isinstance(full_call_stmt, basestring):
+        if isinstance(full_call_stmt, (str, bytes)):
             indented.add(
                 """
                 |    $full_call_stmt
@@ -1373,14 +1358,14 @@ class CodeGenerator(object):
         for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
-            if isinstance(cleanup, basestring):
+            if isinstance(cleanup, (str, bytes)):
                 cleanup = "    %s" % cleanup
             indented.add(cleanup)
 
         to_py_code = out_converter.output_conversion(res_t, "_r", "py_result")
 
         if to_py_code is not None:  # for non void return value
-            if isinstance(to_py_code, basestring):
+            if isinstance(to_py_code, (str, bytes)):
                 to_py_code = "    %s" % to_py_code
             indented.add(to_py_code)
             indented.add("    return py_result")
@@ -1455,7 +1440,7 @@ class CodeGenerator(object):
         out_converter = self.cr.get(res_t)
         full_call_stmt = out_converter.call_method(res_t, cy_call_str)
 
-        if isinstance(full_call_stmt, basestring):
+        if isinstance(full_call_stmt, (str, bytes)):
             fun_code.add(
                 """
                 |    $full_call_stmt
@@ -1468,7 +1453,7 @@ class CodeGenerator(object):
         for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
-            if isinstance(cleanup, basestring):
+            if isinstance(cleanup, (str, bytes)):
                 cleanup = "    %s" % cleanup
             fun_code.add(cleanup)
 
@@ -1476,7 +1461,7 @@ class CodeGenerator(object):
 
         out_vars = ["py_result"]
         if to_py_code is not None:  # for non void return value
-            if isinstance(to_py_code, basestring):
+            if isinstance(to_py_code, (str, bytes)):
                 to_py_code = "    %s" % to_py_code
             fun_code.add(to_py_code)
             fun_code.add("    return %s" % (", ".join(out_vars)))
@@ -1573,7 +1558,7 @@ class CodeGenerator(object):
         for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
-            if isinstance(cleanup, basestring):
+            if isinstance(cleanup, (str, bytes)):
                 cleanup = "    %s" % cleanup
             cons_code.add(cleanup)
 
@@ -1673,7 +1658,7 @@ class CodeGenerator(object):
 
         meth_code.add(
             """
-                     |    cdef $ctype _idx = $call_arg
+                     |    cdef int _idx = $call_arg
                      """,
             locals(),
         )
@@ -1696,7 +1681,7 @@ class CodeGenerator(object):
         out_converter = self.cr.get(res_t)
         full_call_stmt = out_converter.call_method(res_t, cy_call_str)
 
-        if isinstance(full_call_stmt, basestring):
+        if isinstance(full_call_stmt, (str, bytes)):
             meth_code.add(
                 """
                 |    $full_call_stmt
@@ -1709,14 +1694,14 @@ class CodeGenerator(object):
         for cleanup in reversed(cleanups):
             if not cleanup:
                 continue
-            if isinstance(cleanup, basestring):
+            if isinstance(cleanup, (str, bytes)):
                 cleanup = Code().add(cleanup)
             meth_code.add(cleanup)
 
         out_var = "py_result"
         to_py_code = out_converter.output_conversion(res_t, "_r", out_var)
         if to_py_code is not None:  # for non void return value
-            if isinstance(to_py_code, basestring):
+            if isinstance(to_py_code, (str, bytes)):
                 to_py_code = "    %s" % to_py_code
             meth_code.add(to_py_code)
             meth_code.add("    return $out_var", locals())
@@ -1775,7 +1760,7 @@ class CodeGenerator(object):
                      |    \"\"\"$docstring\"\"\"
                      |    assert isinstance(key, int), 'arg index wrong type'
                      |
-                     |    cdef long _idx = $call_arg
+                     |    cdef int _idx = $call_arg
                      |    if _idx < 0:
                      |        raise IndexError("invalid index %d" % _idx)
                      """,
@@ -1833,7 +1818,7 @@ class CodeGenerator(object):
             call_stmt = "<%s>(deref(self.inst.get()))" % cy_t
             full_call_stmt = out_converter.call_method(res_t, call_stmt)
 
-            if isinstance(full_call_stmt, basestring):
+            if isinstance(full_call_stmt, (str, bytes)):
                 code.add(
                     """
                     |    $full_call_stmt
@@ -1844,7 +1829,7 @@ class CodeGenerator(object):
                 code.add(full_call_stmt)
 
             to_py_code = out_converter.output_conversion(res_t, "_r", "py_res")
-            if isinstance(to_py_code, basestring):
+            if isinstance(to_py_code, (str, bytes)):
                 to_py_code = "    %s" % to_py_code
             code.add(to_py_code)
             code.add("""    return py_res""")

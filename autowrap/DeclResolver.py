@@ -37,7 +37,6 @@ import autowrap.Types as Types
 import autowrap.Utils as Utils
 import os
 from collections import defaultdict
-from autowrap.tools import OrderKeepingDictionary
 
 
 __doc__ = """
@@ -163,14 +162,13 @@ def get_namespace(pxd, default_namespace: str) -> str:
 
 
 class ResolvedClass(object):
-
     """contains all info for generating wrapping code of
     resolved class.
     "Resolved" means that template parameters and typedefs are resolved.
     """
 
     name: str
-    methods: OrderKeepingDictionary
+    methods: dict
     attributes: List[ResolvedAttribute]
     cpp_decl: PXDParser.CppClassDecl
     ns: AnyStr
@@ -185,7 +183,7 @@ class ResolvedClass(object):
     def __init__(self, name, methods, attributes, decl, instance_map, local_map):
         self.name: str = name
         # resolve overloads
-        self.methods: OrderKeepingDictionary = OrderKeepingDictionary()
+        self.methods: dict = {}
         for m in methods:
             self.methods.setdefault(m.name, []).append(m)
         self.attributes = attributes
@@ -220,7 +218,6 @@ class ResolvedClass(object):
 
 
 class ResolvedMethod(object):
-
     """contains all info for generating wrapping code of
     resolved class.
     "resolved" means that template parameters are resolved.

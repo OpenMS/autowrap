@@ -40,21 +40,6 @@ from autowrap.Code import Code
 import logging as L
 import string
 
-try:
-    unicode = unicode
-except NameError:
-    # 'unicode' is undefined, must be Python 3
-    str = str
-    unicode = str
-    bytes = bytes
-    basestring = (str, bytes)
-else:
-    # 'unicode' exists, must be Python 2
-    str = str
-    unicode = unicode
-    bytes = str
-    basestring = basestring
-
 
 def mangle(s):
     s = s.replace("(", "_l_")
@@ -209,20 +194,16 @@ class VoidConverter(TypeConverterBase):
 
 class IntegerConverter(TypeConverterBase):
     """
-    wraps long and int. "long" base_type is converted to "int" by the
-    cython parser!
-    TODO Long does not exist in Python2 anymore. Can we remove stuff?
+    wraps int.
     """
 
     def get_base_types(self) -> List[str]:
         return [
             "int",
             "bint",  # C boolean type
-            "long",
             "int32_t",
             "ptrdiff_t",
             "int64_t",
-            "long int",
             "uint32_t",
             "uint64_t",
             "size_t",
@@ -289,14 +270,12 @@ class BooleanConverter(TypeConverterBase):
 
 class UnsignedIntegerConverter(TypeConverterBase):
     """
-    wraps unsigned long and int. "long" base_type is converted to "int" by the
-    cython parser!
+    wraps unsigned int.
     """
 
     def get_base_types(self) -> List[str]:
         return [
             "unsigned int",
-            "unsigned long",
             "ptrdiff_t",
             "uint32_t",
             "uint64_t",
@@ -2036,7 +2015,7 @@ class StdStringUnicodeConverter(StdStringConverter):
         # Cython understands it and uses the Py_IsUnicodeCheck
         code.add(
             """
-            |if isinstance($argument_var, unicode):
+            |if isinstance($argument_var, str):
             |    $argument_var = $argument_var.encode('utf-8')
             """,
             locals(),
@@ -2222,7 +2201,7 @@ class ConverterRegistry(object):
             return False
 
     def cython_type(self, type_: Union[CppType, AnyStr]) -> CppType:
-        if isinstance(type_, basestring):
+        if isinstance(type_, (str, bytes)):
             type_ = CppType(type_)
         return type_.transformed(self.instance_mapping)
 

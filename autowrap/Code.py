@@ -37,21 +37,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import string
 import re
 
-try:
-    unicode = unicode
-except NameError:
-    # 'unicode' is undefined, must be Python 3
-    str = str
-    unicode = str
-    bytes = bytes
-    basestring = (str, bytes)
-else:
-    # 'unicode' exists, must be Python 2
-    str = str
-    unicode = unicode
-    bytes = str
-    basestring = basestring
-
 
 class Code(object):
     def __init__(self):
@@ -74,7 +59,7 @@ class Code(object):
             kw.update(a[0])
         if "self" in kw:
             del kw["self"]  # self causes problems in substitute call below
-        if isinstance(what, basestring):
+        if isinstance(what, (str, bytes)):
             try:
                 res = string.Template(what).substitute(**kw)
             except ValueError:
@@ -92,7 +77,7 @@ class Code(object):
     def _render(self, _indent="") -> List[str]:
         result = []
         for content in self.content:
-            if isinstance(content, basestring):
+            if isinstance(content, (str, bytes)):
                 result.append(_indent + content)
             else:
                 newindent = _indent + " " * 4

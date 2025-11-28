@@ -15,24 +15,20 @@ jobs:
   build_publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.11"
 
-      - name: Upgrade pip version
+      - name: Install build dependencies
         run: |
-          python -m pip install -U pip
-
-      - name: Install wheel
-        run: |
-          python -m pip install wheel
+          python -m pip install -U pip build
 
       - name: Build wheel and source distribution
         run: |
-          python setup.py bdist_wheel sdist
+          python -m build
       
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@master
@@ -42,16 +38,16 @@ jobs:
           packages_dir: ${{ github.workspace }}/dist
       
       - name: Parse version
-        run: echo "version=$(python3 -c 'from autowrap.version import __version__ as v; print("%d.%d.%d" % v)')" >> $GITHUB_OUTPUT
+        run: echo "version=$(python3 -c 'from autowrap.version import __version__; print(__version__)')" >> $GITHUB_OUTPUT
         id: version
         
       - name: Create github release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         id: create_release
         with:
           draft: false
           prerelease: false
-          release_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
           tag_name: release/${{ steps.version.outputs.version }}
           body_path: CHANGELOG.md
         env:
@@ -67,7 +63,11 @@ jobs:
           cat CHANGELOG.md >> HISTORY.md
           echo >> HISTORY.md
           rm CHANGELOG.md && echo "autowrap $NEXT_VER" > CHANGELOG.md
-          sed -i -e "s/^[[:space:]]*__version__.*/__version__ = \(${NEXT_VER//./, }\)/g" autowrap/version.py
+          # Update string version
+          sed -i -e "s/^__version__ = \".*\"/__version__ = \"$NEXT_VER\"/g" autowrap/version.py
+          # Update tuple version for backward compatibility
+          TUPLE_VER=$(echo $NEXT_VER | sed 's/\./, /g')
+          sed -i -e "s/^__version_tuple__ = (.*)/__version_tuple__ = ($TUPLE_VER)/g" autowrap/version.py
           
       - uses: stefanzweifel/git-auto-commit-action@v4.15.2
         with:
