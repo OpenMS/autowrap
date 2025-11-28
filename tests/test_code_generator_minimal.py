@@ -328,3 +328,27 @@ def test_minimal():
     m2 = wrapped.Minimal(1)
     m1 >>= m2
     assert m1 == wrapped.Minimal(5)
+
+    # operator and (bitwise)
+    assert wrapped.Minimal(0b1100) & wrapped.Minimal(0b1010) == wrapped.Minimal(0b1000)
+
+    m1 = wrapped.Minimal(0b1111)
+    m2 = wrapped.Minimal(0b1010)
+    m1 &= m2
+    assert m1 == wrapped.Minimal(0b1010)
+
+    # operator or (bitwise)
+    assert wrapped.Minimal(0b1100) | wrapped.Minimal(0b1010) == wrapped.Minimal(0b1110)
+
+    m1 = wrapped.Minimal(0b1000)
+    m2 = wrapped.Minimal(0b0010)
+    m1 |= m2
+    assert m1 == wrapped.Minimal(0b1010)
+
+    # operator xor (bitwise)
+    assert wrapped.Minimal(0b1100) ^ wrapped.Minimal(0b1010) == wrapped.Minimal(0b0110)
+
+    m1 = wrapped.Minimal(0b1111)
+    m2 = wrapped.Minimal(0b0101)
+    m1 ^= m2
+    assert m1 == wrapped.Minimal(0b1010)
