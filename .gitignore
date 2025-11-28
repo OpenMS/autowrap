@@ -176,3 +176,4 @@ tests/test_files/enums.pyx
 # generated typestubs
 tests/test_files/*.pyi
 
+_codeql_detected_source_root
