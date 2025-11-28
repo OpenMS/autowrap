@@ -46,10 +46,12 @@ except ImportError:
     _cython_version = "0"
 else:
     try:
-        _major_str = str(_cython_version).split(".")[0]
-        if int(_major_str) < 3:
+        _version_parts = str(_cython_version).split(".")
+        _major = int(_version_parts[0])
+        _minor = int(_version_parts[1]) if len(_version_parts) > 1 else 0
+        if _major < 3 or (_major == 3 and _minor < 1):
             raise RuntimeError(
-                "autowrap requires Cython >= 3.0; found Cython %s" % _cython_version
+                "autowrap requires Cython >= 3.1; found Cython %s" % _cython_version
             )
     except Exception:
         # If parsing the version fails for some reason, do not block import here.
