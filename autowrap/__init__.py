@@ -78,11 +78,9 @@ def generate_code(
     debug=False,
     manual_code=None,
     extra_cimports=None,
-    include_boost=True,
     include_numpy=False,
     all_decl=[],
     add_relative=False,
-    shared_ptr="boost",
 ):
     import autowrap.CodeGenerator
 
@@ -94,11 +92,10 @@ def generate_code(
         extra_cimports=extra_cimports,
         all_decl=all_decl,
         add_relative=add_relative,
-        shared_ptr=shared_ptr,
     )
     gen.include_numpy = include_numpy
     gen.create_pyx_file(debug)
-    includes = gen.get_include_dirs(include_boost)
+    includes = gen.get_include_dirs()
     print(
         "Autowrap has wrapped %s classes, %s methods and %s enums"
         % (gen.wrapped_classes_cnt, gen.wrapped_methods_cnt, gen.wrapped_enums_cnt)
@@ -113,11 +110,10 @@ def parse_and_generate_code(
     debug,
     manual_code=None,
     extra_cimports=None,
-    include_boost=True,
 ):
     print("Autowrap will start to parse and generate code. " "Will parse %s files" % len(files))
     decls, instance_map = parse(files, root)
     print("Done parsing the files, will generate the code...")
     return generate_code(
-        decls, instance_map, target, debug, manual_code, extra_cimports, include_boost
+        decls, instance_map, target, debug, manual_code, extra_cimports
     )
