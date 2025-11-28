@@ -34,10 +34,16 @@ cdef extern from "new_stl_test.hpp":
         # unordered_map tests
         libcpp_unordered_map[libcpp_string, int] getUnorderedMap()
         int sumUnorderedMapValues(libcpp_unordered_map[libcpp_string, int]& m)
+        int lookupUnorderedMap(libcpp_unordered_map[libcpp_string, int]& m, libcpp_string& key)
+        bool hasKeyUnorderedMap(libcpp_unordered_map[libcpp_string, int]& m, libcpp_string& key)
+        int getValueUnorderedMap(libcpp_unordered_map[libcpp_string, int]& m, libcpp_string& key) except +
 
         # unordered_set tests
         libcpp_unordered_set[int] getUnorderedSet()
         int sumUnorderedSet(libcpp_unordered_set[int]& s)
+        bool hasValueUnorderedSet(libcpp_unordered_set[int]& s, int value)
+        size_t countUnorderedSet(libcpp_unordered_set[int]& s, int value)
+        int findUnorderedSet(libcpp_unordered_set[int]& s, int value)
 
         # deque tests
         libcpp_deque[int] getDeque()

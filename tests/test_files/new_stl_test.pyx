@@ -23,7 +23,7 @@ from  cython.operator cimport dereference as deref, preincrement as inc, address
 from  AutowrapRefHolder      cimport AutowrapRefHolder
 from  AutowrapPtrHolder      cimport AutowrapPtrHolder
 from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
-from  smart_ptr       cimport shared_ptr
+from  libcpp.memory   cimport shared_ptr
 from new_stl_test cimport _NewSTLTest as __NewSTLTest
 
 cdef extern from "autowrap_tools.hpp":
@@ -64,9 +64,75 @@ cdef class _NewSTLTest:
         """
         assert isinstance(m, dict) and all(isinstance(k, bytes) for k in m.keys()) and all(isinstance(v, int) for v in m.values()), 'arg m wrong type'
         cdef libcpp_unordered_map[libcpp_string, int] * v0 = new libcpp_unordered_map[libcpp_string, int]()
-        for key, value in m.items():
-            deref(v0)[ <libcpp_string> key ] = <int> value
+        for _loop_key_m, _loop_value_m in m.items():
+            deref(v0)[ <libcpp_string> _loop_key_m ] = <int> _loop_value_m
         cdef int _r = self.inst.get().sumUnorderedMapValues(deref(v0))
+        replace = dict()
+        cdef libcpp_unordered_map[libcpp_string, int].iterator it_m = v0.begin()
+        while it_m != v0.end():
+           replace[<libcpp_string> deref(it_m).first] = <int> deref(it_m).second
+           inc(it_m)
+        m.clear()
+        m.update(replace)
+        del v0
+        py_result = <int>_r
+        return py_result
+    
+    def lookupUnorderedMap(self, dict m , bytes key ):
+        """
+        lookupUnorderedMap(self, m: Dict[bytes, int] , key: bytes ) -> int
+        """
+        assert isinstance(m, dict) and all(isinstance(k, bytes) for k in m.keys()) and all(isinstance(v, int) for v in m.values()), 'arg m wrong type'
+        assert isinstance(key, bytes), 'arg key wrong type'
+        cdef libcpp_unordered_map[libcpp_string, int] * v0 = new libcpp_unordered_map[libcpp_string, int]()
+        for _loop_key_m, _loop_value_m in m.items():
+            deref(v0)[ <libcpp_string> _loop_key_m ] = <int> _loop_value_m
+    
+        cdef int _r = self.inst.get().lookupUnorderedMap(deref(v0), (<libcpp_string>key))
+        replace = dict()
+        cdef libcpp_unordered_map[libcpp_string, int].iterator it_m = v0.begin()
+        while it_m != v0.end():
+           replace[<libcpp_string> deref(it_m).first] = <int> deref(it_m).second
+           inc(it_m)
+        m.clear()
+        m.update(replace)
+        del v0
+        py_result = <int>_r
+        return py_result
+    
+    def hasKeyUnorderedMap(self, dict m , bytes key ):
+        """
+        hasKeyUnorderedMap(self, m: Dict[bytes, int] , key: bytes ) -> bool
+        """
+        assert isinstance(m, dict) and all(isinstance(k, bytes) for k in m.keys()) and all(isinstance(v, int) for v in m.values()), 'arg m wrong type'
+        assert isinstance(key, bytes), 'arg key wrong type'
+        cdef libcpp_unordered_map[libcpp_string, int] * v0 = new libcpp_unordered_map[libcpp_string, int]()
+        for _loop_key_m, _loop_value_m in m.items():
+            deref(v0)[ <libcpp_string> _loop_key_m ] = <int> _loop_value_m
+    
+        cdef bool _r = self.inst.get().hasKeyUnorderedMap(deref(v0), (<libcpp_string>key))
+        replace = dict()
+        cdef libcpp_unordered_map[libcpp_string, int].iterator it_m = v0.begin()
+        while it_m != v0.end():
+           replace[<libcpp_string> deref(it_m).first] = <int> deref(it_m).second
+           inc(it_m)
+        m.clear()
+        m.update(replace)
+        del v0
+        py_result = <bool>_r
+        return py_result
+    
+    def getValueUnorderedMap(self, dict m , bytes key ):
+        """
+        getValueUnorderedMap(self, m: Dict[bytes, int] , key: bytes ) -> int
+        """
+        assert isinstance(m, dict) and all(isinstance(k, bytes) for k in m.keys()) and all(isinstance(v, int) for v in m.values()), 'arg m wrong type'
+        assert isinstance(key, bytes), 'arg key wrong type'
+        cdef libcpp_unordered_map[libcpp_string, int] * v0 = new libcpp_unordered_map[libcpp_string, int]()
+        for _loop_key_m, _loop_value_m in m.items():
+            deref(v0)[ <libcpp_string> _loop_key_m ] = <int> _loop_value_m
+    
+        cdef int _r = self.inst.get().getValueUnorderedMap(deref(v0), (<libcpp_string>key))
         replace = dict()
         cdef libcpp_unordered_map[libcpp_string, int].iterator it_m = v0.begin()
         while it_m != v0.end():
@@ -99,6 +165,72 @@ cdef class _NewSTLTest:
         for item0 in s:
            v0.insert(<int> item0)
         cdef int _r = self.inst.get().sumUnorderedSet(deref(v0))
+        replace = set()
+        cdef libcpp_unordered_set[int].iterator it_s = v0.begin()
+        while it_s != v0.end():
+           replace.add(<int> deref(it_s))
+           inc(it_s)
+        s.clear()
+        s.update(replace)
+        del v0
+        py_result = <int>_r
+        return py_result
+    
+    def hasValueUnorderedSet(self, set s , int value ):
+        """
+        hasValueUnorderedSet(self, s: Set[int] , value: int ) -> bool
+        """
+        assert isinstance(s, set) and all(isinstance(li, int) for li in s), 'arg s wrong type'
+        assert isinstance(value, int), 'arg value wrong type'
+        cdef libcpp_unordered_set[int] * v0 = new libcpp_unordered_set[int]()
+        for item0 in s:
+           v0.insert(<int> item0)
+    
+        cdef bool _r = self.inst.get().hasValueUnorderedSet(deref(v0), (<int>value))
+        replace = set()
+        cdef libcpp_unordered_set[int].iterator it_s = v0.begin()
+        while it_s != v0.end():
+           replace.add(<int> deref(it_s))
+           inc(it_s)
+        s.clear()
+        s.update(replace)
+        del v0
+        py_result = <bool>_r
+        return py_result
+    
+    def countUnorderedSet(self, set s , int value ):
+        """
+        countUnorderedSet(self, s: Set[int] , value: int ) -> int
+        """
+        assert isinstance(s, set) and all(isinstance(li, int) for li in s), 'arg s wrong type'
+        assert isinstance(value, int), 'arg value wrong type'
+        cdef libcpp_unordered_set[int] * v0 = new libcpp_unordered_set[int]()
+        for item0 in s:
+           v0.insert(<int> item0)
+    
+        cdef size_t _r = self.inst.get().countUnorderedSet(deref(v0), (<int>value))
+        replace = set()
+        cdef libcpp_unordered_set[int].iterator it_s = v0.begin()
+        while it_s != v0.end():
+           replace.add(<int> deref(it_s))
+           inc(it_s)
+        s.clear()
+        s.update(replace)
+        del v0
+        py_result = <size_t>_r
+        return py_result
+    
+    def findUnorderedSet(self, set s , int value ):
+        """
+        findUnorderedSet(self, s: Set[int] , value: int ) -> int
+        """
+        assert isinstance(s, set) and all(isinstance(li, int) for li in s), 'arg s wrong type'
+        assert isinstance(value, int), 'arg value wrong type'
+        cdef libcpp_unordered_set[int] * v0 = new libcpp_unordered_set[int]()
+        for item0 in s:
+           v0.insert(<int> item0)
+    
+        cdef int _r = self.inst.get().findUnorderedSet(deref(v0), (<int>value))
         replace = set()
         cdef libcpp_unordered_set[int].iterator it_s = v0.begin()
         while it_s != v0.end():
@@ -211,9 +343,9 @@ cdef class _NewSTLTest:
         py_result = <int>_r
         return py_result
     
-    def getStringViewLength(self, sv ):
+    def getStringViewLength(self, bytes sv ):
         """
-        getStringViewLength(self, sv: Union[bytes, str] ) -> int
+        getStringViewLength(self, sv: bytes ) -> int
         """
         assert isinstance(sv, (bytes, str)), 'arg sv wrong type'
         cdef bytes v0
@@ -225,9 +357,9 @@ cdef class _NewSTLTest:
         py_result = <size_t>_r
         return py_result
     
-    def stringViewToString(self, sv ):
+    def stringViewToString(self, bytes sv ):
         """
-        stringViewToString(self, sv: Union[bytes, str] ) -> bytes
+        stringViewToString(self, sv: bytes ) -> bytes
         """
         assert isinstance(sv, (bytes, str)), 'arg sv wrong type'
         cdef bytes v0

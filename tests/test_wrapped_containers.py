@@ -144,6 +144,38 @@ class TestMapWithWrappedClassValue:
         assert result[1].value_ == 10
         assert result[2].value_ == 20
 
+    def test_map_int_to_item_lookup(self, wrapped_container_module):
+        """Test looking up Item by key in map."""
+        m = wrapped_container_module
+        t = m.WrappedContainerTest()
+
+        item1 = m.Item(100)
+        item2 = m.Item(200)
+        item3 = m.Item(300)
+        map_data = {1: item1, 5: item2, 10: item3}
+
+        # Lookup existing keys
+        assert t.lookupMapIntToItem(map_data, 1) == 100
+        assert t.lookupMapIntToItem(map_data, 5) == 200
+        assert t.lookupMapIntToItem(map_data, 10) == 300
+
+        # Lookup missing key
+        assert t.lookupMapIntToItem(map_data, 999) == -1
+
+    def test_map_int_to_item_has_key(self, wrapped_container_module):
+        """Test checking if key exists in map."""
+        m = wrapped_container_module
+        t = m.WrappedContainerTest()
+
+        item1 = m.Item(100)
+        item2 = m.Item(200)
+        map_data = {1: item1, 2: item2}
+
+        assert t.hasKeyMapIntToItem(map_data, 1) is True
+        assert t.hasKeyMapIntToItem(map_data, 2) is True
+        assert t.hasKeyMapIntToItem(map_data, 3) is False
+        assert t.hasKeyMapIntToItem(map_data, 999) is False
+
 
 class TestMapWithWrappedClassKey:
     """Tests for map<Item, int>."""
@@ -306,6 +338,38 @@ class TestUnorderedMapWithWrappedClassValue:
         assert result[1].value_ == 10
         assert result[2].value_ == 20
 
+    def test_unordered_map_int_to_item_lookup(self, wrapped_container_module):
+        """Test looking up Item by key in unordered_map (hash-based O(1) lookup)."""
+        m = wrapped_container_module
+        t = m.WrappedContainerTest()
+
+        item1 = m.Item(100)
+        item2 = m.Item(200)
+        item3 = m.Item(300)
+        map_data = {1: item1, 5: item2, 10: item3}
+
+        # Lookup existing keys - tests hash-based access
+        assert t.lookupUnorderedMapIntToItem(map_data, 1) == 100
+        assert t.lookupUnorderedMapIntToItem(map_data, 5) == 200
+        assert t.lookupUnorderedMapIntToItem(map_data, 10) == 300
+
+        # Lookup missing key
+        assert t.lookupUnorderedMapIntToItem(map_data, 999) == -1
+
+    def test_unordered_map_int_to_item_has_key(self, wrapped_container_module):
+        """Test checking if key exists in unordered_map (hash-based O(1) lookup)."""
+        m = wrapped_container_module
+        t = m.WrappedContainerTest()
+
+        item1 = m.Item(100)
+        item2 = m.Item(200)
+        map_data = {1: item1, 2: item2}
+
+        assert t.hasKeyUnorderedMapIntToItem(map_data, 1) is True
+        assert t.hasKeyUnorderedMapIntToItem(map_data, 2) is True
+        assert t.hasKeyUnorderedMapIntToItem(map_data, 3) is False
+        assert t.hasKeyUnorderedMapIntToItem(map_data, 999) is False
+
 
 class TestUnorderedMapWithWrappedClassBoth:
     """Tests for unordered_map<Item, Item> - wrapped class as both key and value."""
@@ -435,6 +499,46 @@ class TestUnorderedSetOfWrappedClass:
         assert len(items) == 3
         values = sorted([item.value_ for item in items])
         assert values == [0, 10, 20]
+
+    def test_unordered_set_has_item(self, wrapped_container_module):
+        """Test checking if Item exists in unordered_set (hash-based O(1) membership test)."""
+        m = wrapped_container_module
+        t = m.WrappedContainerTest()
+
+        item1 = m.Item(10)
+        item2 = m.Item(20)
+        item3 = m.Item(30)
+        items = {item1, item2, item3}
+
+        # Items that should be found (tests hash function)
+        search_item1 = m.Item(10)
+        search_item2 = m.Item(20)
+        assert t.hasItemUnorderedSet(items, search_item1) is True
+        assert t.hasItemUnorderedSet(items, search_item2) is True
+
+        # Item that should NOT be found
+        missing_item = m.Item(999)
+        assert t.hasItemUnorderedSet(items, missing_item) is False
+
+    def test_unordered_set_find_item(self, wrapped_container_module):
+        """Test finding Item in unordered_set and returning its value (hash-based O(1) lookup)."""
+        m = wrapped_container_module
+        t = m.WrappedContainerTest()
+
+        item1 = m.Item(10)
+        item2 = m.Item(20)
+        item3 = m.Item(30)
+        items = {item1, item2, item3}
+
+        # Find existing items - tests hash-based lookup
+        search_item1 = m.Item(10)
+        search_item2 = m.Item(30)
+        assert t.findItemUnorderedSet(items, search_item1) == 10
+        assert t.findItemUnorderedSet(items, search_item2) == 30
+
+        # Find missing item should return -1
+        missing_item = m.Item(999)
+        assert t.findItemUnorderedSet(items, missing_item) == -1
 
 
 class TestNestedListOfVectors:

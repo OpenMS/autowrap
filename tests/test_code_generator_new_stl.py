@@ -44,10 +44,22 @@ def test_new_stl_code_generation():
         "getUnorderedMap method should be generated"
     assert "def sumUnorderedMapValues(" in pyx_content, \
         "sumUnorderedMapValues method should be generated"
+    assert "def lookupUnorderedMap(" in pyx_content, \
+        "lookupUnorderedMap method should be generated"
+    assert "def hasKeyUnorderedMap(" in pyx_content, \
+        "hasKeyUnorderedMap method should be generated"
+    assert "def getValueUnorderedMap(" in pyx_content, \
+        "getValueUnorderedMap method should be generated"
     assert "def getUnorderedSet(" in pyx_content, \
         "getUnorderedSet method should be generated"
     assert "def sumUnorderedSet(" in pyx_content, \
         "sumUnorderedSet method should be generated"
+    assert "def hasValueUnorderedSet(" in pyx_content, \
+        "hasValueUnorderedSet method should be generated"
+    assert "def countUnorderedSet(" in pyx_content, \
+        "countUnorderedSet method should be generated"
+    assert "def findUnorderedSet(" in pyx_content, \
+        "findUnorderedSet method should be generated"
     assert "def getDeque(" in pyx_content, \
         "getDeque method should be generated"
     assert "def sumDeque(" in pyx_content, \
@@ -92,6 +104,29 @@ def test_new_stl_code_generation():
     sum_result = obj.sumUnorderedMapValues({b"a": 10, b"b": 20})
     assert sum_result == 30, f"sumUnorderedMapValues returned {sum_result}"
 
+    # Test unordered_map lookup by key
+    test_map = {b"apple": 100, b"banana": 200, b"cherry": 300}
+    lookup_result = obj.lookupUnorderedMap(test_map, b"banana")
+    assert lookup_result == 200, f"lookupUnorderedMap('banana') returned {lookup_result}, expected 200"
+
+    lookup_missing = obj.lookupUnorderedMap(test_map, b"grape")
+    assert lookup_missing == -1, f"lookupUnorderedMap('grape') returned {lookup_missing}, expected -1"
+
+    # Test unordered_map hasKey
+    assert obj.hasKeyUnorderedMap(test_map, b"apple") is True, "hasKeyUnorderedMap('apple') should be True"
+    assert obj.hasKeyUnorderedMap(test_map, b"grape") is False, "hasKeyUnorderedMap('grape') should be False"
+
+    # Test unordered_map getValue (at() - throws on missing key)
+    value_result = obj.getValueUnorderedMap(test_map, b"cherry")
+    assert value_result == 300, f"getValueUnorderedMap('cherry') returned {value_result}, expected 300"
+
+    # Test that getValue raises exception for missing key
+    try:
+        obj.getValueUnorderedMap(test_map, b"missing")
+        assert False, "getValueUnorderedMap should have raised an exception for missing key"
+    except Exception:
+        pass  # Expected - std::out_of_range from at()
+
     # Test unordered_set
     result_set = obj.getUnorderedSet()
     assert isinstance(result_set, set), "unordered_set should return set"
@@ -99,6 +134,22 @@ def test_new_stl_code_generation():
 
     sum_set_result = obj.sumUnorderedSet({10, 20, 30})
     assert sum_set_result == 60, f"sumUnorderedSet returned {sum_set_result}"
+
+    # Test unordered_set membership (hasValue)
+    test_set = {100, 200, 300, 400}
+    assert obj.hasValueUnorderedSet(test_set, 200) is True, "hasValueUnorderedSet(200) should be True"
+    assert obj.hasValueUnorderedSet(test_set, 999) is False, "hasValueUnorderedSet(999) should be False"
+
+    # Test unordered_set count
+    assert obj.countUnorderedSet(test_set, 300) == 1, "countUnorderedSet(300) should be 1"
+    assert obj.countUnorderedSet(test_set, 999) == 0, "countUnorderedSet(999) should be 0"
+
+    # Test unordered_set find
+    find_result = obj.findUnorderedSet(test_set, 400)
+    assert find_result == 400, f"findUnorderedSet(400) returned {find_result}, expected 400"
+
+    find_missing = obj.findUnorderedSet(test_set, 999)
+    assert find_missing == -1, f"findUnorderedSet(999) returned {find_missing}, expected -1"
 
     # Test deque
     result_deque = obj.getDeque()

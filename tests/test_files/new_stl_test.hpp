@@ -36,6 +36,25 @@ public:
         return sum;
     }
 
+    // Lookup value by key - returns value or -1 if not found
+    int lookupUnorderedMap(const std::unordered_map<std::string, int>& m, const std::string& key) {
+        auto it = m.find(key);
+        if (it != m.end()) {
+            return it->second;
+        }
+        return -1;
+    }
+
+    // Check if key exists in map
+    bool hasKeyUnorderedMap(const std::unordered_map<std::string, int>& m, const std::string& key) {
+        return m.count(key) > 0;
+    }
+
+    // Get value using at() - throws if key not found
+    int getValueUnorderedMap(const std::unordered_map<std::string, int>& m, const std::string& key) {
+        return m.at(key);
+    }
+
     // =========================================================================
     // std::unordered_set tests
     // =========================================================================
@@ -50,6 +69,25 @@ public:
             sum += v;
         }
         return sum;
+    }
+
+    // Check if value exists in set (membership test)
+    bool hasValueUnorderedSet(const std::unordered_set<int>& s, int value) {
+        return s.count(value) > 0;
+    }
+
+    // Count occurrences (always 0 or 1 for set)
+    size_t countUnorderedSet(const std::unordered_set<int>& s, int value) {
+        return s.count(value);
+    }
+
+    // Find and return value (or -1 if not found)
+    int findUnorderedSet(const std::unordered_set<int>& s, int value) {
+        auto it = s.find(value);
+        if (it != s.end()) {
+            return *it;
+        }
+        return -1;
     }
 
     // =========================================================================
