@@ -72,8 +72,6 @@ def test_enums():
 
     See tests/test_files/enums.pxd for the full example.
     """
-    if int(cython_version[0]) < 3:
-        return
     target = os.path.join(test_files, "enums.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
