@@ -2132,6 +2132,883 @@ class SharedPtrConverter(TypeConverterBase):
         return code
 
 
+# =============================================================================
+# New STL Container Converters (C++11/14/17/20)
+# =============================================================================
+
+
+class StdUnorderedMapConverter(TypeConverterBase):
+    """
+    Converter for std::unordered_map<K, V> - hash-based map with O(1) average lookup.
+    Maps to Python dict.
+
+    Input conversion: Python dict -> std::unordered_map (iterates and inserts)
+    Output conversion: std::unordered_map -> Python dict (iterates and copies)
+
+    Supports reference parameters - modifications to the map in C++ are
+    reflected back to the Python dict after the call.
+
+    Example PXD declaration:
+        libcpp_unordered_map[libcpp_string, int] getData()
+        void processData(libcpp_unordered_map[libcpp_string, int]& data)
+
+    Example Python usage:
+        data = obj.getData()           # Returns dict
+        obj.processData({b"key": 42})  # Pass dict
+    """
+
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_unordered_map"]
+
+    def matches(self, cpp_type: CppType) -> bool:
+        return True
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        return "dict"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        tt_key, tt_value = cpp_type.template_args
+        inner_conv_1 = self.converters.get(tt_key)
+        inner_conv_2 = self.converters.get(tt_value)
+        return "Dict[%s, %s]" % (
+            inner_conv_1.matching_python_type_full(tt_key),
+            inner_conv_2.matching_python_type_full(tt_value),
+        )
+
+    def type_check_expression(self, cpp_type, arg_var):
+        tt_key, tt_value = cpp_type.template_args
+        inner_conv_1 = self.converters.get(tt_key)
+        inner_conv_2 = self.converters.get(tt_value)
+        assert inner_conv_1 is not None, "arg type %s not supported" % tt_key
+        assert inner_conv_2 is not None, "arg type %s not supported" % tt_value
+
+        inner_check_1 = inner_conv_1.type_check_expression(tt_key, "k")
+        inner_check_2 = inner_conv_2.type_check_expression(tt_value, "v")
+
+        return (
+            Code()
+            .add(
+                """
+          |isinstance($arg_var, dict)
+          + and all($inner_check_1 for k in $arg_var.keys())
+          + and all($inner_check_2 for v in $arg_var.values())
+          """,
+                locals(),
+            )
+            .render()
+        )
+
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        tt_key, tt_value = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+
+        code = Code()
+
+        cy_tt_key = self.converters.cython_type(tt_key)
+        cy_tt_value = self.converters.cython_type(tt_value)
+
+        if cy_tt_value.is_enum:
+            value_conv = "<%s> value" % cy_tt_value
+        elif tt_value.base_type in self.converters.names_of_wrapper_classes:
+            value_conv = "deref((<%s>value).inst.get())" % tt_value.base_type
+        else:
+            value_conv = "<%s> value" % cy_tt_value
+
+        if cy_tt_key.is_enum:
+            key_conv = "<%s> key" % cy_tt_key
+        elif tt_key.base_type in self.converters.names_of_wrapper_classes:
+            key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, tt_key)
+        else:
+            key_conv = "<%s> key" % cy_tt_key
+
+        code.add(
+            """
+            |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
+            + libcpp_unordered_map[$cy_tt_key, $cy_tt_value]()
+
+            |for key, value in $argument_var.items():
+            |    deref($temp_var)[ $key_conv ] = $value_conv
+            """,
+            locals(),
+        )
+
+        if cpp_type.is_ref and not cpp_type.is_const:
+            it = mangle("it_" + argument_var)
+            key_conv_out = "<%s> deref(%s).first" % (cy_tt_key, it)
+            value_conv_out = "<%s> deref(%s).second" % (cy_tt_value, it)
+            cleanup_code = Code().add(
+                """
+                |replace = dict()
+                |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $temp_var.begin()
+                |while $it != $temp_var.end():
+                |   replace[$key_conv_out] = $value_conv_out
+                |   inc($it)
+                |$argument_var.clear()
+                |$argument_var.update(replace)
+                |del $temp_var
+                """,
+                locals(),
+            )
+        else:
+            cleanup_code = "del %s" % temp_var
+
+        return code, "deref(%s)" % temp_var, cleanup_code
+
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
+
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+        assert not cpp_type.is_ptr
+
+        tt_key, tt_value = cpp_type.template_args
+        cy_tt_key = self.converters.cython_type(tt_key)
+        cy_tt_value = self.converters.cython_type(tt_value)
+
+        it = mangle("it_" + input_cpp_var)
+        key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
+        value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
+
+        code = Code().add(
+            """
+            |$output_py_var = dict()
+            |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+            |while $it != $input_cpp_var.end():
+            |   $output_py_var[$key_conv] = $value_conv
+            |   inc($it)
+            """,
+            locals(),
+        )
+        return code
+
+
+class StdUnorderedSetConverter(TypeConverterBase):
+    """
+    Converter for std::unordered_set<T> - hash-based set with O(1) average lookup.
+    Maps to Python set.
+
+    Input conversion: Python set -> std::unordered_set (iterates and inserts)
+    Output conversion: std::unordered_set -> Python set (iterates and copies)
+
+    Supports reference parameters - modifications to the set in C++ are
+    reflected back to the Python set after the call.
+
+    Example PXD declaration:
+        libcpp_unordered_set[int] getValues()
+        int countUnique(libcpp_unordered_set[int]& values)
+
+    Example Python usage:
+        values = obj.getValues()       # Returns set
+        count = obj.countUnique({1, 2, 3})  # Pass set
+    """
+
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_unordered_set"]
+
+    def matches(self, cpp_type: CppType) -> bool:
+        return True
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        return "set"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        return "Set[%s]" % inner_conv.matching_python_type_full(tt)
+
+    def type_check_expression(self, cpp_type, arg_var):
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        assert inner_conv is not None, "arg type %s not supported" % tt
+        inner_check = inner_conv.type_check_expression(tt, "li")
+
+        return (
+            Code()
+            .add(
+                """
+          |isinstance($arg_var, set) and all($inner_check for li in $arg_var)
+          """,
+                locals(),
+            )
+            .render()
+        )
+
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        (tt,) = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+        inner = self.converters.cython_type(tt)
+        it = mangle("it_" + argument_var)
+
+        if inner.is_enum:
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_unordered_set[$inner] * $temp_var = new libcpp_unordered_set[$inner]()
+                |cdef int $item
+                |for $item in $argument_var:
+                |   $temp_var.insert(<$inner> $item)
+                """,
+                locals(),
+            )
+            if cpp_type.is_ref and not cpp_type.is_const:
+                cleanup_code = Code().add(
+                    """
+                    |replace = set()
+                    |cdef libcpp_unordered_set[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   replace.add(<int> deref($it))
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            base_type = tt.base_type
+            do_deref = "deref" if not inner.is_ptr else ""
+            cy_tt = tt.base_type
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_unordered_set[$inner] * $temp_var = new libcpp_unordered_set[$inner]()
+                |cdef $base_type $item
+                |for $item in $argument_var:
+                |   $temp_var.insert($do_deref($item.inst.get()))
+                """,
+                locals(),
+            )
+            if cpp_type.is_ref and not cpp_type.is_const:
+                cleanup_code = Code().add(
+                    """
+                    |replace = set()
+                    |cdef libcpp_unordered_set[$inner].iterator $it = $temp_var.begin()
+                    |cdef $cy_tt $item
+                    |while $it != $temp_var.end():
+                    |   $item = $cy_tt.__new__($cy_tt)
+                    |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                    |   replace.add($item)
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+        else:
+            # Primitive types - need explicit iteration
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_unordered_set[$inner] * $temp_var = new libcpp_unordered_set[$inner]()
+                |for $item in $argument_var:
+                |   $temp_var.insert(<$inner> $item)
+                """,
+                locals(),
+            )
+            if cpp_type.is_ref and not cpp_type.is_const:
+                cleanup_code = Code().add(
+                    """
+                    |replace = set()
+                    |cdef libcpp_unordered_set[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   replace.add(<$inner> deref($it))
+                    |   inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
+
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+        assert not cpp_type.is_ptr
+
+        (tt,) = cpp_type.template_args
+        inner = self.converters.cython_type(tt)
+        it = mangle("it_" + input_cpp_var)
+
+        if inner.is_enum:
+            code = Code().add(
+                """
+                |$output_py_var = set()
+                |cdef libcpp_unordered_set[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var.add(<int>deref($it))
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            cy_tt = tt.base_type
+            item = mangle("item_" + output_py_var)
+            code = Code().add(
+                """
+                |$output_py_var = set()
+                |cdef libcpp_unordered_set[$inner].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $cy_tt.__new__($cy_tt)
+                |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                |   $output_py_var.add($item)
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+        else:
+            # Primitive types - need explicit iteration
+            code = Code().add(
+                """
+                |$output_py_var = set()
+                |cdef libcpp_unordered_set[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var.add(<$inner>deref($it))
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+
+class StdDequeConverter(TypeConverterBase):
+    """
+    Converter for std::deque<T> - double-ended queue with O(1) access at both ends.
+    Maps to Python list.
+
+    Input conversion: Python list -> std::deque (iterates and push_back)
+    Output conversion: std::deque -> Python list (uses at() for indexed access)
+
+    Supports reference parameters - modifications to the deque in C++ are
+    reflected back to the Python list after the call.
+
+    Note: While Python has collections.deque, we use list for simplicity and
+    compatibility with existing autowrap patterns.
+
+    Example PXD declaration:
+        libcpp_deque[int] getItems()
+        int processQueue(libcpp_deque[int]& items)
+
+    Example Python usage:
+        items = obj.getItems()         # Returns list
+        obj.processQueue([1, 2, 3])    # Pass list
+    """
+
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_deque"]
+
+    def matches(self, cpp_type: CppType) -> bool:
+        return True
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        return "list"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        return "List[%s]" % inner_conv.matching_python_type_full(tt)
+
+    def type_check_expression(self, cpp_type, arg_var):
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        assert inner_conv is not None, "arg type %s not supported" % tt
+        inner_check = inner_conv.type_check_expression(tt, "li")
+        return (
+            Code()
+            .add(
+                """
+          |isinstance($arg_var, list) and all($inner_check for li in $arg_var)
+          """,
+                locals(),
+            )
+            .render()
+        )
+
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        (tt,) = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+        inner = self.converters.cython_type(tt)
+        it = mangle("it_" + argument_var)
+
+        if inner.is_enum:
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_deque[$inner] * $temp_var = new libcpp_deque[$inner]()
+                |cdef int $item
+                |for $item in $argument_var:
+                |   $temp_var.push_back(<$inner> $item)
+                """,
+                locals(),
+            )
+            if cpp_type.is_ref and not cpp_type.is_const:
+                cleanup_code = Code().add(
+                    """
+                    |$argument_var[:] = [<int>$temp_var.at(i) for i in range($temp_var.size())]
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            base_type = tt.base_type
+            do_deref = "deref" if not inner.is_ptr else ""
+            cy_tt = tt.base_type
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_deque[$inner] * $temp_var = new libcpp_deque[$inner]()
+                |cdef $base_type $item
+                |for $item in $argument_var:
+                |   $temp_var.push_back($do_deref($item.inst.get()))
+                """,
+                locals(),
+            )
+            cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+        else:
+            # Primitive types - need explicit iteration
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_deque[$inner] $temp_var
+                |for $item in $argument_var:
+                |   $temp_var.push_back(<$inner> $item)
+                """,
+                locals(),
+            )
+            cleanup_code = ""
+            if cpp_type.is_ref and not cpp_type.is_const:
+                cleanup_code = Code().add(
+                    """
+                    |$argument_var[:] = [<$inner>$temp_var.at(i) for i in range($temp_var.size())]
+                    """,
+                    locals(),
+                )
+            return code, "%s" % temp_var, cleanup_code
+
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
+
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+        assert not cpp_type.is_ptr
+
+        (tt,) = cpp_type.template_args
+        inner = self.converters.cython_type(tt)
+
+        if inner.is_enum:
+            code = Code().add(
+                """
+                |$output_py_var = [<int>$input_cpp_var.at(i) for i in range($input_cpp_var.size())]
+                """,
+                locals(),
+            )
+            return code
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            cy_tt = tt.base_type
+            item = mangle("item_" + output_py_var)
+            code = Code().add(
+                """
+                |$output_py_var = []
+                |cdef $cy_tt $item
+                |for i in range($input_cpp_var.size()):
+                |   $item = $cy_tt.__new__($cy_tt)
+                |   $item.inst = shared_ptr[$inner](new $inner($input_cpp_var.at(i)))
+                |   $output_py_var.append($item)
+                """,
+                locals(),
+            )
+            return code
+        else:
+            # Primitive types - need explicit at() access
+            code = Code().add(
+                """
+                |$output_py_var = [<$inner>$input_cpp_var.at(i) for i in range($input_cpp_var.size())]
+                """,
+                locals(),
+            )
+            return code
+
+
+class StdListConverter(TypeConverterBase):
+    """
+    Converter for std::list<T> - doubly linked list with O(1) insertion/deletion.
+    Maps to Python list.
+
+    Input conversion: Python list -> std::list (iterates and push_back)
+    Output conversion: std::list -> Python list (iterates using iterators)
+
+    Supports reference parameters - modifications to the list in C++ are
+    reflected back to the Python list after the call.
+
+    Note: std::list provides O(1) insertion/deletion but O(n) random access.
+    The Python list interface doesn't expose these characteristics.
+
+    Example PXD declaration:
+        libcpp_list[double] getValues()
+        double sumValues(libcpp_list[double]& values)
+
+    Example Python usage:
+        values = obj.getValues()           # Returns list
+        total = obj.sumValues([1.0, 2.0])  # Pass list
+    """
+
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_list"]
+
+    def matches(self, cpp_type: CppType) -> bool:
+        return True
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        return "list"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        return "List[%s]" % inner_conv.matching_python_type_full(tt)
+
+    def type_check_expression(self, cpp_type, arg_var):
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        assert inner_conv is not None, "arg type %s not supported" % tt
+        inner_check = inner_conv.type_check_expression(tt, "li")
+        return (
+            Code()
+            .add(
+                """
+          |isinstance($arg_var, list) and all($inner_check for li in $arg_var)
+          """,
+                locals(),
+            )
+            .render()
+        )
+
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        (tt,) = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+        inner = self.converters.cython_type(tt)
+        it = mangle("it_" + argument_var)
+
+        if inner.is_enum:
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_list[$inner] * $temp_var = new libcpp_list[$inner]()
+                |cdef int $item
+                |for $item in $argument_var:
+                |   $temp_var.push_back(<$inner> $item)
+                """,
+                locals(),
+            )
+            if cpp_type.is_ref and not cpp_type.is_const:
+                cleanup_code = Code().add(
+                    """
+                    |$argument_var[:] = []
+                    |cdef libcpp_list[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   $argument_var.append(<int>deref($it))
+                    |   inc($it)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            base_type = tt.base_type
+            do_deref = "deref" if not inner.is_ptr else ""
+            cy_tt = tt.base_type
+            item = "item%d" % arg_num
+            code = Code().add(
+                """
+                |cdef libcpp_list[$inner] * $temp_var = new libcpp_list[$inner]()
+                |cdef $base_type $item
+                |for $item in $argument_var:
+                |   $temp_var.push_back($do_deref($item.inst.get()))
+                """,
+                locals(),
+            )
+            cleanup_code = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup_code
+        else:
+            code = Code().add(
+                """
+                |cdef libcpp_list[$inner] $temp_var
+                |for item in $argument_var:
+                |   $temp_var.push_back(item)
+                """,
+                locals(),
+            )
+            cleanup_code = ""
+            if cpp_type.is_ref and not cpp_type.is_const:
+                cleanup_code = Code().add(
+                    """
+                    |$argument_var[:] = []
+                    |cdef libcpp_list[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |   $argument_var.append(deref($it))
+                    |   inc($it)
+                    """,
+                    locals(),
+                )
+            return code, "%s" % temp_var, cleanup_code
+
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
+
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+        assert not cpp_type.is_ptr
+
+        (tt,) = cpp_type.template_args
+        inner = self.converters.cython_type(tt)
+        it = mangle("it_" + input_cpp_var)
+
+        if inner.is_enum:
+            code = Code().add(
+                """
+                |$output_py_var = []
+                |cdef libcpp_list[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var.append(<int>deref($it))
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+        elif tt.base_type in self.converters.names_of_wrapper_classes:
+            cy_tt = tt.base_type
+            item = mangle("item_" + output_py_var)
+            code = Code().add(
+                """
+                |$output_py_var = []
+                |cdef libcpp_list[$inner].iterator $it = $input_cpp_var.begin()
+                |cdef $cy_tt $item
+                |while $it != $input_cpp_var.end():
+                |   $item = $cy_tt.__new__($cy_tt)
+                |   $item.inst = shared_ptr[$inner](new $inner(deref($it)))
+                |   $output_py_var.append($item)
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+        else:
+            code = Code().add(
+                """
+                |$output_py_var = []
+                |cdef libcpp_list[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |   $output_py_var.append(deref($it))
+                |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+
+class StdOptionalConverter(TypeConverterBase):
+    """
+    Converter for std::optional<T> (C++17) - represents an optional value.
+    Maps to T | None in Python.
+
+    Input conversion:
+        - Python None -> empty std::optional (std::nullopt)
+        - Python value of type T -> std::optional containing the value
+
+    Output conversion:
+        - Empty std::optional (has_value() == false) -> Python None
+        - std::optional with value -> the contained value
+
+    Note: The function signature uses 'object' type to allow None to be passed.
+    Type validation is performed at runtime via the type_check_expression.
+    The docstring correctly shows Optional[T] for documentation purposes.
+
+    Example PXD declaration:
+        libcpp_optional[int] getValue(bool hasValue)
+        int processValue(libcpp_optional[int] opt)
+
+    Example Python usage:
+        result = obj.getValue(True)   # Returns int or None
+        obj.processValue(42)          # Pass a value
+        obj.processValue(None)        # Pass empty optional
+    """
+
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_optional"]
+
+    def matches(self, cpp_type: CppType) -> bool:
+        return True
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        # Return 'object' to allow None to be passed as a parameter.
+        # The type_check_expression validates the actual type at runtime.
+        return "object"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        return "Optional[%s]" % inner_conv.matching_python_type_full(tt)
+
+    def type_check_expression(self, cpp_type, arg_var):
+        (tt,) = cpp_type.template_args
+        inner_conv = self.converters.get(tt)
+        assert inner_conv is not None, "arg type %s not supported" % tt
+        inner_check = inner_conv.type_check_expression(tt, arg_var)
+        return "(%s is None or %s)" % (arg_var, inner_check)
+
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        (tt,) = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+        inner = self.converters.cython_type(tt)
+
+        if tt.base_type in self.converters.names_of_wrapper_classes:
+            cy_tt = tt.base_type
+            code = Code().add(
+                """
+                |cdef libcpp_optional[$inner] $temp_var
+                |if $argument_var is not None:
+                |   $temp_var = libcpp_optional[$inner](deref((<$cy_tt>$argument_var).inst.get()))
+                """,
+                locals(),
+            )
+        else:
+            code = Code().add(
+                """
+                |cdef libcpp_optional[$inner] $temp_var
+                |if $argument_var is not None:
+                |   $temp_var = libcpp_optional[$inner](<$inner>$argument_var)
+                """,
+                locals(),
+            )
+        return code, temp_var, ""
+
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
+
+    def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+        (tt,) = cpp_type.template_args
+        inner = self.converters.cython_type(tt)
+
+        if tt.base_type in self.converters.names_of_wrapper_classes:
+            cy_tt = tt.base_type
+            code = Code().add(
+                """
+                |if $input_cpp_var.has_value():
+                |   $output_py_var = $cy_tt.__new__($cy_tt)
+                |   $output_py_var.inst = shared_ptr[$inner](new $inner($input_cpp_var.value()))
+                |else:
+                |   $output_py_var = None
+                """,
+                locals(),
+            )
+        else:
+            code = Code().add(
+                """
+                |if $input_cpp_var.has_value():
+                |   $output_py_var = $input_cpp_var.value()
+                |else:
+                |   $output_py_var = None
+                """,
+                locals(),
+            )
+        return code
+
+
+class StdStringViewConverter(TypeConverterBase):
+    """
+    Converter for std::string_view (C++17) - non-owning reference to a string.
+
+    Input conversion:
+        - Python bytes -> std::string_view (direct)
+        - Python str -> encoded to UTF-8 bytes -> std::string_view
+
+    Output conversion:
+        - std::string_view is not typically returned (it's a view, not owning)
+        - If returned, converts to Python bytes
+
+    Note: std::string_view does not own its data, so it's primarily useful
+    for input parameters where the Python bytes object remains valid during
+    the C++ function call.
+
+    Example PXD declaration:
+        size_t getLength(libcpp_string_view sv)
+        void processText(libcpp_string_view text)
+
+    Example Python usage:
+        length = obj.getLength(b"hello")      # Pass bytes
+        length = obj.getLength("hello")       # Pass str (auto-encoded to UTF-8)
+    """
+
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_string_view"]
+
+    def matches(self, cpp_type: CppType) -> bool:
+        return not cpp_type.is_ptr
+
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        return "bytes"
+
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        return "bytes"
+
+    def type_check_expression(self, cpp_type: CppType, arg_var: str) -> str:
+        return "isinstance(%s, (bytes, str))" % arg_var
+
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        temp_var = "v%d" % arg_num
+        code = Code().add(
+            """
+            |cdef bytes $temp_var
+            |if isinstance($argument_var, str):
+            |   $temp_var = $argument_var.encode('utf-8')
+            |else:
+            |   $temp_var = $argument_var
+            """,
+            locals(),
+        )
+        # string_view can be implicitly constructed from const char*
+        return code, "(<libcpp_string_view>%s)" % temp_var, ""
+
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
+
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[str]:
+        # Convert string_view to Python bytes
+        return "%s = <bytes>%s.data()[:%s.size()]" % (output_py_var, input_cpp_var, input_cpp_var)
+
+
 class ConverterRegistry(object):
     """
     Works with two level lookup: first find converters which support base_type,
@@ -2232,6 +3109,13 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(StdPairConverter())
     converters.register(VoidConverter())
     converters.register(SharedPtrConverter())
+    # New STL converters (C++11/14/17/20)
+    converters.register(StdUnorderedMapConverter())
+    converters.register(StdUnorderedSetConverter())
+    converters.register(StdDequeConverter())
+    converters.register(StdListConverter())
+    converters.register(StdOptionalConverter())
+    converters.register(StdStringViewConverter())
 
     for clz in classes_to_wrap:
         converters.register(TypeToWrapConverter(clz))

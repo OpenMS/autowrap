@@ -2024,6 +2024,12 @@ class CodeGenerator(object):
                    |from  libcpp.vector   cimport vector as libcpp_vector
                    |from  libcpp.pair     cimport pair as libcpp_pair
                    |from  libcpp.map      cimport map  as libcpp_map
+                   |from  libcpp.unordered_map cimport unordered_map as libcpp_unordered_map
+                   |from  libcpp.unordered_set cimport unordered_set as libcpp_unordered_set
+                   |from  libcpp.deque    cimport deque as libcpp_deque
+                   |from  libcpp.list     cimport list as libcpp_list
+                   |from  libcpp.optional cimport optional as libcpp_optional
+                   |from  libcpp.string_view cimport string_view as libcpp_string_view
                    |from  libcpp          cimport bool
                    |from  libc.string     cimport const_char
                    |from  cython.operator cimport dereference as deref,
