@@ -212,3 +212,25 @@ def test_stl_libcpp():
     assert len(map_inp) == 1
     assert list(map_inp.values())[0][0] == 6 + 10
     assert list(map_inp.values())[0][1] == 2
+
+    # Part 9
+    # Test string-keyed operator[] (arbitrary type getitem/setitem)
+    string_map = libcpp_stl.StringKeyMap()
+    assert string_map.size() == 0
+
+    # Test setitem with string key
+    string_map[b"hello"] = 42
+    assert string_map.size() == 1
+    assert string_map.contains(b"hello")
+
+    # Test getitem with string key
+    assert string_map[b"hello"] == 42
+
+    # Test setting and getting another key
+    string_map[b"world"] = 100
+    assert string_map.size() == 2
+    assert string_map[b"world"] == 100
+
+    # Test overwriting existing key
+    string_map[b"hello"] = 99
+    assert string_map[b"hello"] == 99
