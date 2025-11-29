@@ -540,6 +540,45 @@ class TestUnorderedSetOfWrappedClass:
         missing_item = m.Item(999)
         assert t.findItemUnorderedSet(items, missing_item) == -1
 
+    def test_unordered_set_two_member_hash(self, wrapped_container_module):
+        """Test that hash function uses both value_ AND name_ members.
+
+        This verifies that items with the same value_ but different name_
+        are treated as different items (different hash + equality check).
+        """
+        m = wrapped_container_module
+        t = m.WrappedContainerTest()
+
+        # Create items with same value but different names
+        item_alice = m.Item(100, b"alice")
+        item_bob = m.Item(100, b"bob")
+        item_charlie = m.Item(200, b"charlie")
+
+        items = {item_alice, item_bob, item_charlie}
+
+        # All three should be in the set (even though two have same value_)
+        assert len(items) == 3, "Set should have 3 items despite same value_"
+
+        # Search for exact match (value_ AND name_ must match)
+        search_alice = m.Item(100, b"alice")
+        search_bob = m.Item(100, b"bob")
+
+        assert t.hasItemUnorderedSet(items, search_alice) is True, \
+            "Should find alice (100, 'alice')"
+        assert t.hasItemUnorderedSet(items, search_bob) is True, \
+            "Should find bob (100, 'bob')"
+
+        # Search with wrong name should NOT find item
+        # Same value_ but different name_ = different hash/different item
+        wrong_name = m.Item(100, b"eve")
+        assert t.hasItemUnorderedSet(items, wrong_name) is False, \
+            "Should NOT find (100, 'eve') - name doesn't match"
+
+        # Search with wrong value should NOT find item
+        wrong_value = m.Item(999, b"alice")
+        assert t.hasItemUnorderedSet(items, wrong_value) is False, \
+            "Should NOT find (999, 'alice') - value doesn't match"
+
 
 class TestNestedListOfVectors:
     """Tests for list<vector<int>> - nested containers with primitives."""

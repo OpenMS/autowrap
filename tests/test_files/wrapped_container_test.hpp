@@ -36,12 +36,16 @@ public:
     std::string getName() const { return name_; }
 };
 
-// Hash function for Item - required for unordered_map
+// Hash function for Item - required for unordered_map/unordered_set
+// Uses both value_ and name_ members for hash computation
 namespace std {
     template<>
     struct hash<Item> {
         size_t operator()(const Item& item) const {
-            return std::hash<int>()(item.value_);
+            // Combine hashes of both members using XOR and bit shifting
+            size_t h1 = std::hash<int>()(item.value_);
+            size_t h2 = std::hash<std::string>()(item.name_);
+            return h1 ^ (h2 << 1);  // Combine hashes
         }
     };
 }
