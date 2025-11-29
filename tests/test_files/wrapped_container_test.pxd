@@ -13,7 +13,11 @@ from libcpp cimport bool
 cdef extern from "wrapped_container_test.hpp":
 
     # A simple wrapped class used in containers
+    # wrap-hash and operator== enable Python dict/set lookups with d[item]
     cdef cppclass Item:
+        # wrap-hash:
+        #   getHashValue()
+
         int value_
         libcpp_string name_
 
@@ -22,9 +26,13 @@ cdef extern from "wrapped_container_test.hpp":
         Item(int v, libcpp_string n)
         Item(Item&)
 
+        bool operator==(Item)
+        bool operator!=(Item)
+
         int getValue()
         void setValue(int v)
         libcpp_string getName()
+        size_t getHashValue()
 
     # Test class with methods that use containers of wrapped classes
     cdef cppclass WrappedContainerTest:
@@ -51,8 +59,6 @@ cdef extern from "wrapped_container_test.hpp":
         # ========================================
         int sumMapValues(libcpp_map[int, Item]& m)
         libcpp_map[int, Item] createMapIntToItem(int count)
-        int lookupMapIntToItem(libcpp_map[int, Item]& m, int key)
-        bool hasKeyMapIntToItem(libcpp_map[int, Item]& m, int key)
 
         # ========================================
         # MAP WITH WRAPPED CLASS AS KEY
@@ -91,8 +97,6 @@ cdef extern from "wrapped_container_test.hpp":
         # ========================================
         int sumUnorderedMapValues(libcpp_unordered_map[int, Item]& m)
         libcpp_unordered_map[int, Item] createUnorderedMapIntToItem(int count)
-        int lookupUnorderedMapIntToItem(libcpp_unordered_map[int, Item]& m, int key)
-        bool hasKeyUnorderedMapIntToItem(libcpp_unordered_map[int, Item]& m, int key)
 
         # ========================================
         # UNORDERED_MAP WITH WRAPPED CLASS AS BOTH KEY AND VALUE
@@ -122,8 +126,6 @@ cdef extern from "wrapped_container_test.hpp":
         # ========================================
         int sumUnorderedSetItems(libcpp_unordered_set[Item]& items)
         libcpp_unordered_set[Item] createUnorderedSetItems(int count)
-        bool hasItemUnorderedSet(libcpp_unordered_set[Item]& items, Item& item)
-        int findItemUnorderedSet(libcpp_unordered_set[Item]& items, Item& item)
 
         # ========================================
         # NESTED CONTAINERS: list<vector<int>>

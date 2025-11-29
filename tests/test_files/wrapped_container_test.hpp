@@ -30,10 +30,20 @@ public:
     bool operator==(const Item& other) const {
         return value_ == other.value_ && name_ == other.name_;
     }
+    bool operator!=(const Item& other) const {
+        return !(*this == other);
+    }
 
     int getValue() const { return value_; }
     void setValue(int v) { value_ = v; }
     std::string getName() const { return name_; }
+
+    // For Python __hash__ - returns combined hash of both members
+    size_t getHashValue() const {
+        size_t h1 = std::hash<int>()(value_);
+        size_t h2 = std::hash<std::string>()(name_);
+        return h1 ^ (h2 << 1);
+    }
 };
 
 // Hash function for Item - required for unordered_map/unordered_set
@@ -117,20 +127,6 @@ public:
             result[i] = Item(i * 10);
         }
         return result;
-    }
-
-    // Lookup Item by key - returns Item value_ or -1 if not found
-    int lookupMapIntToItem(const std::map<int, Item>& m, int key) {
-        auto it = m.find(key);
-        if (it != m.end()) {
-            return it->second.value_;
-        }
-        return -1;
-    }
-
-    // Check if key exists in map
-    bool hasKeyMapIntToItem(const std::map<int, Item>& m, int key) {
-        return m.count(key) > 0;
     }
 
     // ========================================
@@ -248,20 +244,6 @@ public:
         return result;
     }
 
-    // Lookup Item by key in unordered_map - returns Item value_ or -1 if not found
-    int lookupUnorderedMapIntToItem(const std::unordered_map<int, Item>& m, int key) {
-        auto it = m.find(key);
-        if (it != m.end()) {
-            return it->second.value_;
-        }
-        return -1;
-    }
-
-    // Check if key exists in unordered_map
-    bool hasKeyUnorderedMapIntToItem(const std::unordered_map<int, Item>& m, int key) {
-        return m.count(key) > 0;
-    }
-
     // ========================================
     // UNORDERED_MAP WITH WRAPPED CLASS AS BOTH KEY AND VALUE
     // ========================================
@@ -355,20 +337,6 @@ public:
             result.insert(Item(i * 10));
         }
         return result;
-    }
-
-    // Check if Item exists in unordered_set (membership test using hash)
-    bool hasItemUnorderedSet(const std::unordered_set<Item>& items, const Item& item) {
-        return items.count(item) > 0;
-    }
-
-    // Find Item and return its value_ or -1 if not found
-    int findItemUnorderedSet(const std::unordered_set<Item>& items, const Item& item) {
-        auto it = items.find(item);
-        if (it != items.end()) {
-            return it->value_;
-        }
-        return -1;
     }
 
     // ========================================
