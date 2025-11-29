@@ -857,15 +857,19 @@ class StdMapConverter(TypeConverterBase):
         key_conv_code = ""
         key_conv_cleanup = ""
 
+        # Use mangled variable names to avoid collision with function parameters
+        loop_key = mangle("_loop_key_" + argument_var)
+        loop_value = mangle("_loop_value_" + argument_var)
+
         if cy_tt_value.is_enum:
-            value_conv = "<%s> value" % cy_tt_value
+            value_conv = "<%s> %s" % (cy_tt_value, loop_value)
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
-            value_conv = "deref((<%s>value).inst.get())" % tt_value.base_type
+            value_conv = "deref((<%s>%s).inst.get())" % (tt_value.base_type, loop_value)
         elif tt_value.template_args is not None and tt_value.base_type == "libcpp_vector":
             # Special case: the value type is a std::vector< X >, maybe something we can convert?
 
             # code_top = """
-            value_var = "value"
+            value_var = loop_value
             (tt,) = tt_value.template_args
             vtemp_var = "svec%s" % arg_num
             inner = self.converters.cython_type(tt)
@@ -945,27 +949,27 @@ class StdMapConverter(TypeConverterBase):
         elif tt_value in self.converters:
             value_conv_code, value_conv, value_conv_cleanup = self.converters.get(
                 tt_value
-            ).input_conversion(tt_value, "value", 0)
+            ).input_conversion(tt_value, loop_value, 0)
         else:
-            value_conv = "<%s> value" % cy_tt_value
+            value_conv = "<%s> %s" % (cy_tt_value, loop_value)
 
         if cy_tt_key.is_enum:
-            key_conv = "<%s> key" % cy_tt_key
+            key_conv = "<%s> %s" % (cy_tt_key, loop_key)
         elif tt_key.base_type in self.converters.names_of_wrapper_classes:
-            key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, py_tt_key)
+            key_conv = "deref(<%s *> (<%s> %s).inst.get())" % (cy_tt_key, py_tt_key, loop_key)
         elif tt_key in self.converters:
             key_conv_code, key_conv, key_conv_cleanup = self.converters.get(
                 tt_key
-            ).input_conversion(tt_key, "key", 0)
+            ).input_conversion(tt_key, loop_key, 0)
         else:
-            key_conv = "<%s> key" % cy_tt_key
+            key_conv = "<%s> %s" % (cy_tt_key, loop_key)
 
         code.add(
             """
             |cdef libcpp_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
             + libcpp_map[$cy_tt_key, $cy_tt_value]()
 
-            |for key, value in $argument_var.items():
+            |for $loop_key, $loop_value in $argument_var.items():
             """,
             locals(),
         )
@@ -2230,26 +2234,30 @@ class StdUnorderedMapConverter(TypeConverterBase):
         cy_tt_key = self.converters.cython_type(tt_key)
         cy_tt_value = self.converters.cython_type(tt_value)
 
+        # Use mangled variable names to avoid collision with function parameters
+        loop_key = mangle("_loop_key_" + argument_var)
+        loop_value = mangle("_loop_value_" + argument_var)
+
         if cy_tt_value.is_enum:
-            value_conv = "<%s> value" % cy_tt_value
+            value_conv = "<%s> %s" % (cy_tt_value, loop_value)
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
-            value_conv = "deref((<%s>value).inst.get())" % tt_value.base_type
+            value_conv = "deref((<%s>%s).inst.get())" % (tt_value.base_type, loop_value)
         else:
-            value_conv = "<%s> value" % cy_tt_value
+            value_conv = "<%s> %s" % (cy_tt_value, loop_value)
 
         if cy_tt_key.is_enum:
-            key_conv = "<%s> key" % cy_tt_key
+            key_conv = "<%s> %s" % (cy_tt_key, loop_key)
         elif tt_key.base_type in self.converters.names_of_wrapper_classes:
-            key_conv = "deref(<%s *> (<%s> key).inst.get())" % (cy_tt_key, tt_key)
+            key_conv = "deref(<%s *> (<%s> %s).inst.get())" % (cy_tt_key, tt_key, loop_key)
         else:
-            key_conv = "<%s> key" % cy_tt_key
+            key_conv = "<%s> %s" % (cy_tt_key, loop_key)
 
         code.add(
             """
             |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value] * $temp_var = new
             + libcpp_unordered_map[$cy_tt_key, $cy_tt_value]()
 
-            |for key, value in $argument_var.items():
+            |for $loop_key, $loop_value in $argument_var.items():
             |    deref($temp_var)[ $key_conv ] = $value_conv
             """,
             locals(),
