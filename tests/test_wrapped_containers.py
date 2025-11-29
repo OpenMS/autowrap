@@ -569,6 +569,41 @@ class TestUnorderedSetOfWrappedClass:
         assert wrong_value not in items, \
             "Should NOT find (999, 'alice') - value doesn't match"
 
+    def test_dict_lookup_with_multi_member_key(self, wrapped_container_module):
+        """Test d[key] lookup where key is a wrapped class with multiple members.
+
+        This verifies that Python dict lookup uses the full hash (both value_ and name_)
+        to find the correct value, not just one member.
+        """
+        m = wrapped_container_module
+
+        # Create keys with multiple members
+        key_alice = m.Item(100, b"alice")
+        key_bob = m.Item(100, b"bob")  # Same value_, different name_
+        key_charlie = m.Item(200, b"charlie")
+
+        # Build a dict with multi-member keys
+        data = {key_alice: 1000, key_bob: 2000, key_charlie: 3000}
+        assert len(data) == 3  # All three are distinct keys
+
+        # Direct d[key] lookup with new Item objects (not the same object!)
+        lookup_alice = m.Item(100, b"alice")
+        lookup_bob = m.Item(100, b"bob")
+        lookup_charlie = m.Item(200, b"charlie")
+
+        # These lookups must find the correct values based on BOTH members
+        assert data[lookup_alice] == 1000, "d[Item(100, 'alice')] should be 1000"
+        assert data[lookup_bob] == 2000, "d[Item(100, 'bob')] should be 2000"
+        assert data[lookup_charlie] == 3000, "d[Item(200, 'charlie')] should be 3000"
+
+        # Lookup with wrong name should raise KeyError
+        wrong_name = m.Item(100, b"eve")
+        try:
+            _ = data[wrong_name]
+            assert False, "Should have raised KeyError for wrong name"
+        except KeyError:
+            pass  # Expected
+
     def test_unordered_set_has_item(self, wrapped_container_module):
         """Test checking if Item exists in unordered_set (hash-based O(1) membership test)."""
         m = wrapped_container_module
