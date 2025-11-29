@@ -474,22 +474,49 @@ def test_wrap_ignore_foreign_cimports():
 
 def test_enum_class_forward_declaration(tmpdir):
     """
-    Test that scoped enums (enum class) do NOT generate incorrect forward declarations.
+    Regression test: Scoped enums (enum class) must not generate cdef class forward declarations.
 
-    This test exposes a bug where scoped enums generate a `cdef class` forward declaration
-    in the .pxd file, but the actual implementation in the .pyx file is a regular Python
-    `class` inheriting from `_PyEnum`. This mismatch can cause Cython compilation failures
-    when another module cimports the enum.
+    Background
+    ----------
+    When wrapping a C++ scoped enum (enum class) for use across multiple Python extension
+    modules, autowrap generates two files:
 
-    The issue:
-    - PXD file generates: `cdef class Status: pass`
-    - PYX file generates: `class Status(_PyEnum): ...`
+    1. A .pxd file (Cython declaration file) - used by other modules to cimport symbols
+    2. A .pyx file (Cython implementation file) - contains the actual Python wrapper code
 
-    These are incompatible - you can't have a cdef class forward declaration
-    that is implemented by a regular Python class.
+    The Bug
+    -------
+    Previously, autowrap generated a `cdef class` forward declaration in the .pxd file
+    for ALL enums, including scoped enums. However, scoped enums are implemented as
+    regular Python classes (inheriting from Python's Enum), not as Cython extension types.
 
-    When write_pxd is True (multi-module scenario), another module doing
-    `from EnumModule cimport Status` would expect a cdef class but get a Python class.
+    This caused a type mismatch:
+    - .pxd file declared: `cdef class Status: pass`  (Cython extension type)
+    - .pyx file defined:  `class Status(_PyEnum): ...` (Python class)
+
+    Impact
+    ------
+    In multi-module scenarios, when Module B tries to use an enum defined in Module A:
+
+        # In Module B's .pyx file
+        from ModuleA cimport Status  # Expects cdef class, gets Python class
+
+    This mismatch could cause Cython compilation errors or runtime issues.
+
+    The Fix
+    -------
+    Only generate `cdef class` forward declarations for unscoped enums (which ARE
+    implemented as cdef classes). Scoped enums don't need forward declarations in
+    the .pxd file since they're regular Python classes.
+
+    Test Setup
+    ----------
+    This test creates a two-module scenario:
+    - EnumModule: Defines a scoped enum `Status` and a class `StatusHandler`
+    - ConsumerModule: Uses the `Status` enum from EnumModule
+
+    The test verifies that no `cdef class Status:` forward declaration is generated
+    in the .pxd file when `Status` is a scoped enum implemented as a Python Enum class.
     """
     import shutil
     import subprocess
