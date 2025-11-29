@@ -177,6 +177,7 @@ class TestMapWithWrappedClassValue:
         assert t.hasKeyMapIntToItem(map_data, 999) is False
 
 
+
 class TestMapWithWrappedClassKey:
     """Tests for map<Item, int>."""
 
@@ -193,16 +194,25 @@ class TestMapWithWrappedClassKey:
         assert result == 30  # 10 + 20 (sum of keys)
 
     def test_map_item_to_int_create(self, wrapped_container_module):
-        """Test returning map<Item, int>."""
+        """Test returning map<Item, int> and using Python d[key] lookup."""
         m = wrapped_container_module
         t = m.WrappedContainerTest()
 
         result = t.createMapItemToInt(3)
         assert len(result) == 3
-        # Values should be 0, 10, 20 for keys with value_ 0, 1, 2
-        keys_values = [(k.value_, v) for k, v in result.items()]
-        keys_values.sort()
-        assert keys_values == [(0, 0), (1, 10), (2, 20)]
+
+        # Direct Python dict lookup with wrapped class key - NOT iteration!
+        key0 = m.Item(0)
+        key1 = m.Item(1)
+        key2 = m.Item(2)
+        assert result[key0] == 0
+        assert result[key1] == 10
+        assert result[key2] == 20
+
+        # Test 'in' operator
+        assert key1 in result
+        missing = m.Item(999)
+        assert missing not in result
 
 
 class TestNestedVectorOfWrappedClass:
@@ -300,16 +310,26 @@ class TestUnorderedMapWithWrappedClassKey:
         assert result == 30  # 10 + 20 (sum of keys)
 
     def test_unordered_map_item_to_int_create(self, wrapped_container_module):
-        """Test returning unordered_map<Item, int>."""
+        """Test returning unordered_map<Item, int> and using Python d[key] lookup."""
         m = wrapped_container_module
         t = m.WrappedContainerTest()
 
         result = t.createUnorderedMapItemToInt(3)
         assert len(result) == 3
-        # Values should be 0, 10, 20 for keys with value_ 0, 1, 2
-        keys_values = [(k.value_, v) for k, v in result.items()]
-        keys_values.sort()
-        assert keys_values == [(0, 0), (1, 10), (2, 20)]
+
+        # Direct Python dict lookup with wrapped class key - NOT iteration!
+        # This tests that the wrapped Item class has proper __hash__ and __eq__
+        key0 = m.Item(0)
+        key1 = m.Item(1)
+        key2 = m.Item(2)
+        assert result[key0] == 0
+        assert result[key1] == 10
+        assert result[key2] == 20
+
+        # Test 'in' operator (uses hash)
+        assert key1 in result
+        missing = m.Item(999)
+        assert missing not in result
 
 
 class TestUnorderedMapWithWrappedClassValue:
@@ -369,6 +389,7 @@ class TestUnorderedMapWithWrappedClassValue:
         assert t.hasKeyUnorderedMapIntToItem(map_data, 2) is True
         assert t.hasKeyUnorderedMapIntToItem(map_data, 3) is False
         assert t.hasKeyUnorderedMapIntToItem(map_data, 999) is False
+
 
 
 class TestUnorderedMapWithWrappedClassBoth:
@@ -491,14 +512,97 @@ class TestUnorderedSetOfWrappedClass:
         assert result == 60
 
     def test_unordered_set_items_create(self, wrapped_container_module):
-        """Test returning unordered_set<Item>."""
+        """Test returning unordered_set<Item> and using Python 'in' operator."""
         m = wrapped_container_module
         t = m.WrappedContainerTest()
 
         items = t.createUnorderedSetItems(3)
         assert len(items) == 3
-        values = sorted([item.value_ for item in items])
-        assert values == [0, 10, 20]
+
+        # Direct Python 'in' operator with wrapped class - NOT iteration!
+        # This tests that the wrapped Item class has proper __hash__ and __eq__
+        item0 = m.Item(0)
+        item1 = m.Item(10)
+        item2 = m.Item(20)
+        assert item0 in items
+        assert item1 in items
+        assert item2 in items
+
+        # Test missing item
+        missing = m.Item(999)
+        assert missing not in items
+
+    def test_unordered_set_two_member_hash(self, wrapped_container_module):
+        """Test that hash function uses both value_ AND name_ members.
+
+        This verifies that items with the same value_ but different name_
+        are treated as different items (different hash + equality check).
+        Uses Python's native 'in' operator - no C++ lookup functions.
+        """
+        m = wrapped_container_module
+
+        # Create items with same value but different names
+        item_alice = m.Item(100, b"alice")
+        item_bob = m.Item(100, b"bob")
+        item_charlie = m.Item(200, b"charlie")
+
+        items = {item_alice, item_bob, item_charlie}
+
+        # All three should be in the set (even though two have same value_)
+        assert len(items) == 3, "Set should have 3 items despite same value_"
+
+        # Search for exact match using Python 'in' (value_ AND name_ must match)
+        search_alice = m.Item(100, b"alice")
+        search_bob = m.Item(100, b"bob")
+
+        assert search_alice in items, "Should find alice (100, 'alice')"
+        assert search_bob in items, "Should find bob (100, 'bob')"
+
+        # Search with wrong name should NOT find item
+        # Same value_ but different name_ = different hash/different item
+        wrong_name = m.Item(100, b"eve")
+        assert wrong_name not in items, \
+            "Should NOT find (100, 'eve') - name doesn't match"
+
+        # Search with wrong value should NOT find item
+        wrong_value = m.Item(999, b"alice")
+        assert wrong_value not in items, \
+            "Should NOT find (999, 'alice') - value doesn't match"
+
+    def test_dict_lookup_with_multi_member_key(self, wrapped_container_module):
+        """Test d[key] lookup where key is a wrapped class with multiple members.
+
+        This verifies that Python dict lookup uses the full hash (both value_ and name_)
+        to find the correct value, not just one member.
+        """
+        m = wrapped_container_module
+
+        # Create keys with multiple members
+        key_alice = m.Item(100, b"alice")
+        key_bob = m.Item(100, b"bob")  # Same value_, different name_
+        key_charlie = m.Item(200, b"charlie")
+
+        # Build a dict with multi-member keys
+        data = {key_alice: 1000, key_bob: 2000, key_charlie: 3000}
+        assert len(data) == 3  # All three are distinct keys
+
+        # Direct d[key] lookup with new Item objects (not the same object!)
+        lookup_alice = m.Item(100, b"alice")
+        lookup_bob = m.Item(100, b"bob")
+        lookup_charlie = m.Item(200, b"charlie")
+
+        # These lookups must find the correct values based on BOTH members
+        assert data[lookup_alice] == 1000, "d[Item(100, 'alice')] should be 1000"
+        assert data[lookup_bob] == 2000, "d[Item(100, 'bob')] should be 2000"
+        assert data[lookup_charlie] == 3000, "d[Item(200, 'charlie')] should be 3000"
+
+        # Lookup with wrong name should raise KeyError
+        wrong_name = m.Item(100, b"eve")
+        try:
+            _ = data[wrong_name]
+            assert False, "Should have raised KeyError for wrong name"
+        except KeyError:
+            pass  # Expected
 
     def test_unordered_set_has_item(self, wrapped_container_module):
         """Test checking if Item exists in unordered_set (hash-based O(1) membership test)."""

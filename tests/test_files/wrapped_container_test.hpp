@@ -30,10 +30,20 @@ public:
     bool operator==(const Item& other) const {
         return value_ == other.value_ && name_ == other.name_;
     }
+    bool operator!=(const Item& other) const {
+        return !(*this == other);
+    }
 
     int getValue() const { return value_; }
     void setValue(int v) { value_ = v; }
     std::string getName() const { return name_; }
+
+    // For Python __hash__ - returns combined hash of both members
+    size_t getHashValue() const {
+        size_t h1 = std::hash<int>()(value_);
+        size_t h2 = std::hash<std::string>()(name_);
+        return h1 ^ (h2 << 1);
+    }
 };
 
 // Hash function for Item - required for unordered_map/unordered_set

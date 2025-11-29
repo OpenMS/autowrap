@@ -13,7 +13,11 @@ from libcpp cimport bool
 cdef extern from "wrapped_container_test.hpp":
 
     # A simple wrapped class used in containers
+    # wrap-hash and operator== enable Python dict/set lookups with d[item]
     cdef cppclass Item:
+        # wrap-hash:
+        #   getHashValue()
+
         int value_
         libcpp_string name_
 
@@ -22,9 +26,13 @@ cdef extern from "wrapped_container_test.hpp":
         Item(int v, libcpp_string n)
         Item(Item&)
 
+        bool operator==(Item)
+        bool operator!=(Item)
+
         int getValue()
         void setValue(int v)
         libcpp_string getName()
+        size_t getHashValue()
 
     # Test class with methods that use containers of wrapped classes
     cdef cppclass WrappedContainerTest:
