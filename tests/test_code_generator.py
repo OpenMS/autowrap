@@ -40,6 +40,7 @@ import autowrap.CodeGenerator
 import autowrap.PXDParser
 import autowrap.Utils
 import autowrap.Code
+import autowrap.Main
 import autowrap
 import os
 import math
@@ -469,3 +470,132 @@ def test_wrap_ignore_foreign_cimports():
 
     finally:
         shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_enum_class_forward_declaration(tmpdir):
+    """
+    Test that scoped enums (enum class) do NOT generate incorrect forward declarations.
+
+    This test exposes a bug where scoped enums generate a `cdef class` forward declaration
+    in the .pxd file, but the actual implementation in the .pyx file is a regular Python
+    `class` inheriting from `_PyEnum`. This mismatch can cause Cython compilation failures
+    when another module cimports the enum.
+
+    The issue:
+    - PXD file generates: `cdef class Status: pass`
+    - PYX file generates: `class Status(_PyEnum): ...`
+
+    These are incompatible - you can't have a cdef class forward declaration
+    that is implemented by a regular Python class.
+
+    When write_pxd is True (multi-module scenario), another module doing
+    `from EnumModule cimport Status` would expect a cdef class but get a Python class.
+    """
+    import shutil
+    import subprocess
+
+    test_dir = tmpdir.strpath
+    enum_fwd_test_files = os.path.join(
+        os.path.dirname(__file__), "test_files", "enum_forward_decl"
+    )
+
+    curdir = os.getcwd()
+    os.chdir(test_dir)
+
+    # Copy test files to temp directory
+    for f in ["EnumModule.hpp", "EnumModule.pxd", "ConsumerModule.hpp", "ConsumerModule.pxd"]:
+        src = os.path.join(enum_fwd_test_files, f)
+        dst = os.path.join(test_dir, f)
+        shutil.copy(src, dst)
+
+    try:
+        mnames = ["EnumModule", "ConsumerModule"]
+
+        # Step 1: parse all header files
+        pxd_files = ["EnumModule.pxd", "ConsumerModule.pxd"]
+        full_pxd_files = [os.path.join(test_dir, f) for f in pxd_files]
+        decls, instance_map = autowrap.parse(full_pxd_files, test_dir, num_processes=1)
+
+        # Step 2: Perform mapping
+        pxd_decl_mapping = {}
+        for de in decls:
+            tmp = pxd_decl_mapping.get(de.cpp_decl.pxd_path, [])
+            tmp.append(de)
+            pxd_decl_mapping[de.cpp_decl.pxd_path] = tmp
+
+        masterDict = {}
+        masterDict[mnames[0]] = {
+            "decls": pxd_decl_mapping[full_pxd_files[0]],
+            "addons": [],
+            "files": [full_pxd_files[0]],
+        }
+        masterDict[mnames[1]] = {
+            "decls": pxd_decl_mapping[full_pxd_files[1]],
+            "addons": [],
+            "files": [full_pxd_files[1]],
+        }
+
+        # Step 3: Generate Cython code for each module
+        converters = []
+        generated_pxd_content = {}
+        generated_pyx_content = {}
+
+        for modname in mnames:
+            m_filename = "%s.pyx" % modname
+            cimports, manual_code = autowrap.Main.collect_manual_code(masterDict[modname]["addons"])
+            autowrap.Main.register_converters(converters)
+            autowrap_include_dirs = autowrap.generate_code(
+                masterDict[modname]["decls"],
+                instance_map,
+                target=m_filename,
+                debug=True,
+                manual_code=manual_code,
+                extra_cimports=cimports,
+                all_decl=masterDict,
+                add_relative=True,
+            )
+            masterDict[modname]["inc_dirs"] = autowrap_include_dirs
+
+            # Read generated files to check for issues
+            pxd_path = "%s.pxd" % modname
+            if os.path.exists(pxd_path):
+                with open(pxd_path, "r") as f:
+                    generated_pxd_content[modname] = f.read()
+            with open(m_filename, "r") as f:
+                generated_pyx_content[modname] = f.read()
+
+        # Check for the bug: scoped enum should NOT have cdef class forward declaration
+        # when it's implemented as a regular Python class (inheriting from _PyEnum)
+        enum_module_pxd = generated_pxd_content.get("EnumModule", "")
+        enum_module_pyx = generated_pyx_content.get("EnumModule", "")
+
+        # Find if Status is defined as "class Status(_PyEnum)" in pyx
+        has_python_enum_class = "class Status(_PyEnum)" in enum_module_pyx
+
+        # Find if Status has "cdef class Status" forward declaration in pxd
+        has_cdef_class_forward_decl = "cdef class Status" in enum_module_pxd
+
+        # This is the bug: scoped enums should NOT have cdef class forward declarations
+        # because they are implemented as regular Python classes (Enum subclasses)
+        if has_python_enum_class and has_cdef_class_forward_decl:
+            pytest.fail(
+                "Bug detected: Scoped enum 'Status' has a 'cdef class' forward declaration in .pxd "
+                "but is implemented as a regular Python 'class' (Enum subclass) in .pyx. "
+                "This mismatch will cause Cython compilation failures in multi-module scenarios.\n\n"
+                f"PXD content:\n{enum_module_pxd}\n\n"
+                f"PYX content:\n{enum_module_pyx}"
+            )
+
+        # Step 4: Generate CPP code (this is where Cython compilation happens)
+        # If the bug exists, this step should fail with a Cython error
+        for modname in mnames:
+            m_filename = "%s.pyx" % modname
+            autowrap_include_dirs = masterDict[modname]["inc_dirs"]
+            autowrap.Main.run_cython(
+                inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename
+            )
+
+        print("Test passed: No forward declaration mismatch detected")
+
+    finally:
+        os.chdir(curdir)
