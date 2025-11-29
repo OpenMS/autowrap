@@ -444,16 +444,19 @@ class CodeGenerator(object):
         stub_code = Code()
         enum_pxd_code = Code()
 
-        enum_pxd_code.add(
-            """
-                   |
-                   |cdef class $name:
-                   |  pass
-                 """,
-            name=name,
-        )
-
         if not decl.scoped:
+            # Only generate cdef class forward declaration for unscoped enums,
+            # since they are implemented as cdef classes in the .pyx file.
+            # Scoped enums are implemented as regular Python classes (Enum subclasses)
+            # and should NOT have a cdef class forward declaration.
+            enum_pxd_code.add(
+                """
+                       |
+                       |cdef class $name:
+                       |  pass
+                     """,
+                name=name,
+            )
             code.add(
                 """
                        |
