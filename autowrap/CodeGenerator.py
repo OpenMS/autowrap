@@ -348,7 +348,7 @@ class CodeGenerator(object):
 
         pyi_code = "from __future__ import annotations\n"
         pyi_code += "from typing import overload, Any, List, Dict, Tuple, Set, Sequence, Union\n\n"
-        pyi_code += "from enum import Enum as _PyEnum\n\n"
+        pyi_code += "from enum import IntEnum as _PyEnum\n\n"
         pyi_code += "\n".join(ci.render() for ci in self.top_level_typestub_code)
         pyi_code += "\n\n"
         for n, c in self.typestub_codes.items():
@@ -2040,7 +2040,7 @@ class CodeGenerator(object):
                    |#Generated with autowrap %s and Cython (Parser) %s
                    |#cython: c_string_encoding=ascii
                    |#cython: embedsignature=False
-                   |from  enum            import Enum as _PyEnum
+                   |from  enum            import IntEnum as _PyEnum
                    |from  cpython         cimport Py_buffer
                    |from  cpython         cimport bool as pybool_t
                    |from  libcpp.string   cimport string as libcpp_string
