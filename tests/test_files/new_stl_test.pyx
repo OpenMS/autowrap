@@ -1,4 +1,4 @@
-#Generated with autowrap 0.23.0 and Cython (Parser) 3.2.1
+#Generated with autowrap 0.24.0 and Cython (Parser) 3.2.1
 #cython: c_string_encoding=ascii
 #cython: embedsignature=False
 from  enum            import Enum as _PyEnum
@@ -23,7 +23,7 @@ from  cython.operator cimport dereference as deref, preincrement as inc, address
 from  AutowrapRefHolder      cimport AutowrapRefHolder
 from  AutowrapPtrHolder      cimport AutowrapPtrHolder
 from  AutowrapConstPtrHolder cimport AutowrapConstPtrHolder
-from  smart_ptr       cimport shared_ptr
+from  libcpp.memory   cimport shared_ptr
 from new_stl_test cimport _NewSTLTest as __NewSTLTest
 
 cdef extern from "autowrap_tools.hpp":
@@ -211,9 +211,9 @@ cdef class _NewSTLTest:
         py_result = <int>_r
         return py_result
     
-    def getStringViewLength(self, sv ):
+    def getStringViewLength(self, bytes sv ):
         """
-        getStringViewLength(self, sv: Union[bytes, str] ) -> int
+        getStringViewLength(self, sv: bytes ) -> int
         """
         assert isinstance(sv, (bytes, str)), 'arg sv wrong type'
         cdef bytes v0
@@ -225,9 +225,9 @@ cdef class _NewSTLTest:
         py_result = <size_t>_r
         return py_result
     
-    def stringViewToString(self, sv ):
+    def stringViewToString(self, bytes sv ):
         """
-        stringViewToString(self, sv: Union[bytes, str] ) -> bytes
+        stringViewToString(self, sv: bytes ) -> bytes
         """
         assert isinstance(sv, (bytes, str)), 'arg sv wrong type'
         cdef bytes v0
