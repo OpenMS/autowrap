@@ -1,14 +1,13 @@
 name: release autowrap
 
-###########################################################################
-# please make sure that autowrap version numbers have been properly updated
-###########################################################################
-
 on:
   workflow_dispatch: # manual trigger
     inputs:
+      version:
+        description: 'Version to release (empty = use version from autowrap/version.py)'
+        default: ''
       next_version:
-        description: 'Next version (empty = minor bump)'
+        description: 'Next development version (empty = minor bump from release version)'
         default: ''
 
 jobs:
@@ -21,6 +20,29 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Determine release version
+        id: version
+        run: |
+          INPUT_VER="${{ github.event.inputs.version }}"
+          if [ -z "$INPUT_VER" ]; then
+            # Deduce version from autowrap/version.py
+            RELEASE_VER=$(python3 -c 'from autowrap.version import __version__; print(__version__)')
+            echo "Using version from autowrap/version.py: $RELEASE_VER"
+          else
+            # Validate version format (only allow digits and dots)
+            if ! echo "$INPUT_VER" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "Error: Invalid version format. Expected format: X.Y.Z (e.g., 1.2.3)"
+              exit 1
+            fi
+            RELEASE_VER="$INPUT_VER"
+            echo "Using input version: $RELEASE_VER"
+            # Update version.py with the specified version
+            sed -i -e "s/^__version__ = \".*\"/__version__ = \"$RELEASE_VER\"/g" autowrap/version.py
+            TUPLE_VER=$(echo $RELEASE_VER | sed 's/\./, /g')
+            sed -i -e "s/^__version_tuple__ = (.*)/__version_tuple__ = ($TUPLE_VER)/g" autowrap/version.py
+          fi
+          echo "version=$RELEASE_VER" >> $GITHUB_OUTPUT
 
       - name: Install build dependencies
         run: |
@@ -36,10 +58,6 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
           packages_dir: ${{ github.workspace }}/dist
-      
-      - name: Parse version
-        run: echo "version=$(python3 -c 'from autowrap.version import __version__; print(__version__)')" >> $GITHUB_OUTPUT
-        id: version
         
       - name: Create github release
         uses: softprops/action-gh-release@v2
@@ -56,9 +74,17 @@ jobs:
       - name: Setup things for new cycle
         id: setup_new
         run: |
-          NEXT_VER=${{ github.event.inputs.next_version }}
-          OLD_VER=${{ steps.version.outputs.version }}
-          [ -z "$NEXT_VER" ] && NEXT_VER=$(echo $OLD_VER | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g') || true
+          NEXT_VER="${{ github.event.inputs.next_version }}"
+          RELEASE_VER="${{ steps.version.outputs.version }}"
+          if [ -z "$NEXT_VER" ]; then
+            NEXT_VER=$(echo $RELEASE_VER | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+          else
+            # Validate version format (only allow digits and dots)
+            if ! echo "$NEXT_VER" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "Error: Invalid next version format. Expected format: X.Y.Z (e.g., 1.2.3)"
+              exit 1
+            fi
+          fi
           echo >> HISTORY.md
           cat CHANGELOG.md >> HISTORY.md
           echo >> HISTORY.md
