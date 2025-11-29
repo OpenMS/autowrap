@@ -572,8 +572,10 @@ def test_enum_class_forward_declaration(tmpdir):
         # Find if Status is defined as "class Status(_PyEnum)" in pyx
         has_python_enum_class = "class Status(_PyEnum)" in enum_module_pyx
 
-        # Find if Status has "cdef class Status" forward declaration in pxd
-        has_cdef_class_forward_decl = "cdef class Status" in enum_module_pxd
+        # Find if Status has "cdef class Status:" forward declaration in pxd
+        # Use regex to match exact class name (avoid matching "cdef class StatusHandler")
+        import re
+        has_cdef_class_forward_decl = re.search(r"cdef class Status\s*:", enum_module_pxd) is not None
 
         # This is the bug: scoped enums should NOT have cdef class forward declarations
         # because they are implemented as regular Python classes (Enum subclasses)
