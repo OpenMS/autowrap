@@ -1,4 +1,4 @@
-autowrap 0.24.0 (unreleased)
+autowrap 0.24.0
 
 
 New STL Container Support (C++17):

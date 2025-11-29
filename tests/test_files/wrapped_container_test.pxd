@@ -59,6 +59,8 @@ cdef extern from "wrapped_container_test.hpp":
         # ========================================
         int sumMapValues(libcpp_map[int, Item]& m)
         libcpp_map[int, Item] createMapIntToItem(int count)
+        int lookupMapIntToItem(libcpp_map[int, Item]& m, int key)
+        bool hasKeyMapIntToItem(libcpp_map[int, Item]& m, int key)
 
         # ========================================
         # MAP WITH WRAPPED CLASS AS KEY
@@ -97,6 +99,8 @@ cdef extern from "wrapped_container_test.hpp":
         # ========================================
         int sumUnorderedMapValues(libcpp_unordered_map[int, Item]& m)
         libcpp_unordered_map[int, Item] createUnorderedMapIntToItem(int count)
+        int lookupUnorderedMapIntToItem(libcpp_unordered_map[int, Item]& m, int key)
+        bool hasKeyUnorderedMapIntToItem(libcpp_unordered_map[int, Item]& m, int key)
 
         # ========================================
         # UNORDERED_MAP WITH WRAPPED CLASS AS BOTH KEY AND VALUE
@@ -126,6 +130,8 @@ cdef extern from "wrapped_container_test.hpp":
         # ========================================
         int sumUnorderedSetItems(libcpp_unordered_set[Item]& items)
         libcpp_unordered_set[Item] createUnorderedSetItems(int count)
+        bool hasItemUnorderedSet(libcpp_unordered_set[Item]& items, Item& item)
+        int findItemUnorderedSet(libcpp_unordered_set[Item]& items, Item& item)
 
         # ========================================
         # NESTED CONTAINERS: list<vector<int>>

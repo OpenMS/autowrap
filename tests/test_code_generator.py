@@ -383,3 +383,89 @@ def test_automatic_output_string_conversion():
     msg = h.get(input_unicode)
     assert isinstance(msg, expected_type)
     assert msg == expected
+
+
+def test_wrap_ignore_foreign_cimports():
+    """
+    Test that wrap-ignored classes are not included in foreign cimports.
+
+    This test verifies the fix for GitHub issue #194:
+    When a class has the wrap-ignore annotation, other modules should not
+    generate cimport statements for it, as wrap-ignored classes don't have
+    corresponding pxd files.
+
+    The test creates a multi-module scenario where one module has a
+    wrap-ignored class, and verifies that the generated code in the other
+    module does not attempt to cimport the wrap-ignored class.
+    """
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+    from autowrap.DeclResolver import ResolvedClass
+
+    # Create a temporary directory for generated files
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Parse the libcpp_test.pxd which has AbstractBaseClass (wrap-ignore)
+        # and ABS_Impl1, ABS_Impl2 which inherit from it
+        pxd_files = ["libcpp_test.pxd"]
+        full_pxd_files = [os.path.join(test_files, f) for f in pxd_files]
+        decls, instance_map = autowrap.parse(full_pxd_files, test_files)
+
+        # Find the wrap-ignored class (AbstractBaseClass)
+        wrap_ignored_classes = [d for d in decls if isinstance(d, ResolvedClass) and d.wrap_ignore]
+        assert len(wrap_ignored_classes) > 0, "Expected at least one wrap-ignored class"
+
+        # Set up a multi-module scenario
+        # Module "module1" contains all the classes
+        # Module "module2" is our target module that will generate foreign cimports
+        module1_decls = decls
+        module2_decls = []  # Empty module that needs to import from module1
+
+        master_dict = {
+            "module1": {"decls": module1_decls, "addons": [], "files": full_pxd_files},
+            "module2": {"decls": module2_decls, "addons": [], "files": []},
+        }
+
+        # Generate code for module2 which would need foreign cimports from module1
+        target = os.path.join(test_dir, "module2.pyx")
+        cg = CodeGenerator(
+            module2_decls,
+            instance_map,
+            pyx_target_path=target,
+            all_decl=master_dict,
+        )
+
+        # Call create_foreign_cimports
+        cg.create_foreign_cimports()
+
+        # Check the generated code for foreign cimports
+        generated_code = ""
+        for code_block in cg.top_level_code:
+            generated_code += code_block.render()
+
+        # Verify that wrap-ignored classes are NOT in the cimports
+        for ignored_class in wrap_ignored_classes:
+            # The cimport line would look like: "from .module1 cimport ClassName"
+            cimport_pattern = f"cimport {ignored_class.name}"
+            assert cimport_pattern not in generated_code, (
+                f"Wrap-ignored class '{ignored_class.name}' should not be in foreign cimports. "
+                f"Generated code:\n{generated_code}"
+            )
+
+        # Verify that non-ignored classes ARE in the cimports
+        non_ignored_classes = [d for d in decls if isinstance(d, ResolvedClass) and not d.wrap_ignore]
+        for normal_class in non_ignored_classes:
+            # Skip classes with no_pxd_import or wrap-attach
+            if normal_class.no_pxd_import:
+                continue
+            if normal_class.cpp_decl.annotations.get("wrap-attach"):
+                continue
+            cimport_pattern = f"cimport {normal_class.name}"
+            assert cimport_pattern in generated_code, (
+                f"Non-ignored class '{normal_class.name}' should be in foreign cimports. "
+                f"Generated code:\n{generated_code}"
+            )
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)

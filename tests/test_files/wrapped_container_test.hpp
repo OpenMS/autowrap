@@ -129,6 +129,20 @@ public:
         return result;
     }
 
+    // Lookup Item by key - returns Item value_ or -1 if not found
+    int lookupMapIntToItem(const std::map<int, Item>& m, int key) {
+        auto it = m.find(key);
+        if (it != m.end()) {
+            return it->second.value_;
+        }
+        return -1;
+    }
+
+    // Check if key exists in map
+    bool hasKeyMapIntToItem(const std::map<int, Item>& m, int key) {
+        return m.count(key) > 0;
+    }
+
     // ========================================
     // MAP WITH WRAPPED CLASS AS KEY
     // ========================================
@@ -244,6 +258,20 @@ public:
         return result;
     }
 
+    // Lookup Item by key in unordered_map - returns Item value_ or -1 if not found
+    int lookupUnorderedMapIntToItem(const std::unordered_map<int, Item>& m, int key) {
+        auto it = m.find(key);
+        if (it != m.end()) {
+            return it->second.value_;
+        }
+        return -1;
+    }
+
+    // Check if key exists in unordered_map
+    bool hasKeyUnorderedMapIntToItem(const std::unordered_map<int, Item>& m, int key) {
+        return m.count(key) > 0;
+    }
+
     // ========================================
     // UNORDERED_MAP WITH WRAPPED CLASS AS BOTH KEY AND VALUE
     // ========================================
@@ -337,6 +365,20 @@ public:
             result.insert(Item(i * 10));
         }
         return result;
+    }
+
+    // Check if Item exists in unordered_set (membership test using hash)
+    bool hasItemUnorderedSet(const std::unordered_set<Item>& items, const Item& item) {
+        return items.count(item) > 0;
+    }
+
+    // Find Item and return its value_ or -1 if not found
+    int findItemUnorderedSet(const std::unordered_set<Item>& items, const Item& item) {
+        auto it = items.find(item);
+        if (it != items.end()) {
+            return it->value_;
+        }
+        return -1;
     }
 
     // ========================================
