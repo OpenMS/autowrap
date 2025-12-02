@@ -1086,7 +1086,12 @@ class StdMapConverter(TypeConverterBase):
         else:
             cleanup_code = "del %s" % temp_var
 
-        return code, "deref(%s)" % temp_var, cleanup_code
+        # Use move() for by-value parameters to avoid copying large maps
+        if cpp_type.is_ref:
+            call_as = "deref(%s)" % temp_var
+        else:
+            call_as = "move(deref(%s))" % temp_var
+        return code, call_as, cleanup_code
 
     def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "_r = %s" % cy_call_str
@@ -1255,7 +1260,12 @@ class StdSetConverter(TypeConverterBase):
                 )
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large sets
+            if cpp_type.topmost_is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
 
         elif tt.base_type in self.converters.names_of_wrapper_classes:
             base_type = tt.base_type
@@ -1297,7 +1307,12 @@ class StdSetConverter(TypeConverterBase):
 
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large sets
+            if cpp_type.is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
         else:
             inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
@@ -1730,7 +1745,12 @@ class StdVectorConverter(TypeConverterBase):
                 )
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large vectors
+            if cpp_type.topmost_is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
 
         elif tt.base_type in self.converters.names_of_wrapper_classes:
             # Case 2: We wrap a std::vector<> with a base type we need to wrap
@@ -1756,8 +1776,11 @@ class StdVectorConverter(TypeConverterBase):
 
             if cpp_type.is_ptr:
                 call_fragment = temp_var
-            else:
+            elif cpp_type.topmost_is_ref:
                 call_fragment = "deref(%s)" % temp_var
+            else:
+                # Use move() for by-value parameters to avoid copying large vectors
+                call_fragment = "move(deref(%s))" % temp_var
 
             return code, call_fragment, cleanup_code
 
@@ -1806,7 +1829,12 @@ class StdVectorConverter(TypeConverterBase):
                     locals(),
                 )
 
-            return code, "%s" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large vectors
+            if cpp_type.topmost_is_ref:
+                call_as = "%s" % temp_var
+            else:
+                call_as = "move(%s)" % temp_var
+            return code, call_as, cleanup_code
 
         elif inner_contains_classes_to_wrap and tt.base_type != "libcpp_vector":
             # Only if the template argument which is neither a class-to-wrap nor a std::vector
@@ -1861,7 +1889,12 @@ class StdVectorConverter(TypeConverterBase):
                     "Error: For recursion in std::vector<T> to work, we need a ConverterRegistry instance at self.cr"
                 )
 
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large vectors
+            if cpp_type.topmost_is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
 
         else:
             # Case 5: We wrap a regular type
@@ -1883,7 +1916,12 @@ class StdVectorConverter(TypeConverterBase):
                     locals(),
                 )
 
-            return code, "%s" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large vectors
+            if cpp_type.topmost_is_ref:
+                call_as = "%s" % temp_var
+            else:
+                call_as = "move(%s)" % temp_var
+            return code, call_as, cleanup_code
 
     def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         t = self.converters.cython_type(res_type)
@@ -2362,7 +2400,12 @@ class StdUnorderedMapConverter(TypeConverterBase):
         else:
             cleanup_code = "del %s" % temp_var
 
-        return code, "deref(%s)" % temp_var, cleanup_code
+        # Use move() for by-value parameters to avoid copying large maps
+        if cpp_type.is_ref:
+            call_as = "deref(%s)" % temp_var
+        else:
+            call_as = "move(deref(%s))" % temp_var
+        return code, call_as, cleanup_code
 
     def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "_r = %s" % cy_call_str
@@ -2551,7 +2594,12 @@ class StdUnorderedSetConverter(TypeConverterBase):
                 )
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large sets
+            if cpp_type.topmost_is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
 
         elif tt.base_type in self.converters.names_of_wrapper_classes:
             base_type = tt.base_type
@@ -2587,7 +2635,12 @@ class StdUnorderedSetConverter(TypeConverterBase):
                 )
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large sets
+            if cpp_type.is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
         else:
             # Primitive types - need explicit iteration
             item = "item%d" % arg_num
@@ -2615,7 +2668,12 @@ class StdUnorderedSetConverter(TypeConverterBase):
                 )
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large sets
+            if cpp_type.is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
 
     def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "_r = %s" % cy_call_str
@@ -2753,7 +2811,12 @@ class StdDequeConverter(TypeConverterBase):
                 )
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large deques
+            if cpp_type.topmost_is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
 
         elif tt.base_type in self.converters.names_of_wrapper_classes:
             base_type = tt.base_type
@@ -2770,7 +2833,12 @@ class StdDequeConverter(TypeConverterBase):
                 locals(),
             )
             cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large deques
+            if cpp_type.is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
         else:
             # Primitive types - need explicit iteration
             item = "item%d" % arg_num
@@ -2921,7 +2989,12 @@ class StdListConverter(TypeConverterBase):
                 )
             else:
                 cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large lists
+            if cpp_type.topmost_is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
 
         elif tt.base_type in self.converters.names_of_wrapper_classes:
             base_type = tt.base_type
@@ -2938,7 +3011,12 @@ class StdListConverter(TypeConverterBase):
                 locals(),
             )
             cleanup_code = "del %s" % temp_var
-            return code, "deref(%s)" % temp_var, cleanup_code
+            # Use move() for by-value parameters to avoid copying large lists
+            if cpp_type.is_ref:
+                call_as = "deref(%s)" % temp_var
+            else:
+                call_as = "move(deref(%s))" % temp_var
+            return code, call_as, cleanup_code
         else:
             code = Code().add(
                 """

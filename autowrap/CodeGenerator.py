@@ -2074,6 +2074,7 @@ class CodeGenerator(object):
         code.add(
             """
                    |from  libcpp.memory   cimport shared_ptr
+                   |from  libcpp.utility  cimport move
                    """
         )
         if self.include_numpy:
