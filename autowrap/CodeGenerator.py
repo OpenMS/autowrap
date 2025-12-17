@@ -684,6 +684,18 @@ class CodeGenerator(object):
                 locals(),
             )
 
+        if len(r_class.wrap_len) != 0:
+            class_code.add(
+                """
+                            |
+                            |    def __len__(self):
+                            |      return deref(self.inst.get()).%s
+                            |
+                            """
+                % r_class.wrap_len[0],
+                locals(),
+            )
+
         if "wrap-buffer-protocol" in r_class.cpp_decl.annotations:
             buffer_parts = r_class.cpp_decl.annotations["wrap-buffer-protocol"][0].split(",")
             buffer_sourcer = buffer_parts[0]
