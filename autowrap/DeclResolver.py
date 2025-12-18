@@ -176,6 +176,7 @@ class ResolvedClass(object):
     no_pxd_import: bool
     wrap_manual_memory: Union[bool, List[AnyStr]]
     wrap_hash: List[AnyStr]
+    wrap_len: List[AnyStr]
     local_map: Dict
     instance_map: Dict
     pxd_import_path: Optional[AnyStr]
@@ -206,6 +207,7 @@ class ResolvedClass(object):
         # elif empty list or list with actual content: pass
         assert isinstance(self.wrap_manual_memory, list)
         self.wrap_hash = decl.annotations.get("wrap-hash", [])
+        self.wrap_len = decl.annotations.get("wrap-len", [])
         self.local_map = local_map
         self.instance_map = instance_map
         self.pxd_import_path = None
