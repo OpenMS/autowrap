@@ -2247,9 +2247,8 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             factory_func = self._get_factory_function_name(tt)
             
             # Check if this is a reference return (view opportunity)
-            if cpp_type.is_ref:
-                # Use ArrayView for zero-copy access via factory function
-                readonly = "True" if cpp_type.is_const else "False"
+            if cpp_type.is_ref and not cpp_type.is_const:
+                # Non-const reference: Use ArrayView for zero-copy access via factory function
                 code = Code().add(
                     """
                     |# Convert C++ vector reference to numpy array VIEW (zero-copy)
@@ -2259,36 +2258,49 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                     |    _ptr_$output_py_var,
                     |    _size_$output_py_var,
                     |    owner=self,
-                    |    readonly=$readonly
+                    |    readonly=False
                     |)
                     |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
-                    |$output_py_var.base = _view_$output_py_var
                     """,
                     dict(
                         input_cpp_var=input_cpp_var,
                         output_py_var=output_py_var,
                         wrapper_suffix=wrapper_suffix,
                         factory_func=factory_func,
-                        readonly=readonly,
                         ctype=ctype,
                     ),
                 )
                 return code
             else:
-                # Value return - use owning wrapper (data is already a copy)
-                # Swap the returned vector into the wrapper to transfer ownership
-                code = Code().add(
+                # Const reference or value return - use owning wrapper (make a copy)
+                # For const ref: copy to avoid lifetime issues
+                # For value return: data is already a copy, just wrap it
+                if cpp_type.is_ref and cpp_type.is_const:
+                    comment = "# Convert C++ const vector reference to numpy array (copy for safety)"
+                    code_block = """
+                    |$comment
+                    |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix($input_cpp_var.size())
+                    |if $input_cpp_var.size() > 0:
+                    |    memcpy(_wrapper_$output_py_var.vec.data(), $input_cpp_var.data(), $input_cpp_var.size() * sizeof($ctype))
+                    |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
                     """
-                    |# Convert C++ vector to numpy array using owning wrapper (data already copied)
+                else:
+                    comment = "# Convert C++ vector to numpy array using owning wrapper (data already copied)"
+                    code_block = """
+                    |$comment
                     |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
                     |_wrapper_$output_py_var.set_data($input_cpp_var)
                     |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
-                    |$output_py_var.base = _wrapper_$output_py_var
-                    """,
+                    """
+                
+                code = Code().add(
+                    code_block,
                     dict(
                         input_cpp_var=input_cpp_var,
                         output_py_var=output_py_var,
                         wrapper_suffix=wrapper_suffix,
+                        comment=comment,
+                        ctype=ctype,
                     ),
                 )
                 return code

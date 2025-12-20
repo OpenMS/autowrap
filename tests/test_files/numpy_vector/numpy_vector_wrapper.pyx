@@ -71,33 +71,7 @@ cdef class ArrayWrapperFloat:
     """
     cdef libcpp_vector[float] vec
 
-cdef class ArrayWrapperDouble:
-    cdef libcpp_vector[double] vec
-
-cdef class ArrayWrapperInt8:
-    cdef libcpp_vector[int8_t] vec
-
-cdef class ArrayWrapperInt16:
-    cdef libcpp_vector[int16_t] vec
-
-cdef class ArrayWrapperInt32:
-    cdef libcpp_vector[int32_t] vec
-
-cdef class ArrayWrapperInt64:
-    cdef libcpp_vector[int64_t] vec
-
-cdef class ArrayWrapperUInt8:
-    cdef libcpp_vector[uint8_t] vec
-
-cdef class ArrayWrapperUInt16:
-    cdef libcpp_vector[uint16_t] vec
-
-cdef class ArrayWrapperUInt32:
-    cdef libcpp_vector[uint32_t] vec
-
-cdef class ArrayWrapperUInt64:
-    cdef libcpp_vector[uint64_t] vec
-        def __init__(self, size=0):
+    def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
             self.vec.resize(size)
@@ -163,7 +137,8 @@ cdef class ArrayWrapperDouble:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[double] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -230,7 +205,8 @@ cdef class ArrayWrapperInt8:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[int8_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -294,7 +270,8 @@ cdef class ArrayWrapperInt16:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[int16_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -358,7 +335,8 @@ cdef class ArrayWrapperInt32:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[int32_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -422,7 +400,8 @@ cdef class ArrayWrapperInt64:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[int64_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -486,7 +465,8 @@ cdef class ArrayWrapperUInt8:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[uint8_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -550,7 +530,8 @@ cdef class ArrayWrapperUInt16:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[uint16_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -614,7 +595,8 @@ cdef class ArrayWrapperUInt32:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[uint32_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -678,7 +660,8 @@ cdef class ArrayWrapperUInt64:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    
+    cdef libcpp_vector[uint64_t] vec
+
     def __init__(self, size=0):
         """Initialize with optional size."""
         if size > 0:
@@ -755,60 +738,7 @@ cdef class ArrayViewFloat:
     cdef object owner
     cdef cbool readonly
 
-cdef class ArrayViewDouble:
-    cdef double* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewInt8:
-    cdef int8_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewInt16:
-    cdef int16_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewInt32:
-    cdef int32_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewInt64:
-    cdef int64_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewUInt8:
-    cdef uint8_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewUInt16:
-    cdef uint16_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewUInt32:
-    cdef uint32_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-
-cdef class ArrayViewUInt64:
-    cdef uint64_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
-        def __cinit__(self):
+    def __cinit__(self):
         self.ptr = NULL
         self._size = 0
         self.owner = None
@@ -882,7 +812,11 @@ cdef class ArrayViewDouble:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef double* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -957,7 +891,11 @@ cdef class ArrayViewInt8:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef int8_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1029,7 +967,11 @@ cdef class ArrayViewInt16:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef int16_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1101,7 +1043,11 @@ cdef class ArrayViewInt32:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef int32_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1173,7 +1119,11 @@ cdef class ArrayViewInt64:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef int64_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1245,7 +1195,11 @@ cdef class ArrayViewUInt8:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef uint8_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1317,7 +1271,11 @@ cdef class ArrayViewUInt16:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef uint16_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1389,7 +1347,11 @@ cdef class ArrayViewUInt32:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef uint32_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1461,7 +1423,11 @@ cdef class ArrayViewUInt64:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    
+    cdef uint64_t* ptr
+    cdef size_t _size
+    cdef object owner
+    cdef cbool readonly
+
     def __cinit__(self):
         self.ptr = NULL
         self._size = 0
@@ -1647,17 +1613,11 @@ cdef class NumpyVectorTest:
         getConstRefVector(self) -> numpy.ndarray[numpy.float64_t, ndim=1]
         """
         _r = self.inst.get().getConstRefVector()
-        # Convert C++ vector reference to numpy array VIEW (zero-copy)
-        cdef double* _ptr_py_result = _r.data()
-        cdef size_t _size_py_result = _r.size()
-        cdef ArrayViewDouble _view_py_result = _create_view_double(
-            _ptr_py_result,
-            _size_py_result,
-            owner=self,
-            readonly=True
-        )
-        cdef object py_result = numpy.asarray(_view_py_result)
-        py_result.base = _view_py_result
+        # Convert C++ const vector reference to numpy array (copy for safety)
+        cdef ArrayWrapperDouble _wrapper_py_result = ArrayWrapperDouble(_r.size())
+        if _r.size() > 0:
+            memcpy(_wrapper_py_result.vec.data(), _r.data(), _r.size() * sizeof(double))
+        cdef object py_result = numpy.asarray(_wrapper_py_result)
         return py_result
     
     def getMutableRefVector(self):
@@ -1675,7 +1635,6 @@ cdef class NumpyVectorTest:
             readonly=False
         )
         cdef object py_result = numpy.asarray(_view_py_result)
-        py_result.base = _view_py_result
         return py_result
     
     def getValueVector(self,  size ):
@@ -1689,7 +1648,6 @@ cdef class NumpyVectorTest:
         cdef ArrayWrapperDouble _wrapper_py_result = ArrayWrapperDouble()
         _wrapper_py_result.set_data(_r)
         cdef object py_result = numpy.asarray(_wrapper_py_result)
-        py_result.base = _wrapper_py_result
         return py_result
     
     def sumVector(self, numpy.ndarray[numpy.float64_t, ndim=1] data ):
@@ -1735,7 +1693,6 @@ cdef class NumpyVectorTest:
         cdef ArrayWrapperFloat _wrapper_py_result = ArrayWrapperFloat()
         _wrapper_py_result.set_data(_r)
         cdef object py_result = numpy.asarray(_wrapper_py_result)
-        py_result.base = _wrapper_py_result
         return py_result
     
     def create2DVector(self,  rows ,  cols ):

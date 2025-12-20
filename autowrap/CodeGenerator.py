@@ -2117,10 +2117,9 @@ class CodeGenerator(object):
     
     def inline_array_wrappers(self):
         """Inline ArrayWrapper and ArrayView class definitions for buffer protocol support."""
-        # Read both the .pyx and .pxd files
+        # Read the combined ArrayWrappers.pyx file (which has attributes already inline)
         autowrap_dir = os.path.dirname(os.path.abspath(__file__))
         array_wrappers_pyx = os.path.join(autowrap_dir, "data_files", "autowrap", "ArrayWrappers.pyx")
-        array_wrappers_pxd = os.path.join(autowrap_dir, "data_files", "autowrap", "ArrayWrappers.pxd")
         
         if not os.path.exists(array_wrappers_pyx):
             L.warning("ArrayWrappers.pyx not found, skipping inline array wrappers")
@@ -2128,31 +2127,6 @@ class CodeGenerator(object):
         
         with open(array_wrappers_pyx, 'r') as f:
             pyx_content = f.read()
-        
-        # Read .pxd to get attribute declarations
-        attribute_declarations = {}
-        if os.path.exists(array_wrappers_pxd):
-            with open(array_wrappers_pxd, 'r') as f:
-                pxd_content = f.read()
-            
-            # Parse .pxd to extract attribute declarations for each class
-            import re
-            # Pattern to match class declarations with their attributes
-            # Match: "cdef class ClassName:\n    cdef type attr\n    cdef type attr\n..."
-            class_pattern = r'cdef class (\w+):\s*\n((?:\s+cdef .+\n)+)'
-            for match in re.finditer(class_pattern, pxd_content):
-                class_name = match.group(1)
-                attrs = match.group(2)
-                # Attrs already has proper indentation from .pxd
-                attribute_declarations[class_name] = attrs.rstrip()
-        
-        # Now inject the attribute declarations into the .pyx content
-        # For each class, add the cdef attributes right after the docstring
-        for class_name, attrs in attribute_declarations.items():
-            # Find "cdef class ClassName:" and its docstring, then add attributes after
-            pattern = rf'(cdef class {class_name}:\s+""".*?""")\s*\n'
-            replacement = rf'\1\n{attrs}\n    '
-            pyx_content = re.sub(pattern, replacement, pyx_content, flags=re.DOTALL)
         
         # Remove the first few lines (cython directives and module docstring)
         # Keep everything from the first import onward
