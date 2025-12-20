@@ -1997,14 +1997,19 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     NUMPY_DTYPE_MAP = {
         "float": "float32",
         "double": "float64", 
+        "int8_t": "int8",
+        "int16_t": "int16",
         "int": "int32",
         "int32_t": "int32",
         "int64_t": "int64",
-        "uint32_t": "uint32",
-        "uint64_t": "uint64",
-        "size_t": "uint64",
         "long": "int64",
+        "uint8_t": "uint8",
+        "uint16_t": "uint16",
+        "uint32_t": "uint32",
         "unsigned int": "uint32",
+        "uint64_t": "uint64",
+        "unsigned long": "uint64",
+        "size_t": "uint64",
         "bool": "bool_",
     }
     
@@ -2012,8 +2017,12 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     CTYPE_MAP = {
         "float32": "float",
         "float64": "double",
+        "int8": "int8_t",
+        "int16": "int16_t",
         "int32": "int",
         "int64": "long",
+        "uint8": "uint8_t",
+        "uint16": "uint16_t",
         "uint32": "unsigned int",
         "uint64": "unsigned long",
         "bool_": "bool",
@@ -2163,13 +2172,35 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
         return "_r = %s" % cy_call_str
     
+    def _get_wrapper_class_name(self, cpp_type: CppType) -> str:
+        """Get the appropriate ArrayWrapper or ArrayView class name for a type."""
+        type_map = {
+            "float": "Float",
+            "double": "Double",
+            "int8_t": "Int8",
+            "int16_t": "Int16",
+            "int32_t": "Int32",
+            "int": "Int32",
+            "int64_t": "Int64",
+            "long": "Int64",
+            "uint8_t": "UInt8",
+            "uint16_t": "UInt16",
+            "uint32_t": "UInt32",
+            "unsigned int": "UInt32",
+            "uint64_t": "UInt64",
+            "unsigned long": "UInt64",
+        }
+        return type_map.get(cpp_type.base_type, "Double")
+    
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
     ) -> Optional[Code]:
         """Convert C++ vector to numpy array.
         
-        For non-const references: Create view (no copy)
-        For const ref or value: Copy data (Python owns memory)
+        Uses ArrayWrapper/ArrayView classes with buffer protocol:
+        - For non-const references: Create zero-copy view (ArrayView with readonly=False)
+        - For const references: Create zero-copy view (ArrayView with readonly=True) 
+        - For value returns: Copy data using memcpy (Python owns memory)
         """
         (tt,) = cpp_type.template_args
         
@@ -2207,27 +2238,51 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             inner_type = self.converters.cython_type(tt)
             dtype = self._get_numpy_dtype(tt)
             ctype = self.CTYPE_MAP.get(dtype, "double")
+            wrapper_suffix = self._get_wrapper_class_name(tt)
             
-            # For now, always copy data to Python (simpler and safer)
-            # TODO: Implement true zero-copy views for non-const references
-            # (requires keeping C++ object alive, which is complex)
-            code = Code().add(
-                """
-                |# Convert C++ vector to numpy array COPY (Python owns data)
-                |cdef size_t n_$output_py_var = $input_cpp_var.size()
-                |cdef object $output_py_var = numpy.empty(n_$output_py_var, dtype=numpy.$dtype)
-                |if n_$output_py_var > 0:
-                |    memcpy(<void*>numpy.PyArray_DATA($output_py_var), $input_cpp_var.data(), n_$output_py_var * sizeof($ctype))
-                """,
-                dict(
-                    input_cpp_var=input_cpp_var,
-                    output_py_var=output_py_var,
-                    inner_type=inner_type,
-                    dtype=dtype,
-                    ctype=ctype,
-                ),
-            )
-            return code
+            # Check if this is a reference return (view opportunity)
+            if cpp_type.is_ref:
+                # Use ArrayView for zero-copy access
+                readonly = "True" if cpp_type.is_const else "False"
+                code = Code().add(
+                    """
+                    |# Convert C++ vector reference to numpy array VIEW (zero-copy)
+                    |cdef ArrayView$wrapper_suffix _view_$output_py_var = ArrayView$wrapper_suffix(
+                    |    $input_cpp_var.data(), 
+                    |    $input_cpp_var.size(), 
+                    |    owner=self,
+                    |    readonly=$readonly
+                    |)
+                    |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
+                    |$output_py_var.base = _view_$output_py_var
+                    """,
+                    dict(
+                        input_cpp_var=input_cpp_var,
+                        output_py_var=output_py_var,
+                        wrapper_suffix=wrapper_suffix,
+                        readonly=readonly,
+                    ),
+                )
+                return code
+            else:
+                # Value return - copy data to Python (simpler and safer)
+                code = Code().add(
+                    """
+                    |# Convert C++ vector to numpy array COPY (Python owns data)
+                    |cdef size_t n_$output_py_var = $input_cpp_var.size()
+                    |cdef object $output_py_var = numpy.empty(n_$output_py_var, dtype=numpy.$dtype)
+                    |if n_$output_py_var > 0:
+                    |    memcpy(<void*>numpy.PyArray_DATA($output_py_var), $input_cpp_var.data(), n_$output_py_var * sizeof($ctype))
+                    """,
+                    dict(
+                        input_cpp_var=input_cpp_var,
+                        output_py_var=output_py_var,
+                        inner_type=inner_type,
+                        dtype=dtype,
+                        ctype=ctype,
+                    ),
+                )
+                return code
 
 
 class StdStringConverter(TypeConverterBase):

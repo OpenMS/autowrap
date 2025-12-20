@@ -51,12 +51,13 @@ public:
  * Non-owning view wrapper that provides a view into existing data.
  * This class does NOT own its data and relies on the owner to keep data alive.
  * 
+ * The readonly flag determines whether the buffer is writable or not.
  * Template parameter T should be a numeric type (float, double, int, etc.)
  */
 template <typename T>
 class ArrayView {
 private:
-    T* ptr_;
+    const void* ptr_;  // Use const void* to allow both const and non-const pointers
     size_t size_;
     bool readonly_;
 
@@ -64,43 +65,20 @@ public:
     ArrayView() : ptr_(nullptr), size_(0), readonly_(true) {}
     
     ArrayView(T* ptr, size_t size, bool readonly = false)
-        : ptr_(ptr), size_(size), readonly_(readonly) {}
+        : ptr_(static_cast<const void*>(ptr)), size_(size), readonly_(readonly) {}
     
-    // Get data pointer
-    T* data() { return ptr_; }
-    const T* data() const { return ptr_; }
+    ArrayView(const T* ptr, size_t size)
+        : ptr_(static_cast<const void*>(ptr)), size_(size), readonly_(true) {}
+    
+    // Get data pointer (cast away const internally, buffer protocol will enforce readonly)
+    T* data() { return const_cast<T*>(static_cast<const T*>(ptr_)); }
+    const T* data() const { return static_cast<const T*>(ptr_); }
     
     // Get size
     size_t size() const { return size_; }
     
     // Check if readonly
     bool is_readonly() const { return readonly_; }
-};
-
-/**
- * Const (read-only) view wrapper.
- * This is a specialization for const data.
- */
-template <typename T>
-class ConstArrayView {
-private:
-    const T* ptr_;
-    size_t size_;
-
-public:
-    ConstArrayView() : ptr_(nullptr), size_(0) {}
-    
-    ConstArrayView(const T* ptr, size_t size)
-        : ptr_(ptr), size_(size) {}
-    
-    // Get data pointer (const only)
-    const T* data() const { return ptr_; }
-    
-    // Get size
-    size_t size() const { return size_; }
-    
-    // Always readonly
-    bool is_readonly() const { return true; }
 };
 
 } // namespace autowrap

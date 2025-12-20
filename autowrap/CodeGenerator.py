@@ -2096,6 +2096,11 @@ class CodeGenerator(object):
                    |import numpy as np
                    |cimport numpy as numpy
                    |import numpy as numpy
+                   |from ArrayWrappers cimport (
+                   |    ArrayViewFloat, ArrayViewDouble,
+                   |    ArrayViewInt8, ArrayViewInt16, ArrayViewInt32, ArrayViewInt64,
+                   |    ArrayViewUInt8, ArrayViewUInt16, ArrayViewUInt32, ArrayViewUInt64
+                   |)
                    """
             )
 

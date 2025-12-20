@@ -1,5 +1,6 @@
 from libcpp.vector cimport vector as libcpp_vector
 from libcpp cimport bool as cbool
+from libc.stdint cimport int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
 
 cdef extern from "ArrayWrapper.hpp" namespace "autowrap":
     
@@ -17,20 +18,12 @@ cdef extern from "ArrayWrapper.hpp" namespace "autowrap":
         void set_data(libcpp_vector[T]& other)
         libcpp_vector[T]& get_vector()
     
-    # Non-owning view class
+    # Non-owning view class (now handles both const and non-const with readonly flag)
     cdef cppclass ArrayView[T]:
         ArrayView()
         ArrayView(T* ptr, size_t size, cbool readonly)
+        ArrayView(const T* ptr, size_t size)
         
         T* data()
-        size_t size()
-        cbool is_readonly()
-    
-    # Const view class
-    cdef cppclass ConstArrayView[T]:
-        ConstArrayView()
-        ConstArrayView(const T* ptr, size_t size)
-        
-        const T* data()
         size_t size()
         cbool is_readonly()
