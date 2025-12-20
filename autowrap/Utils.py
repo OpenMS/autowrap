@@ -153,9 +153,12 @@ setup(cmdclass={'build_ext': build_ext},
     elif debug:
         print("ArrayWrappers compiled successfully")
     
-    # After building, copy the .pxd file so other modules can cimport from it
+    # After building successfully, copy the .pxd file so other modules can cimport from it
+    # We do this AFTER compilation to avoid conflicts during ArrayWrappers own compilation
     if result == 0 and os.path.exists(array_wrappers_pxd):
         shutil.copy(array_wrappers_pxd, tempdir)
+        if debug:
+            print("Copied ArrayWrappers.pxd to tempdir")
 
 
 def compile_and_import(name, source_files, include_dirs=None, **kws):

@@ -20,6 +20,7 @@ from libcpp.vector cimport vector as libcpp_vector
 from libcpp cimport bool as cbool
 from libc.stdint cimport int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
 cimport cython
+from libc.stdlib cimport malloc, free
 
 
 # Static format strings for buffer protocol
@@ -71,31 +72,39 @@ cdef class ArrayWrapperFloat:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(float)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(float)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(float)
+        buffer.len = shape_and_strides[0] * sizeof(float)
         buffer.readonly = 0
-        buffer.format = FORMAT_FLOAT if (flags & PyBUF_FORMAT) else NULL
+        if flags & PyBUF_FORMAT:
+            buffer.format = FORMAT_FLOAT
+        else:
+            buffer.format = NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(float)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperDouble:
@@ -130,31 +139,39 @@ cdef class ArrayWrapperDouble:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(double)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(double)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(double)
+        buffer.len = shape_and_strides[0] * sizeof(double)
         buffer.readonly = 0
-        buffer.format = FORMAT_DOUBLE if (flags & PyBUF_FORMAT) else NULL
+        if flags & PyBUF_FORMAT:
+            buffer.format = FORMAT_DOUBLE
+        else:
+            buffer.format = NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(double)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperInt8:
@@ -189,31 +206,36 @@ cdef class ArrayWrapperInt8:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(int8_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(int8_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(int8_t)
+        buffer.len = shape_and_strides[0] * sizeof(int8_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int8_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperInt16:
@@ -248,31 +270,36 @@ cdef class ArrayWrapperInt16:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(int16_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(int16_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(int16_t)
+        buffer.len = shape_and_strides[0] * sizeof(int16_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int16_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperInt32:
@@ -307,31 +334,36 @@ cdef class ArrayWrapperInt32:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(int32_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(int32_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(int32_t)
+        buffer.len = shape_and_strides[0] * sizeof(int32_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int32_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperInt64:
@@ -366,31 +398,36 @@ cdef class ArrayWrapperInt64:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(int64_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(int64_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(int64_t)
+        buffer.len = shape_and_strides[0] * sizeof(int64_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int64_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperUInt8:
@@ -425,31 +462,36 @@ cdef class ArrayWrapperUInt8:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(uint8_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(uint8_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(uint8_t)
+        buffer.len = shape_and_strides[0] * sizeof(uint8_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint8_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperUInt16:
@@ -484,31 +526,36 @@ cdef class ArrayWrapperUInt16:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(uint16_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(uint16_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(uint16_t)
+        buffer.len = shape_and_strides[0] * sizeof(uint16_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint16_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperUInt32:
@@ -543,31 +590,36 @@ cdef class ArrayWrapperUInt32:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(uint32_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(uint32_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(uint32_t)
+        buffer.len = shape_and_strides[0] * sizeof(uint32_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint32_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayWrapperUInt64:
@@ -602,31 +654,36 @@ cdef class ArrayWrapperUInt64:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
         
-        
-        self._shape_val = self.vec.size()
-        self._strides_val = sizeof(uint64_t)
+        shape_and_strides[0] = self.vec.size()  # shape
+        shape_and_strides[1] = sizeof(uint64_t)  # strides
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = self._shape_val * sizeof(uint64_t)
+        buffer.len = shape_and_strides[0] * sizeof(uint64_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint64_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 #############################################################################
@@ -674,29 +731,39 @@ cdef class ArrayViewFloat:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(float)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(float)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
         buffer.len = self._size * sizeof(float)
         buffer.readonly = 1 if self.readonly else 0
-        buffer.format = FORMAT_FLOAT if (flags & PyBUF_FORMAT) else NULL
+        if flags & PyBUF_FORMAT:
+            buffer.format = FORMAT_FLOAT
+        else:
+            buffer.format = NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(float)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewDouble:
@@ -739,29 +806,39 @@ cdef class ArrayViewDouble:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(double)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(double)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
         buffer.len = self._size * sizeof(double)
         buffer.readonly = 1 if self.readonly else 0
-        buffer.format = FORMAT_DOUBLE if (flags & PyBUF_FORMAT) else NULL
+        if flags & PyBUF_FORMAT:
+            buffer.format = FORMAT_DOUBLE
+        else:
+            buffer.format = NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(double)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewInt8:
@@ -804,8 +881,13 @@ cdef class ArrayViewInt8:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(int8_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(int8_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -814,19 +896,21 @@ cdef class ArrayViewInt8:
         buffer.format = FORMAT_INT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int8_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewInt16:
@@ -869,8 +953,13 @@ cdef class ArrayViewInt16:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(int16_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(int16_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -879,19 +968,21 @@ cdef class ArrayViewInt16:
         buffer.format = FORMAT_INT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int16_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewInt32:
@@ -934,8 +1025,13 @@ cdef class ArrayViewInt32:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(int32_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(int32_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -944,19 +1040,21 @@ cdef class ArrayViewInt32:
         buffer.format = FORMAT_INT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int32_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewInt64:
@@ -999,8 +1097,13 @@ cdef class ArrayViewInt64:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(int64_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(int64_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1009,19 +1112,21 @@ cdef class ArrayViewInt64:
         buffer.format = FORMAT_INT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int64_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewUInt8:
@@ -1064,8 +1169,13 @@ cdef class ArrayViewUInt8:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(uint8_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(uint8_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1074,19 +1184,21 @@ cdef class ArrayViewUInt8:
         buffer.format = FORMAT_UINT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint8_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewUInt16:
@@ -1129,8 +1241,13 @@ cdef class ArrayViewUInt16:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(uint16_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(uint16_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1139,19 +1256,21 @@ cdef class ArrayViewUInt16:
         buffer.format = FORMAT_UINT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint16_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewUInt32:
@@ -1194,8 +1313,13 @@ cdef class ArrayViewUInt32:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(uint32_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(uint32_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1204,19 +1328,21 @@ cdef class ArrayViewUInt32:
         buffer.format = FORMAT_UINT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint32_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 cdef class ArrayViewUInt64:
@@ -1259,8 +1385,13 @@ cdef class ArrayViewUInt64:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        self._shape_val = self._size
-        self._strides_val = sizeof(uint64_t)
+        # Allocate shape and strides array (2 elements: [shape, strides])
+        cdef Py_ssize_t *shape_and_strides = <Py_ssize_t*>malloc(2 * sizeof(Py_ssize_t))
+        if shape_and_strides == NULL:
+            raise MemoryError("Unable to allocate shape/strides buffer")
+        
+        shape_and_strides[0] = self._size  # shape
+        shape_and_strides[1] = sizeof(uint64_t)  # strides
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1269,19 +1400,21 @@ cdef class ArrayViewUInt64:
         buffer.format = FORMAT_UINT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
         if flags & PyBUF_ND:
-            buffer.shape = &self._shape_val
+            buffer.shape = shape_and_strides
         else:
             buffer.shape = NULL
         if flags & PyBUF_STRIDES:
-            buffer.strides = &self._strides_val
+            buffer.strides = shape_and_strides + 1
         else:
             buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint64_t)
-        buffer.internal = NULL
+        buffer.internal = <void*>shape_and_strides  # Store pointer so we can free it later
     
     def __releasebuffer__(self, Py_buffer *buffer):
-        pass
+        if <void*>buffer.internal != NULL:
+            free(<void*>buffer.internal)
+            buffer.internal = NULL
 
 
 #############################################################################
