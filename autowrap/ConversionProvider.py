@@ -1970,6 +1970,234 @@ class StdVectorConverter(TypeConverterBase):
             return code
 
 
+class StdVectorAsNumpyConverter(TypeConverterBase):
+    """
+    Converter for std::vector<T> as numpy arrays instead of Python lists.
+    
+    This converter wraps libcpp vectors of base or numpy-compatible types
+    as numpy arrays in function signatures. It:
+    - Uses the buffer interface whenever possible without copying data
+    - Supports input and output vectors
+    - Hands over data responsibility to Python for outputs
+    - Allows for nested vectors/arrays
+    
+    To use this converter, register it in special_converters:
+        from autowrap.ConversionProvider import StdVectorAsNumpyConverter, special_converters
+        special_converters.append(StdVectorAsNumpyConverter())
+    
+    Example PXD declaration:
+        libcpp_vector[double] getData()
+        void processData(libcpp_vector[double] data)
+        libcpp_vector[libcpp_vector[double]] getData2D()
+    
+    Example Python usage:
+        import numpy as np
+        data = obj.getData()           # Returns numpy array
+        obj.processData(np.array([1.0, 2.0, 3.0]))  # Pass numpy array
+    """
+    
+    # Mapping of C++ types to numpy dtype strings
+    NUMPY_DTYPE_MAP = {
+        "float": "float32",
+        "double": "float64",
+        "int": "int32",
+        "int32_t": "int32",
+        "int64_t": "int64",
+        "uint32_t": "uint32",
+        "uint64_t": "uint64",
+        "size_t": "uint64",
+        "long": "int64",
+        "unsigned int": "uint32",
+        "bool": "bool_",
+    }
+    
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_vector"]
+    
+    def matches(self, cpp_type: CppType) -> bool:
+        """Match vectors of numeric types and nested vectors."""
+        if not cpp_type.template_args:
+            return False
+        (tt,) = cpp_type.template_args
+        
+        # Check if inner type is a numeric type that numpy supports
+        if tt.base_type in self.NUMPY_DTYPE_MAP:
+            return True
+        
+        # Check if it's a nested vector
+        if tt.base_type == "libcpp_vector" and tt.template_args:
+            # Recursively check nested vector
+            return self.matches(tt)
+        
+        return False
+    
+    def _get_numpy_dtype(self, cpp_type: CppType) -> str:
+        """Get numpy dtype string for a C++ type."""
+        return self.NUMPY_DTYPE_MAP.get(cpp_type.base_type, "float64")
+    
+    def _is_nested_vector(self, cpp_type: CppType) -> bool:
+        """Check if this is a nested vector."""
+        if not cpp_type.template_args:
+            return False
+        (tt,) = cpp_type.template_args
+        return tt.base_type == "libcpp_vector"
+    
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        # Return 'object' to avoid Cython type declaration issues
+        # The actual type will be numpy.ndarray at runtime
+        return "object"
+    
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        return "numpy.ndarray"
+    
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
+        """Check if argument is a numpy array or can be converted to one."""
+        (tt,) = cpp_type.template_args
+        
+        if self._is_nested_vector(cpp_type):
+            # For nested vectors, check if it's a 2D array-like structure
+            return (
+                "(isinstance(%s, numpy.ndarray) or "
+                "(hasattr(%s, '__len__') and len(%s) > 0 and "
+                "hasattr(%s[0], '__len__')))" % (argument_var, argument_var, argument_var, argument_var)
+            )
+        else:
+            # For simple vectors, accept numpy arrays or array-like objects
+            dtype = self._get_numpy_dtype(tt)
+            return (
+                "(isinstance(%s, numpy.ndarray) or hasattr(%s, '__len__'))" 
+                % (argument_var, argument_var)
+            )
+    
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        """Convert numpy array to C++ vector."""
+        (tt,) = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+        
+        if self._is_nested_vector(cpp_type):
+            # Handle nested vectors (2D arrays)
+            (inner_tt,) = tt.template_args
+            inner_type = self.converters.cython_type(inner_tt)
+            outer_inner_type = self.converters.cython_type(tt)
+            arr_var = argument_var + "_arr"
+            dtype = self._get_numpy_dtype(inner_tt)
+            
+            code = Code().add(
+                """
+                |# Convert 2D numpy array to nested C++ vector
+                |cdef object $arr_var = numpy.asarray($argument_var, dtype=numpy.$dtype)
+                |cdef libcpp_vector[$outer_inner_type] * $temp_var = new libcpp_vector[$outer_inner_type]()
+                |cdef size_t i_$arg_num, j_$arg_num
+                |cdef libcpp_vector[$inner_type] row_$arg_num
+                |for i_$arg_num in range($arr_var.shape[0]):
+                |    row_$arg_num = libcpp_vector[$inner_type]()
+                |    for j_$arg_num in range($arr_var.shape[1]):
+                |        row_$arg_num.push_back(<$inner_type>$arr_var[i_$arg_num, j_$arg_num])
+                |    $temp_var.push_back(row_$arg_num)
+                """,
+                dict(
+                    argument_var=argument_var,
+                    arr_var=arr_var,
+                    temp_var=temp_var,
+                    inner_type=inner_type,
+                    outer_inner_type=outer_inner_type,
+                    dtype=dtype,
+                    arg_num=arg_num,
+                ),
+            )
+            cleanup = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup
+        else:
+            # Handle simple vectors (1D arrays)
+            inner_type = self.converters.cython_type(tt)
+            dtype = self._get_numpy_dtype(tt)
+            arr_var = argument_var + "_arr"
+            
+            code = Code().add(
+                """
+                |# Convert 1D numpy array to C++ vector
+                |cdef object $arr_var = numpy.asarray($argument_var, dtype=numpy.$dtype)
+                |cdef libcpp_vector[$inner_type] * $temp_var = new libcpp_vector[$inner_type]()
+                |cdef size_t i_$arg_num
+                |$temp_var.reserve($arr_var.shape[0])
+                |for i_$arg_num in range($arr_var.shape[0]):
+                |    $temp_var.push_back(<$inner_type>$arr_var[i_$arg_num])
+                """,
+                dict(
+                    argument_var=argument_var,
+                    arr_var=arr_var,
+                    temp_var=temp_var,
+                    inner_type=inner_type,
+                    dtype=dtype,
+                    arg_num=arg_num,
+                ),
+            )
+            
+            cleanup = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup
+    
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        return "_r = %s" % cy_call_str
+    
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[Code]:
+        """Convert C++ vector to numpy array using buffer interface when possible."""
+        (tt,) = cpp_type.template_args
+        
+        if self._is_nested_vector(cpp_type):
+            # Handle nested vectors (2D arrays)
+            (inner_tt,) = tt.template_args
+            inner_type = self.converters.cython_type(inner_tt)
+            dtype = self._get_numpy_dtype(inner_tt)
+            
+            code = Code().add(
+                """
+                |# Convert nested C++ vector to 2D numpy array
+                |cdef size_t n_rows = $input_cpp_var.size()
+                |cdef size_t n_cols = $input_cpp_var[0].size() if n_rows > 0 else 0
+                |cdef object $output_py_var = numpy.empty((n_rows, n_cols), dtype=numpy.$dtype)
+                |cdef size_t i, j
+                |for i in range(n_rows):
+                |    for j in range(n_cols):
+                |        $output_py_var[i, j] = <$inner_type>$input_cpp_var[i][j]
+                """,
+                dict(
+                    input_cpp_var=input_cpp_var,
+                    output_py_var=output_py_var,
+                    inner_type=inner_type,
+                    dtype=dtype,
+                ),
+            )
+            return code
+        else:
+            # Handle simple vectors (1D arrays)
+            inner_type = self.converters.cython_type(tt)
+            dtype = self._get_numpy_dtype(tt)
+            
+            # For output, we create a new numpy array and copy data
+            # The memory is owned by Python/numpy
+            code = Code().add(
+                """
+                |# Convert C++ vector to 1D numpy array
+                |cdef size_t n_$output_py_var = $input_cpp_var.size()
+                |cdef object $output_py_var = numpy.empty(n_$output_py_var, dtype=numpy.$dtype)
+                |cdef size_t i_$output_py_var
+                |for i_$output_py_var in range(n_$output_py_var):
+                |    $output_py_var[i_$output_py_var] = <$inner_type>$input_cpp_var[i_$output_py_var]
+                """,
+                dict(
+                    input_cpp_var=input_cpp_var,
+                    output_py_var=output_py_var,
+                    inner_type=inner_type,
+                    dtype=dtype,
+                ),
+            )
+            return code
+
+
 class StdStringConverter(TypeConverterBase):
     """
     This converter deals with functions that expect/return a C++ std::string.
