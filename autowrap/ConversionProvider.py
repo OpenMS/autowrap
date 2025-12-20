@@ -2076,14 +2076,14 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
         (tt,) = cpp_type.template_args
         
         if self._is_nested_vector(cpp_type):
-            # For 2D arrays, use NDArray type hint
+            # For 2D arrays, use proper NDArray type hint syntax
             (inner_tt,) = tt.template_args
             dtype = self._get_numpy_dtype(inner_tt)
-            return f"numpy.ndarray[numpy.{dtype}_t, numpy.ndim[2]]"
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=2]"
         else:
-            # For 1D arrays, use NDArray type hint
+            # For 1D arrays, use proper NDArray type hint syntax
             dtype = self._get_numpy_dtype(tt)
-            return f"numpy.ndarray[numpy.{dtype}_t, numpy.ndim[1]]"
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=1]"
     
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         """Check if argument is a numpy array (strict - no lists)."""

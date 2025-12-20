@@ -17,49 +17,49 @@ class NumpyVectorTest:
         """
         ...
     
-    def getConstRefVector(self) -> numpy.ndarray[numpy.float64_t, numpy.ndim[1]]:
+    def getConstRefVector(self) -> numpy.ndarray[numpy.float64_t, ndim=1]:
         """
         Cython signature: const libcpp_vector_as_np[double] & getConstRefVector()
         """
         ...
     
-    def getMutableRefVector(self) -> numpy.ndarray[numpy.float64_t, numpy.ndim[1]]:
+    def getMutableRefVector(self) -> numpy.ndarray[numpy.float64_t, ndim=1]:
         """
         Cython signature: libcpp_vector_as_np[double] & getMutableRefVector()
         """
         ...
     
-    def getValueVector(self, size: int ) -> numpy.ndarray[numpy.float64_t, numpy.ndim[1]]:
+    def getValueVector(self, size: int ) -> numpy.ndarray[numpy.float64_t, ndim=1]:
         """
         Cython signature: libcpp_vector_as_np[double] getValueVector(size_t size)
         """
         ...
     
-    def sumVector(self, data: numpy.ndarray[numpy.float64_t, numpy.ndim[1]] ) -> float:
+    def sumVector(self, data: numpy.ndarray[numpy.float64_t, ndim=1] ) -> float:
         """
         Cython signature: double sumVector(libcpp_vector_as_np[double] data)
         """
         ...
     
-    def sumIntVector(self, data: numpy.ndarray[numpy.int32_t, numpy.ndim[1]] ) -> int:
+    def sumIntVector(self, data: numpy.ndarray[numpy.int32_t, ndim=1] ) -> int:
         """
         Cython signature: int sumIntVector(libcpp_vector_as_np[int] data)
         """
         ...
     
-    def createFloatVector(self, size: int ) -> numpy.ndarray[numpy.float32_t, numpy.ndim[1]]:
+    def createFloatVector(self, size: int ) -> numpy.ndarray[numpy.float32_t, ndim=1]:
         """
         Cython signature: libcpp_vector_as_np[float] createFloatVector(size_t size)
         """
         ...
     
-    def create2DVector(self, rows: int , cols: int ) -> numpy.ndarray[numpy.float64_t, numpy.ndim[2]]:
+    def create2DVector(self, rows: int , cols: int ) -> numpy.ndarray[numpy.float64_t, ndim=2]:
         """
         Cython signature: libcpp_vector_as_np[libcpp_vector_as_np[double]] create2DVector(size_t rows, size_t cols)
         """
         ...
     
-    def sum2DVector(self, data: numpy.ndarray[numpy.float64_t, numpy.ndim[2]] ) -> float:
+    def sum2DVector(self, data: numpy.ndarray[numpy.float64_t, ndim=2] ) -> float:
         """
         Cython signature: double sum2DVector(libcpp_vector_as_np[libcpp_vector_as_np[double]] data)
         """
