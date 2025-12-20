@@ -1,0 +1,36 @@
+from libcpp.vector cimport vector as libcpp_vector
+from libcpp cimport bool as cbool
+
+cdef extern from "ArrayWrapper.hpp" namespace "autowrap":
+    
+    # Owning wrapper class
+    cdef cppclass ArrayWrapper[T]:
+        ArrayWrapper()
+        ArrayWrapper(size_t size)
+        ArrayWrapper(size_t size, T value)
+        ArrayWrapper(libcpp_vector[T]&& vec)
+        ArrayWrapper(const libcpp_vector[T]& vec)
+        
+        T* data()
+        size_t size()
+        void resize(size_t new_size)
+        void set_data(libcpp_vector[T]& other)
+        libcpp_vector[T]& get_vector()
+    
+    # Non-owning view class
+    cdef cppclass ArrayView[T]:
+        ArrayView()
+        ArrayView(T* ptr, size_t size, cbool readonly)
+        
+        T* data()
+        size_t size()
+        cbool is_readonly()
+    
+    # Const view class
+    cdef cppclass ConstArrayView[T]:
+        ConstArrayView()
+        ConstArrayView(const T* ptr, size_t size)
+        
+        const T* data()
+        size_t size()
+        cbool is_readonly()
