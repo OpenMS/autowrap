@@ -53,7 +53,7 @@ cdef class NumpyVectorTest:
     
     def getConstRefVector(self):
         """
-        getConstRefVector(self) -> numpy.ndarray
+        getConstRefVector(self) -> numpy.ndarray[numpy.float64_t, numpy.ndim[1]]
         """
         _r = self.inst.get().getConstRefVector()
         # Convert C++ vector to numpy array COPY (Python owns data)
@@ -65,7 +65,7 @@ cdef class NumpyVectorTest:
     
     def getMutableRefVector(self):
         """
-        getMutableRefVector(self) -> numpy.ndarray
+        getMutableRefVector(self) -> numpy.ndarray[numpy.float64_t, numpy.ndim[1]]
         """
         _r = self.inst.get().getMutableRefVector()
         # Convert C++ vector to numpy array COPY (Python owns data)
@@ -77,7 +77,7 @@ cdef class NumpyVectorTest:
     
     def getValueVector(self,  size ):
         """
-        getValueVector(self, size: int ) -> numpy.ndarray
+        getValueVector(self, size: int ) -> numpy.ndarray[numpy.float64_t, numpy.ndim[1]]
         """
         assert isinstance(size, int) and size >= 0, 'arg size wrong type'
     
@@ -91,7 +91,7 @@ cdef class NumpyVectorTest:
     
     def sumVector(self, object data ):
         """
-        sumVector(self, data: numpy.ndarray ) -> float
+        sumVector(self, data: numpy.ndarray[numpy.float64_t, numpy.ndim[1]] ) -> float
         """
         assert (isinstance(data, numpy.ndarray) or hasattr(data, '__len__')), 'arg data wrong type'
         # Convert 1D numpy array to C++ vector (input)
@@ -108,7 +108,7 @@ cdef class NumpyVectorTest:
     
     def sumIntVector(self, object data ):
         """
-        sumIntVector(self, data: numpy.ndarray ) -> int
+        sumIntVector(self, data: numpy.ndarray[numpy.int32_t, numpy.ndim[1]] ) -> int
         """
         assert (isinstance(data, numpy.ndarray) or hasattr(data, '__len__')), 'arg data wrong type'
         # Convert 1D numpy array to C++ vector (input)
@@ -125,7 +125,7 @@ cdef class NumpyVectorTest:
     
     def createFloatVector(self,  size ):
         """
-        createFloatVector(self, size: int ) -> numpy.ndarray
+        createFloatVector(self, size: int ) -> numpy.ndarray[numpy.float32_t, numpy.ndim[1]]
         """
         assert isinstance(size, int) and size >= 0, 'arg size wrong type'
     
@@ -139,7 +139,7 @@ cdef class NumpyVectorTest:
     
     def create2DVector(self,  rows ,  cols ):
         """
-        create2DVector(self, rows: int , cols: int ) -> numpy.ndarray
+        create2DVector(self, rows: int , cols: int ) -> numpy.ndarray[numpy.float64_t, numpy.ndim[2]]
         """
         assert isinstance(rows, int) and rows >= 0, 'arg rows wrong type'
         assert isinstance(cols, int) and cols >= 0, 'arg cols wrong type'
@@ -160,7 +160,7 @@ cdef class NumpyVectorTest:
     
     def sum2DVector(self, object data ):
         """
-        sum2DVector(self, data: numpy.ndarray ) -> float
+        sum2DVector(self, data: numpy.ndarray[numpy.float64_t, numpy.ndim[2]] ) -> float
         """
         assert (isinstance(data, numpy.ndarray) or (hasattr(data, '__len__') and len(data) > 0 and hasattr(data[0], '__len__'))), 'arg data wrong type'
         # Convert 2D numpy array to nested C++ vector

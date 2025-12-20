@@ -46,6 +46,7 @@ dev = [
 test = [
     "pytest>=6.0",
     "pytest-cov",
+    "numpy>=1.20",
 ]
 
 [project.urls]

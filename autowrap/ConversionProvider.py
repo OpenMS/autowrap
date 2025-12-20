@@ -2051,11 +2051,29 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
         return tt.base_type == "libcpp_vector_as_np"
     
     def matching_python_type(self, cpp_type: CppType) -> str:
-        # Return 'object' to avoid Cython type declaration issues
+        """Return Cython type for function signature.
+        
+        We use 'object' to allow both numpy arrays and array-like objects (lists, etc.)
+        to be passed in. The type checking is done at runtime via type_check_expression.
+        """
         return "object"
     
     def matching_python_type_full(self, cpp_type: CppType) -> str:
-        return "numpy.ndarray"
+        """Return type hint for type checkers (for docstrings).
+        
+        This provides proper numpy type hints for documentation and type checking tools.
+        """
+        (tt,) = cpp_type.template_args
+        
+        if self._is_nested_vector(cpp_type):
+            # For 2D arrays, use NDArray type hint
+            (inner_tt,) = tt.template_args
+            dtype = self._get_numpy_dtype(inner_tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, numpy.ndim[2]]"
+        else:
+            # For 1D arrays, use NDArray type hint
+            dtype = self._get_numpy_dtype(tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, numpy.ndim[1]]"
     
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
         """Check if argument is a numpy array or can be converted to one."""
