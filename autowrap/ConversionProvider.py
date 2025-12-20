@@ -2192,6 +2192,11 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
         }
         return type_map.get(cpp_type.base_type, "Double")
     
+    def _get_factory_function_name(self, cpp_type: CppType) -> str:
+        """Get the factory function name for creating an ArrayView."""
+        suffix = self._get_wrapper_class_name(cpp_type)
+        return f"_create_view_{suffix.lower()}"
+    
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
     ) -> Optional[Code]:
@@ -2200,7 +2205,7 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
         Uses ArrayWrapper/ArrayView classes with buffer protocol:
         - For non-const references: Create zero-copy view (ArrayView with readonly=False)
         - For const references: Create zero-copy view (ArrayView with readonly=True) 
-        - For value returns: Copy data using memcpy (Python owns memory)
+        - For value returns: Use owning wrapper (data is already a copy)
         """
         (tt,) = cpp_type.template_args
         
@@ -2239,17 +2244,20 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             dtype = self._get_numpy_dtype(tt)
             ctype = self.CTYPE_MAP.get(dtype, "double")
             wrapper_suffix = self._get_wrapper_class_name(tt)
+            factory_func = self._get_factory_function_name(tt)
             
             # Check if this is a reference return (view opportunity)
             if cpp_type.is_ref:
-                # Use ArrayView for zero-copy access
+                # Use ArrayView for zero-copy access via factory function
                 readonly = "True" if cpp_type.is_const else "False"
                 code = Code().add(
                     """
                     |# Convert C++ vector reference to numpy array VIEW (zero-copy)
-                    |cdef ArrayView$wrapper_suffix _view_$output_py_var = ArrayView$wrapper_suffix(
-                    |    $input_cpp_var.data(), 
-                    |    $input_cpp_var.size(), 
+                    |cdef $ctype* _ptr_$output_py_var = $input_cpp_var.data()
+                    |cdef size_t _size_$output_py_var = $input_cpp_var.size()
+                    |cdef ArrayView$wrapper_suffix _view_$output_py_var = $factory_func(
+                    |    _ptr_$output_py_var,
+                    |    _size_$output_py_var,
                     |    owner=self,
                     |    readonly=$readonly
                     |)
@@ -2260,26 +2268,27 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         input_cpp_var=input_cpp_var,
                         output_py_var=output_py_var,
                         wrapper_suffix=wrapper_suffix,
+                        factory_func=factory_func,
                         readonly=readonly,
+                        ctype=ctype,
                     ),
                 )
                 return code
             else:
-                # Value return - copy data to Python (simpler and safer)
+                # Value return - use owning wrapper (data is already a copy)
+                # Swap the returned vector into the wrapper to transfer ownership
                 code = Code().add(
                     """
-                    |# Convert C++ vector to numpy array COPY (Python owns data)
-                    |cdef size_t n_$output_py_var = $input_cpp_var.size()
-                    |cdef object $output_py_var = numpy.empty(n_$output_py_var, dtype=numpy.$dtype)
-                    |if n_$output_py_var > 0:
-                    |    memcpy(<void*>numpy.PyArray_DATA($output_py_var), $input_cpp_var.data(), n_$output_py_var * sizeof($ctype))
+                    |# Convert C++ vector to numpy array using owning wrapper (data already copied)
+                    |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
+                    |_wrapper_$output_py_var.set_data($input_cpp_var)
+                    |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
+                    |$output_py_var.base = _wrapper_$output_py_var
                     """,
                     dict(
                         input_cpp_var=input_cpp_var,
                         output_py_var=output_py_var,
-                        inner_type=inner_type,
-                        dtype=dtype,
-                        ctype=ctype,
+                        wrapper_suffix=wrapper_suffix,
                     ),
                 )
                 return code

@@ -2097,9 +2097,15 @@ class CodeGenerator(object):
                    |cimport numpy as numpy
                    |import numpy as numpy
                    |from ArrayWrappers cimport (
+                   |    ArrayWrapperFloat, ArrayWrapperDouble,
+                   |    ArrayWrapperInt8, ArrayWrapperInt16, ArrayWrapperInt32, ArrayWrapperInt64,
+                   |    ArrayWrapperUInt8, ArrayWrapperUInt16, ArrayWrapperUInt32, ArrayWrapperUInt64,
                    |    ArrayViewFloat, ArrayViewDouble,
                    |    ArrayViewInt8, ArrayViewInt16, ArrayViewInt32, ArrayViewInt64,
-                   |    ArrayViewUInt8, ArrayViewUInt16, ArrayViewUInt32, ArrayViewUInt64
+                   |    ArrayViewUInt8, ArrayViewUInt16, ArrayViewUInt32, ArrayViewUInt64,
+                   |    _create_view_float, _create_view_double,
+                   |    _create_view_int8, _create_view_int16, _create_view_int32, _create_view_int64,
+                   |    _create_view_uint8, _create_view_uint16, _create_view_uint32, _create_view_uint64
                    |)
                    """
             )

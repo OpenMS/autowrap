@@ -29,6 +29,14 @@ cimport numpy as np
 import numpy as np
 cimport numpy as numpy
 import numpy as numpy
+from ArrayWrappers cimport (
+    ArrayViewFloat, ArrayViewDouble,
+    ArrayViewInt8, ArrayViewInt16, ArrayViewInt32, ArrayViewInt64,
+    ArrayViewUInt8, ArrayViewUInt16, ArrayViewUInt32, ArrayViewUInt64,
+    _create_view_float, _create_view_double,
+    _create_view_int8, _create_view_int16, _create_view_int32, _create_view_int64,
+    _create_view_uint8, _create_view_uint16, _create_view_uint32, _create_view_uint64
+)
 from numpy_vector_test cimport NumpyVectorTest as _NumpyVectorTest
 
 cdef extern from "autowrap_tools.hpp":
@@ -56,11 +64,17 @@ cdef class NumpyVectorTest:
         getConstRefVector(self) -> numpy.ndarray[numpy.float64_t, ndim=1]
         """
         _r = self.inst.get().getConstRefVector()
-        # Convert C++ vector to numpy array COPY (Python owns data)
-        cdef size_t n_py_result = _r.size()
-        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float64)
-        if n_py_result > 0:
-            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(double))
+        # Convert C++ vector reference to numpy array VIEW (zero-copy)
+        cdef double* _ptr_py_result = _r.data()
+        cdef size_t _size_py_result = _r.size()
+        cdef ArrayViewDouble _view_py_result = _create_view_double(
+            _ptr_py_result,
+            _size_py_result,
+            owner=self,
+            readonly=True
+        )
+        cdef object py_result = numpy.asarray(_view_py_result)
+        py_result.base = _view_py_result
         return py_result
     
     def getMutableRefVector(self):
@@ -68,11 +82,17 @@ cdef class NumpyVectorTest:
         getMutableRefVector(self) -> numpy.ndarray[numpy.float64_t, ndim=1]
         """
         _r = self.inst.get().getMutableRefVector()
-        # Convert C++ vector to numpy array COPY (Python owns data)
-        cdef size_t n_py_result = _r.size()
-        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float64)
-        if n_py_result > 0:
-            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(double))
+        # Convert C++ vector reference to numpy array VIEW (zero-copy)
+        cdef double* _ptr_py_result = _r.data()
+        cdef size_t _size_py_result = _r.size()
+        cdef ArrayViewDouble _view_py_result = _create_view_double(
+            _ptr_py_result,
+            _size_py_result,
+            owner=self,
+            readonly=False
+        )
+        cdef object py_result = numpy.asarray(_view_py_result)
+        py_result.base = _view_py_result
         return py_result
     
     def getValueVector(self,  size ):
