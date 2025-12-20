@@ -178,22 +178,8 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("tempdir=", tempdir)
         print("\n")
     
-    # Check if any source file imports ArrayWrappers (indicates numpy usage)
-    needs_array_wrappers = False
-    for source_file in source_files:
-        if source_file.endswith('.pyx'):
-            try:
-                with open(source_file, 'r') as f:
-                    content = f.read()
-                    if 'ArrayWrappers' in content or 'ArrayWrapper' in content or 'ArrayView' in content:
-                        needs_array_wrappers = True
-                        break
-            except:
-                pass
-    
-    # Compile ArrayWrappers first if needed
-    if needs_array_wrappers:
-        _compile_array_wrappers_if_needed(tempdir, include_dirs, debug)
+    # Note: ArrayWrappers classes are now inlined into generated modules,
+    # so we don't need to compile them separately anymore
     
     for source_file in source_files:
         if source_file[-4:] != ".pyx" and source_file[-4:] != ".cpp":
