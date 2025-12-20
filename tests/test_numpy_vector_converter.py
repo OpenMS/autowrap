@@ -14,12 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 import os
-import sys
 
-import autowrap.DeclResolver
-import autowrap.CodeGenerator
-import autowrap.PXDParser
-import autowrap.Utils
 import autowrap
 
 # Import the converter and register it
