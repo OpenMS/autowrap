@@ -52,7 +52,6 @@ cdef class ArrayWrapperFloat:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[float] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -72,20 +71,25 @@ cdef class ArrayWrapperFloat:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(float)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(float)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(float)
+        buffer.len = self._shape_val * sizeof(float)
         buffer.readonly = 0
         buffer.format = FORMAT_FLOAT if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(float)
         buffer.internal = NULL
@@ -107,7 +111,6 @@ cdef class ArrayWrapperDouble:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[double] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -127,20 +130,25 @@ cdef class ArrayWrapperDouble:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(double)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(double)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(double)
+        buffer.len = self._shape_val * sizeof(double)
         buffer.readonly = 0
         buffer.format = FORMAT_DOUBLE if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(double)
         buffer.internal = NULL
@@ -162,7 +170,6 @@ cdef class ArrayWrapperInt8:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[int8_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -182,20 +189,25 @@ cdef class ArrayWrapperInt8:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(int8_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(int8_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(int8_t)
+        buffer.len = self._shape_val * sizeof(int8_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int8_t)
         buffer.internal = NULL
@@ -217,7 +229,6 @@ cdef class ArrayWrapperInt16:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[int16_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -237,20 +248,25 @@ cdef class ArrayWrapperInt16:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(int16_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(int16_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(int16_t)
+        buffer.len = self._shape_val * sizeof(int16_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int16_t)
         buffer.internal = NULL
@@ -272,7 +288,6 @@ cdef class ArrayWrapperInt32:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[int32_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -292,20 +307,25 @@ cdef class ArrayWrapperInt32:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(int32_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(int32_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(int32_t)
+        buffer.len = self._shape_val * sizeof(int32_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int32_t)
         buffer.internal = NULL
@@ -327,7 +347,6 @@ cdef class ArrayWrapperInt64:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[int64_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -347,20 +366,25 @@ cdef class ArrayWrapperInt64:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(int64_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(int64_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(int64_t)
+        buffer.len = self._shape_val * sizeof(int64_t)
         buffer.readonly = 0
         buffer.format = FORMAT_INT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int64_t)
         buffer.internal = NULL
@@ -382,7 +406,6 @@ cdef class ArrayWrapperUInt8:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[uint8_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -402,20 +425,25 @@ cdef class ArrayWrapperUInt8:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(uint8_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(uint8_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(uint8_t)
+        buffer.len = self._shape_val * sizeof(uint8_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint8_t)
         buffer.internal = NULL
@@ -437,7 +465,6 @@ cdef class ArrayWrapperUInt16:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[uint16_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -457,20 +484,25 @@ cdef class ArrayWrapperUInt16:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(uint16_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(uint16_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(uint16_t)
+        buffer.len = self._shape_val * sizeof(uint16_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint16_t)
         buffer.internal = NULL
@@ -492,7 +524,6 @@ cdef class ArrayWrapperUInt32:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[uint32_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -512,20 +543,25 @@ cdef class ArrayWrapperUInt32:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(uint32_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(uint32_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(uint32_t)
+        buffer.len = self._shape_val * sizeof(uint32_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint32_t)
         buffer.internal = NULL
@@ -547,7 +583,6 @@ cdef class ArrayWrapperUInt64:
         arr = np.asarray(wrapper)
         arr.base = wrapper  # Keep wrapper alive
     """
-    cdef libcpp_vector[uint64_t] vec
     
     def __init__(self, size=0):
         """Initialize with optional size."""
@@ -567,20 +602,25 @@ cdef class ArrayWrapperUInt64:
         self.vec.swap(data)
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
         
-        shape[0] = self.vec.size()
-        strides[0] = sizeof(uint64_t)
+        
+        self._shape_val = self.vec.size()
+        self._strides_val = sizeof(uint64_t)
         
         buffer.buf = <char*>self.vec.data()
         buffer.obj = self
-        buffer.len = shape[0] * sizeof(uint64_t)
+        buffer.len = self._shape_val * sizeof(uint64_t)
         buffer.readonly = 0
         buffer.format = FORMAT_UINT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint64_t)
         buffer.internal = NULL
@@ -610,10 +650,6 @@ cdef class ArrayViewFloat:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef float* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -630,8 +666,7 @@ cdef class ArrayViewFloat:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -639,8 +674,8 @@ cdef class ArrayViewFloat:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(float)
+        self._shape_val = self._size
+        self._strides_val = sizeof(float)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -648,8 +683,14 @@ cdef class ArrayViewFloat:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_FLOAT if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(float)
         buffer.internal = NULL
@@ -674,10 +715,6 @@ cdef class ArrayViewDouble:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef double* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -694,8 +731,7 @@ cdef class ArrayViewDouble:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -703,8 +739,8 @@ cdef class ArrayViewDouble:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(double)
+        self._shape_val = self._size
+        self._strides_val = sizeof(double)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -712,8 +748,14 @@ cdef class ArrayViewDouble:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_DOUBLE if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(double)
         buffer.internal = NULL
@@ -738,10 +780,6 @@ cdef class ArrayViewInt8:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef int8_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -758,8 +796,7 @@ cdef class ArrayViewInt8:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -767,8 +804,8 @@ cdef class ArrayViewInt8:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(int8_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(int8_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -776,8 +813,14 @@ cdef class ArrayViewInt8:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_INT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int8_t)
         buffer.internal = NULL
@@ -802,10 +845,6 @@ cdef class ArrayViewInt16:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef int16_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -822,8 +861,7 @@ cdef class ArrayViewInt16:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -831,8 +869,8 @@ cdef class ArrayViewInt16:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(int16_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(int16_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -840,8 +878,14 @@ cdef class ArrayViewInt16:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_INT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int16_t)
         buffer.internal = NULL
@@ -866,10 +910,6 @@ cdef class ArrayViewInt32:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef int32_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -886,8 +926,7 @@ cdef class ArrayViewInt32:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -895,8 +934,8 @@ cdef class ArrayViewInt32:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(int32_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(int32_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -904,8 +943,14 @@ cdef class ArrayViewInt32:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_INT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int32_t)
         buffer.internal = NULL
@@ -930,10 +975,6 @@ cdef class ArrayViewInt64:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef int64_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -950,8 +991,7 @@ cdef class ArrayViewInt64:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -959,8 +999,8 @@ cdef class ArrayViewInt64:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(int64_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(int64_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -968,8 +1008,14 @@ cdef class ArrayViewInt64:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_INT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(int64_t)
         buffer.internal = NULL
@@ -994,10 +1040,6 @@ cdef class ArrayViewUInt8:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef uint8_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -1014,8 +1056,7 @@ cdef class ArrayViewUInt8:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -1023,8 +1064,8 @@ cdef class ArrayViewUInt8:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(uint8_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(uint8_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1032,8 +1073,14 @@ cdef class ArrayViewUInt8:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_UINT8 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint8_t)
         buffer.internal = NULL
@@ -1058,10 +1105,6 @@ cdef class ArrayViewUInt16:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef uint16_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -1078,8 +1121,7 @@ cdef class ArrayViewUInt16:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -1087,8 +1129,8 @@ cdef class ArrayViewUInt16:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(uint16_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(uint16_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1096,8 +1138,14 @@ cdef class ArrayViewUInt16:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_UINT16 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint16_t)
         buffer.internal = NULL
@@ -1122,10 +1170,6 @@ cdef class ArrayViewUInt32:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef uint32_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -1142,8 +1186,7 @@ cdef class ArrayViewUInt32:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -1151,8 +1194,8 @@ cdef class ArrayViewUInt32:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(uint32_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(uint32_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1160,8 +1203,14 @@ cdef class ArrayViewUInt32:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_UINT32 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint32_t)
         buffer.internal = NULL
@@ -1186,10 +1235,6 @@ cdef class ArrayViewUInt64:
         arr = np.asarray(view)
         arr.base = view  # Keep view (and owner) alive
     """
-    cdef uint64_t* ptr
-    cdef size_t _size
-    cdef object owner
-    cdef cbool readonly
     
     def __cinit__(self):
         self.ptr = NULL
@@ -1206,8 +1251,7 @@ cdef class ArrayViewUInt64:
         return self.readonly
     
     def __getbuffer__(self, Py_buffer *buffer, int flags):
-        cdef Py_ssize_t[1] shape
-        cdef Py_ssize_t[1] strides
+        
         
         if self.ptr == NULL:
             raise ValueError("ArrayView not initialized")
@@ -1215,8 +1259,8 @@ cdef class ArrayViewUInt64:
         if (flags & PyBUF_WRITABLE) and self.readonly:
             raise BufferError("Cannot create writable buffer from readonly view")
         
-        shape[0] = self._size
-        strides[0] = sizeof(uint64_t)
+        self._shape_val = self._size
+        self._strides_val = sizeof(uint64_t)
         
         buffer.buf = <char*>self.ptr
         buffer.obj = self
@@ -1224,8 +1268,14 @@ cdef class ArrayViewUInt64:
         buffer.readonly = 1 if self.readonly else 0
         buffer.format = FORMAT_UINT64 if (flags & PyBUF_FORMAT) else NULL
         buffer.ndim = 1
-        buffer.shape = shape if (flags & PyBUF_ND) else NULL
-        buffer.strides = strides if (flags & PyBUF_STRIDES) else NULL
+        if flags & PyBUF_ND:
+            buffer.shape = &self._shape_val
+        else:
+            buffer.shape = NULL
+        if flags & PyBUF_STRIDES:
+            buffer.strides = &self._strides_val
+        else:
+            buffer.strides = NULL
         buffer.suboffsets = NULL
         buffer.itemsize = sizeof(uint64_t)
         buffer.internal = NULL

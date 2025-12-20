@@ -30,6 +30,9 @@ import numpy as np
 cimport numpy as numpy
 import numpy as numpy
 from ArrayWrappers cimport (
+    ArrayWrapperFloat, ArrayWrapperDouble,
+    ArrayWrapperInt8, ArrayWrapperInt16, ArrayWrapperInt32, ArrayWrapperInt64,
+    ArrayWrapperUInt8, ArrayWrapperUInt16, ArrayWrapperUInt32, ArrayWrapperUInt64,
     ArrayViewFloat, ArrayViewDouble,
     ArrayViewInt8, ArrayViewInt16, ArrayViewInt32, ArrayViewInt64,
     ArrayViewUInt8, ArrayViewUInt16, ArrayViewUInt32, ArrayViewUInt64,
@@ -102,11 +105,11 @@ cdef class NumpyVectorTest:
         assert isinstance(size, int) and size >= 0, 'arg size wrong type'
     
         _r = self.inst.get().getValueVector((<size_t>size))
-        # Convert C++ vector to numpy array COPY (Python owns data)
-        cdef size_t n_py_result = _r.size()
-        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float64)
-        if n_py_result > 0:
-            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(double))
+        # Convert C++ vector to numpy array using owning wrapper (data already copied)
+        cdef ArrayWrapperDouble _wrapper_py_result = ArrayWrapperDouble()
+        _wrapper_py_result.set_data(_r)
+        cdef object py_result = numpy.asarray(_wrapper_py_result)
+        py_result.base = _wrapper_py_result
         return py_result
     
     def sumVector(self, numpy.ndarray[numpy.float64_t, ndim=1] data ):
@@ -148,11 +151,11 @@ cdef class NumpyVectorTest:
         assert isinstance(size, int) and size >= 0, 'arg size wrong type'
     
         _r = self.inst.get().createFloatVector((<size_t>size))
-        # Convert C++ vector to numpy array COPY (Python owns data)
-        cdef size_t n_py_result = _r.size()
-        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float32)
-        if n_py_result > 0:
-            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(float))
+        # Convert C++ vector to numpy array using owning wrapper (data already copied)
+        cdef ArrayWrapperFloat _wrapper_py_result = ArrayWrapperFloat()
+        _wrapper_py_result.set_data(_r)
+        cdef object py_result = numpy.asarray(_wrapper_py_result)
+        py_result.base = _wrapper_py_result
         return py_result
     
     def create2DVector(self,  rows ,  cols ):

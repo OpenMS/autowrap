@@ -62,6 +62,102 @@ setup(cmdclass = {'build_ext' : build_ext},
 """
 
 
+def _compile_array_wrappers_if_needed(tempdir, include_dirs, debug=False):
+    """
+    Compile ArrayWrappers module if it's needed (i.e., if numpy is being used).
+    This makes ArrayWrappers available to the module being compiled.
+    """
+    import os
+    import os.path
+    import shutil
+    import subprocess
+    import sys
+    
+    # Check if ArrayWrappers source files exist
+    autowrap_dir = os.path.dirname(os.path.abspath(__file__))
+    array_wrappers_dir = os.path.join(autowrap_dir, "data_files", "autowrap")
+    array_wrappers_pyx = os.path.join(array_wrappers_dir, "ArrayWrappers.pyx")
+    array_wrappers_pxd = os.path.join(array_wrappers_dir, "ArrayWrappers.pxd")
+    
+    if not os.path.exists(array_wrappers_pyx):
+        # ArrayWrappers not available, skip
+        return
+    
+    if debug:
+        print("Compiling ArrayWrappers module...")
+    
+    # Copy only ArrayWrappers.pyx to tempdir
+    # Don't copy .pxd - Cython will auto-generate it from .pyx during compilation
+    # The .pxd is only needed by OTHER modules that import ArrayWrappers
+    shutil.copy(array_wrappers_pyx, tempdir)
+    
+    # Create a simple setup.py for ArrayWrappers
+    compile_args = []
+    link_args = []
+    
+    if sys.platform == "darwin":
+        compile_args += ["-stdlib=libc++", "-std=c++17"]
+        link_args += ["-stdlib=libc++"]
+    
+    if sys.platform == "linux" or sys.platform == "linux2":
+        compile_args += ["-std=c++17"]
+    
+    if sys.platform != "win32":
+        compile_args += ["-Wno-unused-but-set-variable"]
+    
+    # Get numpy include directory if available
+    try:
+        import numpy
+        numpy_include = numpy.get_include()
+    except ImportError:
+        numpy_include = None
+    
+    # Filter include_dirs to exclude the autowrap data_files directory
+    # to prevent Cython from finding ArrayWrappers.pxd during its own compilation
+    filtered_include_dirs = [d for d in include_dirs if array_wrappers_dir not in os.path.abspath(d)]
+    if numpy_include and numpy_include not in filtered_include_dirs:
+        filtered_include_dirs.append(numpy_include)
+    
+    include_dirs_abs = [os.path.abspath(d) for d in filtered_include_dirs]
+    
+    setup_code = """
+from distutils.core import setup, Extension
+from Cython.Distutils import build_ext
+
+ext = Extension("ArrayWrappers", 
+                sources=["ArrayWrappers.pyx"], 
+                language="c++",
+                include_dirs=%r,
+                extra_compile_args=%r,
+                extra_link_args=%r)
+
+setup(cmdclass={'build_ext': build_ext},
+      name="ArrayWrappers",
+      ext_modules=[ext])
+""" % (include_dirs_abs, compile_args, link_args)
+    
+    # Write and build ArrayWrappers
+    setup_file = os.path.join(tempdir, "setup_arraywrappers.py")
+    with open(setup_file, "w") as fp:
+        fp.write(setup_code)
+    
+    # Build ArrayWrappers in the tempdir
+    result = subprocess.Popen(
+        "%s %s build_ext --inplace" % (sys.executable, setup_file),
+        shell=True,
+        cwd=tempdir
+    ).wait()
+    
+    if result != 0:
+        print("Warning: Failed to compile ArrayWrappers module")
+    elif debug:
+        print("ArrayWrappers compiled successfully")
+    
+    # After building, copy the .pxd file so other modules can cimport from it
+    if result == 0 and os.path.exists(array_wrappers_pxd):
+        shutil.copy(array_wrappers_pxd, tempdir)
+
+
 def compile_and_import(name, source_files, include_dirs=None, **kws):
     if include_dirs is None:
         include_dirs = []
@@ -78,6 +174,24 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("\n")
         print("tempdir=", tempdir)
         print("\n")
+    
+    # Check if any source file imports ArrayWrappers (indicates numpy usage)
+    needs_array_wrappers = False
+    for source_file in source_files:
+        if source_file.endswith('.pyx'):
+            try:
+                with open(source_file, 'r') as f:
+                    content = f.read()
+                    if 'ArrayWrappers' in content or 'ArrayWrapper' in content or 'ArrayView' in content:
+                        needs_array_wrappers = True
+                        break
+            except:
+                pass
+    
+    # Compile ArrayWrappers first if needed
+    if needs_array_wrappers:
+        _compile_array_wrappers_if_needed(tempdir, include_dirs, debug)
+    
     for source_file in source_files:
         if source_file[-4:] != ".pyx" and source_file[-4:] != ".cpp":
             raise NameError("Expected pyx and/or cpp files as source files for compilation.")
