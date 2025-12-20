@@ -209,7 +209,7 @@ class CppType(object):
 
     def _check_for_recursion(self, seen_base_types):
         # Currently, only nested std::vector<> can be handled
-        if self.base_type in seen_base_types and not self.base_type == "libcpp_vector":
+        if self.base_type in seen_base_types and not self.base_type in ["libcpp_vector", "libcpp_vector_as_np"]:
             raise Exception("recursion check failed")
         seen_base_types.add(self.base_type)
         for t in self.template_args or []:

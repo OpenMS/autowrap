@@ -2060,6 +2060,7 @@ class CodeGenerator(object):
                    |from  libcpp.string   cimport string as libcpp_utf8_output_string
                    |from  libcpp.set      cimport set as libcpp_set
                    |from  libcpp.vector   cimport vector as libcpp_vector
+                   |from  libcpp.vector   cimport vector as libcpp_vector_as_np
                    |from  libcpp.pair     cimport pair as libcpp_pair
                    |from  libcpp.map      cimport map  as libcpp_map
                    |from  libcpp.unordered_map cimport unordered_map as libcpp_unordered_map
@@ -2069,7 +2070,7 @@ class CodeGenerator(object):
                    |from  libcpp.optional cimport optional as libcpp_optional
                    |from  libcpp.string_view cimport string_view as libcpp_string_view
                    |from  libcpp          cimport bool
-                   |from  libc.string     cimport const_char
+                   |from  libc.string     cimport const_char, memcpy
                    |from  cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
                    """

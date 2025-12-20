@@ -6,17 +6,20 @@ class NumpyVectorTest
 public:
     NumpyVectorTest() {}
     
-    // Test simple vector input
-    double sumVector(const std::vector<double>& data) {
-        double sum = 0.0;
-        for (double val : data) {
-            sum += val;
-        }
-        return sum;
+    // Test simple vector output (const ref - should copy)
+    const std::vector<double>& getConstRefVector() {
+        static std::vector<double> data = {1.0, 2.0, 3.0, 4.0, 5.0};
+        return data;
     }
     
-    // Test simple vector output
-    std::vector<double> createVector(size_t size) {
+    // Test simple vector output (non-const ref - should be view)
+    std::vector<double>& getMutableRefVector() {
+        static std::vector<double> data = {10.0, 20.0, 30.0};
+        return data;
+    }
+    
+    // Test simple vector output (value - should copy)
+    std::vector<double> getValueVector(size_t size) {
         std::vector<double> result;
         for (size_t i = 0; i < size; i++) {
             result.push_back(static_cast<double>(i) * 2.0);
@@ -24,11 +27,13 @@ public:
         return result;
     }
     
-    // Test simple vector input/output (modify in place via reference)
-    void multiplyVector(std::vector<double>& data, double factor) {
-        for (size_t i = 0; i < data.size(); i++) {
-            data[i] *= factor;
+    // Test simple vector input
+    double sumVector(const std::vector<double>& data) {
+        double sum = 0.0;
+        for (double val : data) {
+            sum += val;
         }
+        return sum;
     }
     
     // Test different numeric types

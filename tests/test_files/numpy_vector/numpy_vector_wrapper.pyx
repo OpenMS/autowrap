@@ -9,6 +9,7 @@ from  libcpp.string   cimport string as libcpp_utf8_string
 from  libcpp.string   cimport string as libcpp_utf8_output_string
 from  libcpp.set      cimport set as libcpp_set
 from  libcpp.vector   cimport vector as libcpp_vector
+from  libcpp.vector   cimport vector as libcpp_vector_as_np
 from  libcpp.pair     cimport pair as libcpp_pair
 from  libcpp.map      cimport map  as libcpp_map
 from  libcpp.unordered_map cimport unordered_map as libcpp_unordered_map
@@ -18,7 +19,7 @@ from  libcpp.list     cimport list as libcpp_list
 from  libcpp.optional cimport optional as libcpp_optional
 from  libcpp.string_view cimport string_view as libcpp_string_view
 from  libcpp          cimport bool
-from  libc.string     cimport const_char
+from  libc.string     cimport const_char, memcpy
 from  cython.operator cimport dereference as deref, preincrement as inc, address as address
 from  AutowrapRefHolder      cimport AutowrapRefHolder
 from  AutowrapPtrHolder      cimport AutowrapPtrHolder
@@ -50,67 +51,73 @@ cdef class NumpyVectorTest:
         """
         self.inst = shared_ptr[_NumpyVectorTest](new _NumpyVectorTest())
     
+    def getConstRefVector(self):
+        """
+        getConstRefVector(self) -> numpy.ndarray
+        """
+        _r = self.inst.get().getConstRefVector()
+        # Convert C++ vector to numpy array COPY (Python owns data)
+        cdef size_t n_py_result = _r.size()
+        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float64)
+        if n_py_result > 0:
+            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(double))
+        return py_result
+    
+    def getMutableRefVector(self):
+        """
+        getMutableRefVector(self) -> numpy.ndarray
+        """
+        _r = self.inst.get().getMutableRefVector()
+        # Convert C++ vector to numpy array COPY (Python owns data)
+        cdef size_t n_py_result = _r.size()
+        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float64)
+        if n_py_result > 0:
+            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(double))
+        return py_result
+    
+    def getValueVector(self,  size ):
+        """
+        getValueVector(self, size: int ) -> numpy.ndarray
+        """
+        assert isinstance(size, int) and size >= 0, 'arg size wrong type'
+    
+        _r = self.inst.get().getValueVector((<size_t>size))
+        # Convert C++ vector to numpy array COPY (Python owns data)
+        cdef size_t n_py_result = _r.size()
+        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float64)
+        if n_py_result > 0:
+            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(double))
+        return py_result
+    
     def sumVector(self, object data ):
         """
         sumVector(self, data: numpy.ndarray ) -> float
         """
         assert (isinstance(data, numpy.ndarray) or hasattr(data, '__len__')), 'arg data wrong type'
-        # Convert 1D numpy array to C++ vector
-        cdef object data_arr = numpy.asarray(data, dtype=numpy.float64)
+        # Convert 1D numpy array to C++ vector (input)
+        cdef object data_arr = numpy.asarray(data, dtype=numpy.float64, order='C')
         cdef libcpp_vector[double] * v0 = new libcpp_vector[double]()
-        cdef size_t i_0
-        v0.reserve(data_arr.shape[0])
-        for i_0 in range(data_arr.shape[0]):
-            v0.push_back(<double>data_arr[i_0])
+        cdef size_t n_0 = data_arr.shape[0]
+        v0.resize(n_0)
+        if n_0 > 0:
+            memcpy(v0.data(), <void*>numpy.PyArray_DATA(data_arr), n_0 * sizeof(double))
         cdef double _r = self.inst.get().sumVector(deref(v0))
         del v0
         py_result = <double>_r
         return py_result
-    
-    def createVector(self,  size ):
-        """
-        createVector(self, size: int ) -> numpy.ndarray
-        """
-        assert isinstance(size, int) and size >= 0, 'arg size wrong type'
-    
-        _r = self.inst.get().createVector((<size_t>size))
-        # Convert C++ vector to 1D numpy array
-        cdef size_t n_py_result = _r.size()
-        cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float64)
-        cdef size_t i_py_result
-        for i_py_result in range(n_py_result):
-            py_result[i_py_result] = <double>_r[i_py_result]
-        return py_result
-    
-    def multiplyVector(self, object data , double factor ):
-        """
-        multiplyVector(self, data: numpy.ndarray , factor: float ) -> None
-        """
-        assert (isinstance(data, numpy.ndarray) or hasattr(data, '__len__')), 'arg data wrong type'
-        assert isinstance(factor, float), 'arg factor wrong type'
-        # Convert 1D numpy array to C++ vector
-        cdef object data_arr = numpy.asarray(data, dtype=numpy.float64)
-        cdef libcpp_vector[double] * v0 = new libcpp_vector[double]()
-        cdef size_t i_0
-        v0.reserve(data_arr.shape[0])
-        for i_0 in range(data_arr.shape[0]):
-            v0.push_back(<double>data_arr[i_0])
-    
-        self.inst.get().multiplyVector(deref(v0), (<double>factor))
-        del v0
     
     def sumIntVector(self, object data ):
         """
         sumIntVector(self, data: numpy.ndarray ) -> int
         """
         assert (isinstance(data, numpy.ndarray) or hasattr(data, '__len__')), 'arg data wrong type'
-        # Convert 1D numpy array to C++ vector
-        cdef object data_arr = numpy.asarray(data, dtype=numpy.int32)
+        # Convert 1D numpy array to C++ vector (input)
+        cdef object data_arr = numpy.asarray(data, dtype=numpy.int32, order='C')
         cdef libcpp_vector[int] * v0 = new libcpp_vector[int]()
-        cdef size_t i_0
-        v0.reserve(data_arr.shape[0])
-        for i_0 in range(data_arr.shape[0]):
-            v0.push_back(<int>data_arr[i_0])
+        cdef size_t n_0 = data_arr.shape[0]
+        v0.resize(n_0)
+        if n_0 > 0:
+            memcpy(v0.data(), <void*>numpy.PyArray_DATA(data_arr), n_0 * sizeof(int))
         cdef int _r = self.inst.get().sumIntVector(deref(v0))
         del v0
         py_result = <int>_r
@@ -123,12 +130,11 @@ cdef class NumpyVectorTest:
         assert isinstance(size, int) and size >= 0, 'arg size wrong type'
     
         _r = self.inst.get().createFloatVector((<size_t>size))
-        # Convert C++ vector to 1D numpy array
+        # Convert C++ vector to numpy array COPY (Python owns data)
         cdef size_t n_py_result = _r.size()
         cdef object py_result = numpy.empty(n_py_result, dtype=numpy.float32)
-        cdef size_t i_py_result
-        for i_py_result in range(n_py_result):
-            py_result[i_py_result] = <float>_r[i_py_result]
+        if n_py_result > 0:
+            memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(float))
         return py_result
     
     def create2DVector(self,  rows ,  cols ):
@@ -140,14 +146,16 @@ cdef class NumpyVectorTest:
     
     
         _r = self.inst.get().create2DVector((<size_t>rows), (<size_t>cols))
-        # Convert nested C++ vector to 2D numpy array
+        # Convert nested C++ vector to 2D numpy array (copy)
         cdef size_t n_rows = _r.size()
         cdef size_t n_cols = _r[0].size() if n_rows > 0 else 0
         cdef object py_result = numpy.empty((n_rows, n_cols), dtype=numpy.float64)
         cdef size_t i, j
+        cdef double* row_ptr
         for i in range(n_rows):
+            row_ptr = <double*>_r[i].data()
             for j in range(n_cols):
-                py_result[i, j] = <double>_r[i][j]
+                py_result[i, j] = row_ptr[j]
         return py_result
     
     def sum2DVector(self, object data ):
@@ -157,7 +165,7 @@ cdef class NumpyVectorTest:
         assert (isinstance(data, numpy.ndarray) or (hasattr(data, '__len__') and len(data) > 0 and hasattr(data[0], '__len__'))), 'arg data wrong type'
         # Convert 2D numpy array to nested C++ vector
         cdef object data_arr = numpy.asarray(data, dtype=numpy.float64)
-        cdef libcpp_vector[libcpp_vector[double]] * v0 = new libcpp_vector[libcpp_vector[double]]()
+        cdef libcpp_vector[libcpp_vector_as_np[double]] * v0 = new libcpp_vector[libcpp_vector_as_np[double]]()
         cdef size_t i_0, j_0
         cdef libcpp_vector[double] row_0
         for i_0 in range(data_arr.shape[0]):
