@@ -2053,10 +2053,20 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     def matching_python_type(self, cpp_type: CppType) -> str:
         """Return Cython type for function signature.
         
-        We use 'object' to allow both numpy arrays and array-like objects (lists, etc.)
-        to be passed in. The type checking is done at runtime via type_check_expression.
+        Use proper numpy.ndarray type annotations that Cython understands.
+        This ensures only numpy arrays are accepted, not lists.
         """
-        return "object"
+        (tt,) = cpp_type.template_args
+        
+        if self._is_nested_vector(cpp_type):
+            # For 2D arrays
+            (inner_tt,) = tt.template_args
+            dtype = self._get_numpy_dtype(inner_tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=2]"
+        else:
+            # For 1D arrays
+            dtype = self._get_numpy_dtype(tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=1]"
     
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         """Return type hint for type checkers (for docstrings).
@@ -2076,22 +2086,18 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             return f"numpy.ndarray[numpy.{dtype}_t, numpy.ndim[1]]"
     
     def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
-        """Check if argument is a numpy array or can be converted to one."""
-        if self._is_nested_vector(cpp_type):
-            # For nested vectors, check if it's a 2D array-like structure
-            return (
-                "(isinstance(%s, numpy.ndarray) or "
-                "(hasattr(%s, '__len__') and len(%s) > 0 and "
-                "hasattr(%s[0], '__len__')))" % (argument_var, argument_var, argument_var, argument_var)
-            )
-        else:
-            # For simple vectors, accept numpy arrays or array-like objects
-            return "(isinstance(%s, numpy.ndarray) or hasattr(%s, '__len__'))" % (argument_var, argument_var)
+        """Check if argument is a numpy array (strict - no lists)."""
+        # Only accept numpy arrays, not lists or other array-like objects
+        return f"isinstance({argument_var}, numpy.ndarray)"
     
     def input_conversion(
         self, cpp_type: CppType, argument_var: str, arg_num: int
     ) -> Tuple[Code, str, Union[Code, str]]:
-        """Convert numpy array to C++ vector for input parameters."""
+        """Convert numpy array to C++ vector for input parameters.
+        
+        The argument is already guaranteed to be a numpy array with the correct type
+        thanks to Cython's type annotation, so we don't need to call asarray().
+        """
         (tt,) = cpp_type.template_args
         temp_var = "v%d" % arg_num
         
@@ -2100,25 +2106,22 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             (inner_tt,) = tt.template_args
             inner_type = self.converters.cython_type(inner_tt)
             outer_inner_type = self.converters.cython_type(tt)
-            arr_var = argument_var + "_arr"
             dtype = self._get_numpy_dtype(inner_tt)
             
             code = Code().add(
                 """
                 |# Convert 2D numpy array to nested C++ vector
-                |cdef object $arr_var = numpy.asarray($argument_var, dtype=numpy.$dtype)
                 |cdef libcpp_vector[$outer_inner_type] * $temp_var = new libcpp_vector[$outer_inner_type]()
                 |cdef size_t i_$arg_num, j_$arg_num
                 |cdef libcpp_vector[$inner_type] row_$arg_num
-                |for i_$arg_num in range($arr_var.shape[0]):
+                |for i_$arg_num in range($argument_var.shape[0]):
                 |    row_$arg_num = libcpp_vector[$inner_type]()
-                |    for j_$arg_num in range($arr_var.shape[1]):
-                |        row_$arg_num.push_back(<$inner_type>$arr_var[i_$arg_num, j_$arg_num])
+                |    for j_$arg_num in range($argument_var.shape[1]):
+                |        row_$arg_num.push_back(<$inner_type>$argument_var[i_$arg_num, j_$arg_num])
                 |    $temp_var.push_back(row_$arg_num)
                 """,
                 dict(
                     argument_var=argument_var,
-                    arr_var=arr_var,
                     temp_var=temp_var,
                     inner_type=inner_type,
                     outer_inner_type=outer_inner_type,
@@ -2129,25 +2132,23 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             cleanup = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup
         else:
-            # Handle simple vectors (1D arrays) - always create temporary for input
+            # Handle simple vectors (1D arrays)
+            # No need for asarray() - Cython already ensures correct type
             inner_type = self.converters.cython_type(tt)
             dtype = self._get_numpy_dtype(tt)
-            arr_var = argument_var + "_arr"
             ctype = self.CTYPE_MAP.get(dtype, "double")
             
             code = Code().add(
                 """
-                |# Convert 1D numpy array to C++ vector (input)
-                |cdef object $arr_var = numpy.asarray($argument_var, dtype=numpy.$dtype, order='C')
+                |# Convert 1D numpy array to C++ vector (fast memcpy)
                 |cdef libcpp_vector[$inner_type] * $temp_var = new libcpp_vector[$inner_type]()
-                |cdef size_t n_$arg_num = $arr_var.shape[0]
+                |cdef size_t n_$arg_num = $argument_var.shape[0]
                 |$temp_var.resize(n_$arg_num)
                 |if n_$arg_num > 0:
-                |    memcpy($temp_var.data(), <void*>numpy.PyArray_DATA($arr_var), n_$arg_num * sizeof($ctype))
+                |    memcpy($temp_var.data(), <void*>numpy.PyArray_DATA($argument_var), n_$arg_num * sizeof($ctype))
                 """,
                 dict(
                     argument_var=argument_var,
-                    arr_var=arr_var,
                     temp_var=temp_var,
                     inner_type=inner_type,
                     dtype=dtype,

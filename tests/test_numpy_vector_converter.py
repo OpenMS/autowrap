@@ -128,14 +128,16 @@ class TestVectorInputs:
         result = t.sumVector(data)
         assert result == 0.0
     
-    def test_sum_from_list(self, numpy_vector_module):
-        """Test passing a Python list (should be converted to numpy array)."""
+    def test_sum_requires_numpy_array(self, numpy_vector_module):
+        """Test that passing a Python list raises TypeError (numpy array required)."""
+        import numpy as np
         m = numpy_vector_module
         t = m.NumpyVectorTest()
         
         data = [1.0, 2.0, 3.0]
-        result = t.sumVector(data)
-        assert result == 6.0
+        # Should raise TypeError because only numpy arrays are accepted
+        with pytest.raises(TypeError):
+            t.sumVector(data)
 
 
 class TestDifferentNumericTypes:

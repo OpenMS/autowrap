@@ -89,35 +89,33 @@ cdef class NumpyVectorTest:
             memcpy(<void*>numpy.PyArray_DATA(py_result), _r.data(), n_py_result * sizeof(double))
         return py_result
     
-    def sumVector(self, object data ):
+    def sumVector(self, numpy.ndarray[numpy.float64_t, ndim=1] data ):
         """
         sumVector(self, data: numpy.ndarray[numpy.float64_t, numpy.ndim[1]] ) -> float
         """
-        assert (isinstance(data, numpy.ndarray) or hasattr(data, '__len__')), 'arg data wrong type'
-        # Convert 1D numpy array to C++ vector (input)
-        cdef object data_arr = numpy.asarray(data, dtype=numpy.float64, order='C')
+        assert isinstance(data, numpy.ndarray), 'arg data wrong type'
+        # Convert 1D numpy array to C++ vector (fast memcpy)
         cdef libcpp_vector[double] * v0 = new libcpp_vector[double]()
-        cdef size_t n_0 = data_arr.shape[0]
+        cdef size_t n_0 = data.shape[0]
         v0.resize(n_0)
         if n_0 > 0:
-            memcpy(v0.data(), <void*>numpy.PyArray_DATA(data_arr), n_0 * sizeof(double))
+            memcpy(v0.data(), <void*>numpy.PyArray_DATA(data), n_0 * sizeof(double))
         cdef double _r = self.inst.get().sumVector(deref(v0))
         del v0
         py_result = <double>_r
         return py_result
     
-    def sumIntVector(self, object data ):
+    def sumIntVector(self, numpy.ndarray[numpy.int32_t, ndim=1] data ):
         """
         sumIntVector(self, data: numpy.ndarray[numpy.int32_t, numpy.ndim[1]] ) -> int
         """
-        assert (isinstance(data, numpy.ndarray) or hasattr(data, '__len__')), 'arg data wrong type'
-        # Convert 1D numpy array to C++ vector (input)
-        cdef object data_arr = numpy.asarray(data, dtype=numpy.int32, order='C')
+        assert isinstance(data, numpy.ndarray), 'arg data wrong type'
+        # Convert 1D numpy array to C++ vector (fast memcpy)
         cdef libcpp_vector[int] * v0 = new libcpp_vector[int]()
-        cdef size_t n_0 = data_arr.shape[0]
+        cdef size_t n_0 = data.shape[0]
         v0.resize(n_0)
         if n_0 > 0:
-            memcpy(v0.data(), <void*>numpy.PyArray_DATA(data_arr), n_0 * sizeof(int))
+            memcpy(v0.data(), <void*>numpy.PyArray_DATA(data), n_0 * sizeof(int))
         cdef int _r = self.inst.get().sumIntVector(deref(v0))
         del v0
         py_result = <int>_r
@@ -158,20 +156,19 @@ cdef class NumpyVectorTest:
                 py_result[i, j] = row_ptr[j]
         return py_result
     
-    def sum2DVector(self, object data ):
+    def sum2DVector(self, numpy.ndarray[numpy.float64_t, ndim=2] data ):
         """
         sum2DVector(self, data: numpy.ndarray[numpy.float64_t, numpy.ndim[2]] ) -> float
         """
-        assert (isinstance(data, numpy.ndarray) or (hasattr(data, '__len__') and len(data) > 0 and hasattr(data[0], '__len__'))), 'arg data wrong type'
+        assert isinstance(data, numpy.ndarray), 'arg data wrong type'
         # Convert 2D numpy array to nested C++ vector
-        cdef object data_arr = numpy.asarray(data, dtype=numpy.float64)
         cdef libcpp_vector[libcpp_vector_as_np[double]] * v0 = new libcpp_vector[libcpp_vector_as_np[double]]()
         cdef size_t i_0, j_0
         cdef libcpp_vector[double] row_0
-        for i_0 in range(data_arr.shape[0]):
+        for i_0 in range(data.shape[0]):
             row_0 = libcpp_vector[double]()
-            for j_0 in range(data_arr.shape[1]):
-                row_0.push_back(<double>data_arr[i_0, j_0])
+            for j_0 in range(data.shape[1]):
+                row_0.push_back(<double>data[i_0, j_0])
             v0.push_back(row_0)
         cdef double _r = self.inst.get().sum2DVector(deref(v0))
         del v0
