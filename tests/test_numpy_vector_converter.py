@@ -101,6 +101,8 @@ class TestVectorOutputs:
     def test_value_output_is_copy(self, numpy_vector_module):
         """Value return should create a copy (Python owns data)."""
         import numpy as np
+        import weakref
+        import gc
         m = numpy_vector_module
         t = m.NumpyVectorTest()
         
@@ -119,6 +121,60 @@ class TestVectorOutputs:
         # For now, buffer protocol creates a memoryview base, which keeps the ArrayWrapper alive
         # This is acceptable as long as lifetime management works correctly
         assert result.base is not None, "Array base should not be None"
+    
+    def test_value_output_lifetime_management(self, numpy_vector_module):
+        """Test that ArrayWrapper stays alive and keeps data valid after function returns."""
+        import numpy as np
+        import weakref
+        import gc
+        import sys
+        m = numpy_vector_module
+        t = m.NumpyVectorTest()
+        
+        # Get array from value return
+        result = t.getValueVector(5)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (5,)
+        original_values = result.copy()
+        assert np.allclose(original_values, [0.0, 2.0, 4.0, 6.0, 8.0])
+        
+        # The array should have a base object (memoryview) that keeps ArrayWrapper alive
+        assert result.base is not None, "Array must have a base to keep wrapper alive"
+        
+        # Get reference to the base object (memoryview) to verify it stays alive
+        base_obj = result.base
+        
+        # Create weak reference to track if wrapper gets garbage collected prematurely
+        # The base (memoryview) should keep a reference to the ArrayWrapper
+        base_ref = weakref.ref(base_obj)
+        
+        # Force garbage collection to test lifetime management
+        gc.collect()
+        
+        # The base should still be alive because the array references it
+        assert base_ref() is not None, "Base (memoryview) should still be alive"
+        
+        # Data should still be valid (no use-after-free)
+        assert np.allclose(result, original_values), "Data should remain valid after GC"
+        
+        # Modify the data to verify it's still accessible
+        result[0] = 42.0
+        assert result[0] == 42.0, "Should be able to modify data"
+        
+        # Get reference count of base object
+        # The array holds a reference, so refcount should be at least 2 (our var + array.base)
+        base_refcount = sys.getrefcount(base_obj)
+        assert base_refcount >= 2, f"Base refcount should be >= 2, got {base_refcount}"
+        
+        # Delete our local reference to base_obj
+        del base_obj
+        gc.collect()
+        
+        # The array should still work because it keeps its own reference to base
+        assert np.allclose(result[[1,2,3,4]], [2.0, 4.0, 6.0, 8.0]), "Data still valid after deleting local base ref"
+        
+        # The weak ref should still be alive because array.base still references it
+        assert base_ref() is not None, "Base should still be alive through array.base"
 
 
 class TestVectorInputs:
