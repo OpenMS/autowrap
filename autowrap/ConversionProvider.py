@@ -2283,13 +2283,14 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                 return code
             else:
                 # Value return - use owning wrapper (data is already a copy via move/swap)
-                # numpy.asarray() with buffer protocol automatically sets wrapper as .base
+                # Explicitly set wrapper as .base to keep it alive
                 code = Code().add(
                     """
                     |# Convert C++ vector to numpy array using owning wrapper (data already copied)
                     |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
                     |_wrapper_$output_py_var.set_data($input_cpp_var)
                     |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
+                    |(<numpy.ndarray>$output_py_var).base = _wrapper_$output_py_var
                     """,
                     dict(
                         input_cpp_var=input_cpp_var,
