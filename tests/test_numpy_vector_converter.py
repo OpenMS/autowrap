@@ -73,6 +73,11 @@ class TestVectorOutputs:
         # Try to modify - should fail
         with pytest.raises(ValueError, match="read-only"):
             result[0] = 999.0
+        
+        # Check base attribute - should be the C++ object
+        assert result.base is not None
+        # For memory views, base should reference back to the owning object
+        # The exact type depends on Cython's memory view implementation
     
     @pytest.mark.skip(reason="Mutable ref views require ensuring C++ object lifetime exceeds view lifetime - needs investigation of reference handling")
     def test_mutable_ref_output_is_view(self, numpy_vector_module):
@@ -108,6 +113,12 @@ class TestVectorOutputs:
         # Modify array - safe since Python owns this data
         result[0] = 999.0
         assert result[0] == 999.0
+        
+        # Check base attribute - should be an ArrayWrapper instance
+        assert result.base is not None
+        # The base should be the ArrayWrapperDouble that owns the data
+        base_type_name = type(result.base).__name__
+        assert "ArrayWrapper" in base_type_name, f"Expected ArrayWrapper base, got {base_type_name}"
 
 
 class TestVectorInputs:
