@@ -78,7 +78,6 @@ class TestVectorOutputs:
         assert result.base is not None
         assert result.base is t, f"Expected .base to be the owner object, got {type(result.base).__name__}"
     
-    @pytest.mark.skip(reason="Mutable ref views require ensuring C++ object lifetime exceeds view lifetime - needs investigation of reference handling")
     def test_mutable_ref_output_is_view(self, numpy_vector_module):
         """Non-const ref should create a writable view (zero-copy)."""
         import numpy as np
@@ -92,6 +91,10 @@ class TestVectorOutputs:
         
         # Array should be writable
         assert result.flags.writeable
+        
+        # Check base attribute - should be the C++ object (self) to keep it alive
+        assert result.base is not None
+        assert result.base is t, f"Expected .base to be the owner object, got {type(result.base).__name__}"
         
         # Modify array - SHOULD affect C++ data since it's a view
         result[0] = 999.0
