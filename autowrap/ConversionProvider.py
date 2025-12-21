@@ -2257,7 +2257,11 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
                         |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
                         |$output_py_var.setflags(write=False)
-                        |(<numpy.ndarray>$output_py_var).base = self
+                        |# Set base to owner to keep it alive
+                        |Py_INCREF(self)
+                        |cdef int _err_$output_py_var = numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
+                        |if _err_$output_py_var != 0:
+                        |    raise RuntimeError("Failed to set array base")
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,
@@ -2272,7 +2276,11 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         |cdef size_t _size_$output_py_var = $input_cpp_var.size()
                         |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
                         |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
-                        |(<numpy.ndarray>$output_py_var).base = self
+                        |# Set base to owner to keep it alive
+                        |Py_INCREF(self)
+                        |cdef int _err_$output_py_var = numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
+                        |if _err_$output_py_var != 0:
+                        |    raise RuntimeError("Failed to set array base")
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,
@@ -2290,7 +2298,11 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                     |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
                     |_wrapper_$output_py_var.set_data($input_cpp_var)
                     |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
-                    |(<numpy.ndarray>$output_py_var).base = _wrapper_$output_py_var
+                    |# Set base to wrapper to keep it alive
+                    |Py_INCREF(_wrapper_$output_py_var)
+                    |cdef int _err_$output_py_var = numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>_wrapper_$output_py_var)
+                    |if _err_$output_py_var != 0:
+                    |    raise RuntimeError("Failed to set array base")
                     """,
                     dict(
                         input_cpp_var=input_cpp_var,

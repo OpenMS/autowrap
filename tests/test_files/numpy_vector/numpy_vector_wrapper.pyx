@@ -29,6 +29,7 @@ cimport numpy as np
 import numpy as np
 cimport numpy as numpy
 import numpy as numpy
+from cpython.ref cimport Py_INCREF
 # Inlined ArrayWrapper classes for buffer protocol support (value returns)
 # Reference returns use Cython memory views instead
 from cpython.buffer cimport PyBUF_FORMAT, PyBUF_ND, PyBUF_STRIDES, PyBUF_WRITABLE
@@ -743,7 +744,11 @@ cdef class NumpyVectorTest:
         cdef double[:] _view_py_result = <double[:_size_py_result]>_r.data()
         cdef object py_result = numpy.asarray(_view_py_result)
         py_result.setflags(write=False)
-        (<numpy.ndarray>py_result).base = self
+        # Set base to owner to keep it alive
+        Py_INCREF(self)
+        cdef int _err_py_result = numpy.PyArray_SetBaseObject(<numpy.ndarray>py_result, <object>self)
+        if _err_py_result != 0:
+            raise RuntimeError("Failed to set array base")
         return py_result
     
     def getMutableRefVector(self):
@@ -755,7 +760,11 @@ cdef class NumpyVectorTest:
         cdef size_t _size_py_result = _r.size()
         cdef double[:] _view_py_result = <double[:_size_py_result]>_r.data()
         cdef object py_result = numpy.asarray(_view_py_result)
-        (<numpy.ndarray>py_result).base = self
+        # Set base to owner to keep it alive
+        Py_INCREF(self)
+        cdef int _err_py_result = numpy.PyArray_SetBaseObject(<numpy.ndarray>py_result, <object>self)
+        if _err_py_result != 0:
+            raise RuntimeError("Failed to set array base")
         return py_result
     
     def getValueVector(self,  size ):
@@ -769,6 +778,11 @@ cdef class NumpyVectorTest:
         cdef ArrayWrapperDouble _wrapper_py_result = ArrayWrapperDouble()
         _wrapper_py_result.set_data(_r)
         cdef object py_result = numpy.asarray(_wrapper_py_result)
+        # Set base to wrapper to keep it alive
+        Py_INCREF(_wrapper_py_result)
+        cdef int _err_py_result = numpy.PyArray_SetBaseObject(<numpy.ndarray>py_result, <object>_wrapper_py_result)
+        if _err_py_result != 0:
+            raise RuntimeError("Failed to set array base")
         return py_result
     
     def sumVector(self, numpy.ndarray[numpy.float64_t, ndim=1] data ):
@@ -814,6 +828,11 @@ cdef class NumpyVectorTest:
         cdef ArrayWrapperFloat _wrapper_py_result = ArrayWrapperFloat()
         _wrapper_py_result.set_data(_r)
         cdef object py_result = numpy.asarray(_wrapper_py_result)
+        # Set base to wrapper to keep it alive
+        Py_INCREF(_wrapper_py_result)
+        cdef int _err_py_result = numpy.PyArray_SetBaseObject(<numpy.ndarray>py_result, <object>_wrapper_py_result)
+        if _err_py_result != 0:
+            raise RuntimeError("Failed to set array base")
         return py_result
     
     def create2DVector(self,  rows ,  cols ):
