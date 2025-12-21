@@ -991,7 +991,8 @@ class CodeGenerator(object):
         method_code.add(
             """    else:
                         |           raise
-                        + Exception('can not handle type of %s' % (args,))"""
+                        + Exception('can not handle types %s as arguments for function %s()' % (tuple(type(arg).__name__ for arg in args), '$py_name'))""",
+            locals(),
         )
         return method_code, typestub_code
 
@@ -1126,7 +1127,7 @@ class CodeGenerator(object):
             cleanups.append(cleanup)
             call_args.append(call_as)
             in_types.append(t)
-            checks.append((n, converter.type_check_expression(t, n)))
+            checks.append((n, converter.type_check_expression(t, n), py_typing_type))
 
         # Step 1: create method decl statement
         if not is_free_fun and not method.is_static:
@@ -1204,8 +1205,8 @@ class CodeGenerator(object):
 
         # Step 2a: create code which converts python input args to c++ args of
         # wrapped method
-        for n, check in checks:
-            code.add("    assert %s, 'arg %s wrong type'" % (check, n))
+        for n, check, expected_type in checks:
+            code.add("    assert %s, 'arg %s wrong type (expected %s)'" % (check, n, expected_type))
         # Step 2b: add any more sophisticated conversion code that was created
         # above:
         for conv_code in input_conversion_codes:
