@@ -1978,8 +1978,11 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     to distinguish from the standard list-based vector conversion.
     
     Key features:
-    - For non-const references (&): Returns numpy VIEW on C++ data (no copy)
-    - For const ref/value returns: Copies data to numpy array (Python owns memory)
+    - For references (&): Returns numpy VIEW using Cython memory views (no copy)
+      - For const refs: Sets readonly flag with setflags(write=False)
+      - For non-const refs: Returns writable view
+      - Memory view automatically keeps owner alive
+    - For value returns: Uses ArrayWrapper with buffer protocol (single copy via swap)
     - For inputs: Accepts numpy arrays, creates temporary C++ vector
     - Supports nested vectors for 2D arrays
     - Uses fast memcpy for efficient data transfer
@@ -1997,14 +2000,19 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     NUMPY_DTYPE_MAP = {
         "float": "float32",
         "double": "float64", 
+        "int8_t": "int8",
+        "int16_t": "int16",
         "int": "int32",
         "int32_t": "int32",
         "int64_t": "int64",
-        "uint32_t": "uint32",
-        "uint64_t": "uint64",
-        "size_t": "uint64",
         "long": "int64",
+        "uint8_t": "uint8",
+        "uint16_t": "uint16",
+        "uint32_t": "uint32",
         "unsigned int": "uint32",
+        "uint64_t": "uint64",
+        "unsigned long": "uint64",
+        "size_t": "uint64",
         "bool": "bool_",
     }
     
@@ -2012,8 +2020,12 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     CTYPE_MAP = {
         "float32": "float",
         "float64": "double",
+        "int8": "int8_t",
+        "int16": "int16_t",
         "int32": "int",
         "int64": "long",
+        "uint8": "uint8_t",
+        "uint16": "uint16_t",
         "uint32": "unsigned int",
         "uint64": "unsigned long",
         "bool_": "bool",
@@ -2161,15 +2173,67 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             return code, "deref(%s)" % temp_var, cleanup
     
     def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        # For reference returns, use address() to get a pointer and avoid copying
+        cy_res_type = self.converters.cython_type(res_type)  # type: CppType
+        if cy_res_type.is_ref:
+            # Create a copy of the type without the reference flag
+            cy_ptr_type = cy_res_type.copy()
+            cy_ptr_type.is_ref = False
+            base_type_str = cy_ptr_type.toString(with_const)
+            return "cdef %s * _r = address(%s)" % (base_type_str, cy_call_str)
         return "_r = %s" % cy_call_str
+    
+    def _get_wrapper_class_name(self, cpp_type: CppType) -> str:
+        """Get the appropriate ArrayWrapper class name suffix for a type."""
+        type_map = {
+            "float": "Float",
+            "double": "Double",
+            "int8_t": "Int8",
+            "int16_t": "Int16",
+            "int32_t": "Int32",
+            "int": "Int32",
+            "int64_t": "Int64",
+            "long": "Int64",
+            "uint8_t": "UInt8",
+            "uint16_t": "UInt16",
+            "uint32_t": "UInt32",
+            "unsigned int": "UInt32",
+            "uint64_t": "UInt64",
+            "unsigned long": "UInt64",
+        }
+        return type_map.get(cpp_type.base_type, "Double")
+    
+    def _get_numpy_type_enum(self, cpp_type: CppType) -> str:
+        """Get the numpy type enum for PyArray_SimpleNewFromData."""
+        type_map = {
+            "float": "NPY_FLOAT32",
+            "double": "NPY_FLOAT64",
+            "int8_t": "NPY_INT8",
+            "int16_t": "NPY_INT16",
+            "int32_t": "NPY_INT32",
+            "int": "NPY_INT32",
+            "int64_t": "NPY_INT64",
+            "long": "NPY_INT64",
+            "uint8_t": "NPY_UINT8",
+            "uint16_t": "NPY_UINT16",
+            "uint32_t": "NPY_UINT32",
+            "unsigned int": "NPY_UINT32",
+            "uint64_t": "NPY_UINT64",
+            "unsigned long": "NPY_UINT64",
+            "bool": "NPY_BOOL",
+        }
+        return type_map.get(cpp_type.base_type, "NPY_FLOAT64")
     
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
     ) -> Optional[Code]:
         """Convert C++ vector to numpy array.
         
-        For non-const references: Create view (no copy)
-        For const ref or value: Copy data (Python owns memory)
+        Uses Cython memory views for references and ArrayWrapper for value returns:
+        - For references: Create zero-copy view using Cython memory view syntax
+        - For const references: Set readonly flag after creating view
+        - For value returns: Use owning wrapper (data is already a copy)
+        - Always set .base attribute to prevent garbage collection
         """
         (tt,) = cpp_type.template_args
         
@@ -2207,27 +2271,70 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             inner_type = self.converters.cython_type(tt)
             dtype = self._get_numpy_dtype(tt)
             ctype = self.CTYPE_MAP.get(dtype, "double")
+            wrapper_suffix = self._get_wrapper_class_name(tt)
             
-            # For now, always copy data to Python (simpler and safer)
-            # TODO: Implement true zero-copy views for non-const references
-            # (requires keeping C++ object alive, which is complex)
-            code = Code().add(
-                """
-                |# Convert C++ vector to numpy array COPY (Python owns data)
-                |cdef size_t n_$output_py_var = $input_cpp_var.size()
-                |cdef object $output_py_var = numpy.empty(n_$output_py_var, dtype=numpy.$dtype)
-                |if n_$output_py_var > 0:
-                |    memcpy(<void*>numpy.PyArray_DATA($output_py_var), $input_cpp_var.data(), n_$output_py_var * sizeof($ctype))
-                """,
-                dict(
-                    input_cpp_var=input_cpp_var,
-                    output_py_var=output_py_var,
-                    inner_type=inner_type,
-                    dtype=dtype,
-                    ctype=ctype,
-                ),
-            )
-            return code
+            # Check if this is a reference return (view opportunity)
+            if cpp_type.is_ref:
+                # Reference return: Use Cython memory view for zero-copy access
+                # For const references: set readonly flag
+                # Explicitly set .base to self to keep the owner alive (not the memory view)
+                # Note: input_cpp_var is a pointer (from address() in call_method), so dereference it
+                if cpp_type.is_const:
+                    code = Code().add(
+                        """
+                        |# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
+                        |cdef size_t _size_$output_py_var = deref($input_cpp_var).size()
+                        |cdef numpy.npy_intp[1] _shape_$output_py_var
+                        |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>deref($input_cpp_var).data())
+                        |$output_py_var.setflags(write=False)
+                        |# Set base to self to keep owner alive
+                        |Py_INCREF(self)
+                        |numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
+                        """,
+                        dict(
+                            input_cpp_var=input_cpp_var,
+                            output_py_var=output_py_var,
+                            ctype=ctype,
+                            npy_type=self._get_numpy_type_enum(tt),
+                        ),
+                    )
+                else:
+                    code = Code().add(
+                        """
+                        |# Convert C++ vector reference to numpy array VIEW (zero-copy, writable)
+                        |cdef size_t _size_$output_py_var = deref($input_cpp_var).size()
+                        |cdef numpy.npy_intp[1] _shape_$output_py_var
+                        |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>deref($input_cpp_var).data())
+                        |# Set base to self to keep owner alive
+                        |Py_INCREF(self)
+                        |numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
+                        """,
+                        dict(
+                            input_cpp_var=input_cpp_var,
+                            output_py_var=output_py_var,
+                            ctype=ctype,
+                            npy_type=self._get_numpy_type_enum(tt),
+                        ),
+                    )
+                return code
+            else:
+                # Value return - use owning wrapper (data is already a copy via move/swap)
+                code = Code().add(
+                    """
+                    |# Convert C++ vector to numpy array using owning wrapper (data already copied)
+                    |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
+                    |_wrapper_$output_py_var.set_data($input_cpp_var)
+                    |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
+                    """,
+                    dict(
+                        input_cpp_var=input_cpp_var,
+                        output_py_var=output_py_var,
+                        wrapper_suffix=wrapper_suffix,
+                    ),
+                )
+                return code
 
 
 class StdStringConverter(TypeConverterBase):

@@ -42,6 +42,7 @@ dev = [
     "mypy",
     "build",
     "twine",
+    "numpy>=1.20",
 ]
 test = [
     "pytest>=6.0",

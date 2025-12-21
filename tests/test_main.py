@@ -38,7 +38,7 @@ def test_from_command_line():
     args = [
         "pxds/*.pxd",
         "--out",
-        "out.pyx",
+        "generated/out.pyx",
         "--addons=/addons",
         "--converters=converters",
     ]
@@ -68,9 +68,9 @@ def test_run():
     converters = [script_dir + "/test_files/converters"]
 
     extra_includes = [script_dir + "/test_files/includes"]
-    includes = run(pxds, addons, converters, script_dir + "/test_files/out.pyx", extra_includes)
+    includes = run(pxds, addons, converters, script_dir + "/test_files/generated/out.pyx", extra_includes)
 
-    mod = compile_and_import("out", [script_dir + "/test_files/out.cpp"], includes)
+    mod = compile_and_import("out", [script_dir + "/test_files/generated/out.cpp"], includes)
 
     ih = mod.IntHolder()
     ih.set_(3)

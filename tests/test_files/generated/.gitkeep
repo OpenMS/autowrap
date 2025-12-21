@@ -1,0 +1,2 @@
+# This directory contains generated .pyx and .pyi files from autowrap tests
+# The contents are gitignored but we keep the directory structure

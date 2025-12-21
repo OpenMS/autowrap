@@ -55,7 +55,7 @@ def test_cpp17_stl_containers():
     4. Mutable references allow in-place modification
     5. Optional values handle None correctly
     """
-    target = os.path.join(test_files, "cpp17_stl_test.pyx")
+    target = os.path.join(test_files, "generated", "cpp17_stl_test.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
         ["cpp17_stl_test.pxd"], root=test_files, target=target, debug=True
