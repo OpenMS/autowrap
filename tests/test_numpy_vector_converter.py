@@ -74,9 +74,10 @@ class TestVectorOutputs:
         with pytest.raises(ValueError, match="read-only"):
             result[0] = 999.0
         
-        # Check base attribute - should be the C++ object or a memory view wrapper
-        # Memory views keep a reference to the owner to prevent garbage collection
+        # Check base attribute - should be the C++ object (NumpyVectorTest instance)
+        # This keeps the owner alive to prevent garbage collection
         assert result.base is not None
+        assert result.base is t, f"Expected .base to be the NumpyVectorTest instance, got {type(result.base).__name__}"
     
     @pytest.mark.skip(reason="Mutable ref views require ensuring C++ object lifetime exceeds view lifetime - needs investigation of reference handling")
     def test_mutable_ref_output_is_view(self, numpy_vector_module):

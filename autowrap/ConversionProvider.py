@@ -2248,8 +2248,7 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             if cpp_type.is_ref:
                 # Reference return: Use Cython memory view for zero-copy access
                 # For const references: set readonly flag
-                # The memory view object automatically becomes the base when we call numpy.asarray()
-                # We need to ensure 'self' (the owner) is kept alive by the memory view
+                # Explicitly set .base to self to keep the owner alive (not the memory view)
                 if cpp_type.is_const:
                     code = Code().add(
                         """
@@ -2258,6 +2257,7 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
                         |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
                         |$output_py_var.setflags(write=False)
+                        |(<numpy.ndarray>$output_py_var).base = self
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,
@@ -2272,6 +2272,7 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         |cdef size_t _size_$output_py_var = $input_cpp_var.size()
                         |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
                         |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
+                        |(<numpy.ndarray>$output_py_var).base = self
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,

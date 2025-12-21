@@ -743,6 +743,7 @@ cdef class NumpyVectorTest:
         cdef double[:] _view_py_result = <double[:_size_py_result]>_r.data()
         cdef object py_result = numpy.asarray(_view_py_result)
         py_result.setflags(write=False)
+        (<numpy.ndarray>py_result).base = self
         return py_result
     
     def getMutableRefVector(self):
@@ -754,6 +755,7 @@ cdef class NumpyVectorTest:
         cdef size_t _size_py_result = _r.size()
         cdef double[:] _view_py_result = <double[:_size_py_result]>_r.data()
         cdef object py_result = numpy.asarray(_view_py_result)
+        (<numpy.ndarray>py_result).base = self
         return py_result
     
     def getValueVector(self,  size ):
