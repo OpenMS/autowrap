@@ -2195,6 +2195,27 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
         }
         return type_map.get(cpp_type.base_type, "Double")
     
+    def _get_numpy_type_enum(self, cpp_type: CppType) -> str:
+        """Get the numpy type enum for PyArray_SimpleNewFromData."""
+        type_map = {
+            "float": "NPY_FLOAT32",
+            "double": "NPY_FLOAT64",
+            "int8_t": "NPY_INT8",
+            "int16_t": "NPY_INT16",
+            "int32_t": "NPY_INT32",
+            "int": "NPY_INT32",
+            "int64_t": "NPY_INT64",
+            "long": "NPY_INT64",
+            "uint8_t": "NPY_UINT8",
+            "uint16_t": "NPY_UINT16",
+            "uint32_t": "NPY_UINT32",
+            "unsigned int": "NPY_UINT32",
+            "uint64_t": "NPY_UINT64",
+            "unsigned long": "NPY_UINT64",
+            "bool": "NPY_BOOL",
+        }
+        return type_map.get(cpp_type.base_type, "NPY_FLOAT64")
+    
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
     ) -> Optional[Code]:
@@ -2254,14 +2275,19 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         """
                         |# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
                         |cdef size_t _size_$output_py_var = $input_cpp_var.size()
-                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
-                        |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
+                        |cdef numpy.npy_intp[1] _shape_$output_py_var
+                        |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>$input_cpp_var.data())
                         |$output_py_var.setflags(write=False)
+                        |# Set base to self to keep owner alive
+                        |Py_INCREF(self)
+                        |numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,
                             output_py_var=output_py_var,
                             ctype=ctype,
+                            npy_type=self._get_numpy_type_enum(tt),
                         ),
                     )
                 else:
@@ -2269,13 +2295,18 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         """
                         |# Convert C++ vector reference to numpy array VIEW (zero-copy, writable)
                         |cdef size_t _size_$output_py_var = $input_cpp_var.size()
-                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
-                        |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
+                        |cdef numpy.npy_intp[1] _shape_$output_py_var
+                        |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>$input_cpp_var.data())
+                        |# Set base to self to keep owner alive
+                        |Py_INCREF(self)
+                        |numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,
                             output_py_var=output_py_var,
                             ctype=ctype,
+                            npy_type=self._get_numpy_type_enum(tt),
                         ),
                     )
                 return code
