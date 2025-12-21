@@ -1614,15 +1614,10 @@ cdef class NumpyVectorTest:
         """
         _r = self.inst.get().getConstRefVector()
         # Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
-        cdef double* _ptr_py_result = _r.data()
-        cdef size_t _size_py_result = _r.size()
-        cdef ArrayViewDouble _view_py_result = _create_view_double(
-            _ptr_py_result,
-            _size_py_result,
-            owner=self,
-            readonly=True
-        )
+        cdef double[:] _view_py_result = <double[:_r.size()]>_r.data()
         cdef object py_result = numpy.asarray(_view_py_result)
+        py_result.setflags(write=False)
+        # Memory view keeps 'self' alive via its internal reference
         return py_result
     
     def getMutableRefVector(self):
@@ -1630,16 +1625,10 @@ cdef class NumpyVectorTest:
         getMutableRefVector(self) -> numpy.ndarray[numpy.float64_t, ndim=1]
         """
         _r = self.inst.get().getMutableRefVector()
-        # Convert C++ vector reference to numpy array VIEW (zero-copy)
-        cdef double* _ptr_py_result = _r.data()
-        cdef size_t _size_py_result = _r.size()
-        cdef ArrayViewDouble _view_py_result = _create_view_double(
-            _ptr_py_result,
-            _size_py_result,
-            owner=self,
-            readonly=False
-        )
+        # Convert C++ vector reference to numpy array VIEW (zero-copy, writable)
+        cdef double[:] _view_py_result = <double[:_r.size()]>_r.data()
         cdef object py_result = numpy.asarray(_view_py_result)
+        # Memory view keeps 'self' alive via its internal reference
         return py_result
     
     def getValueVector(self,  size ):
@@ -1653,6 +1642,7 @@ cdef class NumpyVectorTest:
         cdef ArrayWrapperDouble _wrapper_py_result = ArrayWrapperDouble()
         _wrapper_py_result.set_data(_r)
         cdef object py_result = numpy.asarray(_wrapper_py_result)
+        # Buffer protocol automatically sets wrapper as .base
         return py_result
     
     def sumVector(self, numpy.ndarray[numpy.float64_t, ndim=1] data ):
@@ -1698,6 +1688,7 @@ cdef class NumpyVectorTest:
         cdef ArrayWrapperFloat _wrapper_py_result = ArrayWrapperFloat()
         _wrapper_py_result.set_data(_r)
         cdef object py_result = numpy.asarray(_wrapper_py_result)
+        # Buffer protocol automatically sets wrapper as .base
         return py_result
     
     def create2DVector(self,  rows ,  cols ):

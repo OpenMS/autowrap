@@ -2203,10 +2203,11 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     ) -> Optional[Code]:
         """Convert C++ vector to numpy array.
         
-        Uses ArrayWrapper/ArrayView classes with buffer protocol:
-        - For non-const references: Create zero-copy view (ArrayView with readonly=False)
-        - For const references: Create zero-copy view (ArrayView with readonly=True) 
+        Uses Cython memory views for references and ArrayWrapper for value returns:
+        - For references: Create zero-copy view using Cython memory view syntax
+        - For const references: Set readonly flag after creating view
         - For value returns: Use owning wrapper (data is already a copy)
+        - Always set .base attribute to prevent garbage collection
         """
         (tt,) = cpp_type.template_args
         
@@ -2245,47 +2246,53 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             dtype = self._get_numpy_dtype(tt)
             ctype = self.CTYPE_MAP.get(dtype, "double")
             wrapper_suffix = self._get_wrapper_class_name(tt)
-            factory_func = self._get_factory_function_name(tt)
             
             # Check if this is a reference return (view opportunity)
             if cpp_type.is_ref:
-                # Reference return: Use ArrayView for zero-copy access via factory function
-                # readonly=True for const references, readonly=False for non-const
-                readonly = "True" if cpp_type.is_const else "False"
-                comment = "# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)" if cpp_type.is_const else "# Convert C++ vector reference to numpy array VIEW (zero-copy)"
-                
-                code = Code().add(
-                    """
-                    |$comment
-                    |cdef $ctype* _ptr_$output_py_var = $input_cpp_var.data()
-                    |cdef size_t _size_$output_py_var = $input_cpp_var.size()
-                    |cdef ArrayView$wrapper_suffix _view_$output_py_var = $factory_func(
-                    |    _ptr_$output_py_var,
-                    |    _size_$output_py_var,
-                    |    owner=self,
-                    |    readonly=$readonly
-                    |)
-                    |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
-                    """,
-                    dict(
-                        input_cpp_var=input_cpp_var,
-                        output_py_var=output_py_var,
-                        wrapper_suffix=wrapper_suffix,
-                        factory_func=factory_func,
-                        ctype=ctype,
-                        readonly=readonly,
-                        comment=comment,
-                    ),
-                )
+                # Reference return: Use Cython memory view for zero-copy access
+                # For const references: set readonly flag
+                # The memory view object automatically becomes the base when we call numpy.asarray()
+                # We need to ensure 'self' (the owner) is kept alive by the memory view
+                if cpp_type.is_const:
+                    code = Code().add(
+                        """
+                        |# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
+                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:$input_cpp_var.size()]>$input_cpp_var.data()
+                        |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
+                        |$output_py_var.setflags(write=False)
+                        |# Memory view keeps 'self' alive via its internal reference
+                        """,
+                        dict(
+                            input_cpp_var=input_cpp_var,
+                            output_py_var=output_py_var,
+                            ctype=ctype,
+                        ),
+                    )
+                else:
+                    code = Code().add(
+                        """
+                        |# Convert C++ vector reference to numpy array VIEW (zero-copy, writable)
+                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:$input_cpp_var.size()]>$input_cpp_var.data()
+                        |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
+                        |# Memory view keeps 'self' alive via its internal reference
+                        """,
+                        dict(
+                            input_cpp_var=input_cpp_var,
+                            output_py_var=output_py_var,
+                            ctype=ctype,
+                        ),
+                    )
                 return code
             else:
                 # Value return - use owning wrapper (data is already a copy via move/swap)
+                # numpy.asarray() automatically sets the wrapper as .base via buffer protocol
                 code = Code().add(
                     """
                     |# Convert C++ vector to numpy array using owning wrapper (data already copied)
                     |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
                     |_wrapper_$output_py_var.set_data($input_cpp_var)
                     |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
+                    |# Buffer protocol automatically sets wrapper as .base
                     """,
                     dict(
                         input_cpp_var=input_cpp_var,
