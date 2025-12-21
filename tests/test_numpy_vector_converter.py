@@ -74,10 +74,9 @@ class TestVectorOutputs:
         with pytest.raises(ValueError, match="read-only"):
             result[0] = 999.0
         
-        # Check base attribute - should be the C++ object
+        # Check base attribute - should be the C++ object or a memory view wrapper
+        # Memory views keep a reference to the owner to prevent garbage collection
         assert result.base is not None
-        # For memory views, base should reference back to the owning object
-        # The exact type depends on Cython's memory view implementation
     
     @pytest.mark.skip(reason="Mutable ref views require ensuring C++ object lifetime exceeds view lifetime - needs investigation of reference handling")
     def test_mutable_ref_output_is_view(self, numpy_vector_module):
