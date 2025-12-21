@@ -1978,9 +1978,11 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     to distinguish from the standard list-based vector conversion.
     
     Key features:
-    - For non-const references (&): Returns numpy VIEW on C++ data (no copy, writable)
-    - For const references (const &): Returns numpy VIEW on C++ data (no copy, readonly)
-    - For value returns: Wraps data in numpy array (uses move/swap, single copy)
+    - For references (&): Returns numpy VIEW using Cython memory views (no copy)
+      - For const refs: Sets readonly flag with setflags(write=False)
+      - For non-const refs: Returns writable view
+      - Memory view automatically keeps owner alive
+    - For value returns: Uses ArrayWrapper with buffer protocol (single copy via swap)
     - For inputs: Accepts numpy arrays, creates temporary C++ vector
     - Supports nested vectors for 2D arrays
     - Uses fast memcpy for efficient data transfer
@@ -2174,7 +2176,7 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
         return "_r = %s" % cy_call_str
     
     def _get_wrapper_class_name(self, cpp_type: CppType) -> str:
-        """Get the appropriate ArrayWrapper or ArrayView class name for a type."""
+        """Get the appropriate ArrayWrapper class name suffix for a type."""
         type_map = {
             "float": "Float",
             "double": "Double",
@@ -2192,11 +2194,6 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             "unsigned long": "UInt64",
         }
         return type_map.get(cpp_type.base_type, "Double")
-    
-    def _get_factory_function_name(self, cpp_type: CppType) -> str:
-        """Get the factory function name for creating an ArrayView."""
-        suffix = self._get_wrapper_class_name(cpp_type)
-        return f"_create_view_{suffix.lower()}"
     
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str

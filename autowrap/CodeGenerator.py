@@ -2116,7 +2116,11 @@ class CodeGenerator(object):
         return code
     
     def inline_array_wrappers(self):
-        """Inline ArrayWrapper and ArrayView class definitions for buffer protocol support."""
+        """Inline ArrayWrapper class definitions for buffer protocol support.
+        
+        ArrayWrapper classes are used for value returns where data is already copied.
+        For reference returns, Cython memory views are used instead (no wrapper needed).
+        """
         # Read the combined ArrayWrappers.pyx file (which has attributes already inline)
         autowrap_dir = os.path.dirname(os.path.abspath(__file__))
         array_wrappers_pyx = os.path.join(autowrap_dir, "data_files", "autowrap", "ArrayWrappers.pyx")
@@ -2141,7 +2145,8 @@ class CodeGenerator(object):
         
         code = Code()
         code.add("""
-                |# Inlined ArrayWrapper and ArrayView classes for buffer protocol support
+                |# Inlined ArrayWrapper classes for buffer protocol support (value returns)
+                |# Reference returns use Cython memory views instead
                 """)
         # Add the wrapper code directly
         code.add(wrapper_code_str)
