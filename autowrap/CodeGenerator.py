@@ -2096,7 +2096,6 @@ class CodeGenerator(object):
                    |import numpy as np
                    |cimport numpy as numpy
                    |import numpy as numpy
-                   |from cpython.ref cimport Py_INCREF
                    """
             )
 
