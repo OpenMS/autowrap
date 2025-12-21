@@ -1613,11 +1613,16 @@ cdef class NumpyVectorTest:
         getConstRefVector(self) -> numpy.ndarray[numpy.float64_t, ndim=1]
         """
         _r = self.inst.get().getConstRefVector()
-        # Convert C++ const vector reference to numpy array (copy for safety)
-        cdef ArrayWrapperDouble _wrapper_py_result = ArrayWrapperDouble(_r.size())
-        if _r.size() > 0:
-            memcpy(_wrapper_py_result.vec.data(), _r.data(), _r.size() * sizeof(double))
-        cdef object py_result = numpy.asarray(_wrapper_py_result)
+        # Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
+        cdef double* _ptr_py_result = _r.data()
+        cdef size_t _size_py_result = _r.size()
+        cdef ArrayViewDouble _view_py_result = _create_view_double(
+            _ptr_py_result,
+            _size_py_result,
+            owner=self,
+            readonly=True
+        )
+        cdef object py_result = numpy.asarray(_view_py_result)
         return py_result
     
     def getMutableRefVector(self):

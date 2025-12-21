@@ -56,8 +56,8 @@ def numpy_vector_module():
 class TestVectorOutputs:
     """Tests for vector outputs with different qualifiers."""
     
-    def test_const_ref_output_is_copy(self, numpy_vector_module):
-        """Const ref should create a copy (Python owns data)."""
+    def test_const_ref_output_is_readonly_view(self, numpy_vector_module):
+        """Const ref should create a readonly view (zero-copy)."""
         import numpy as np
         m = numpy_vector_module
         t = m.NumpyVectorTest()
@@ -67,14 +67,16 @@ class TestVectorOutputs:
         assert result.shape == (5,)
         assert np.allclose(result, [1.0, 2.0, 3.0, 4.0, 5.0])
         
-        # Modify array - should not affect C++ data since it's a copy
-        result[0] = 999.0
-        result2 = t.getConstRefVector()
-        assert result2[0] == 1.0  # Original C++ data unchanged
+        # Array should be readonly
+        assert not result.flags.writeable
+        
+        # Try to modify - should fail
+        with pytest.raises(ValueError, match="read-only"):
+            result[0] = 999.0
     
-    @pytest.mark.skip(reason="True zero-copy views for non-const refs require complex lifetime management - not yet implemented")
+    @pytest.mark.skip(reason="Mutable ref views require ensuring C++ object lifetime exceeds view lifetime - needs investigation of reference handling")
     def test_mutable_ref_output_is_view(self, numpy_vector_module):
-        """Non-const ref should create a view (C++ owns data)."""
+        """Non-const ref should create a writable view (zero-copy)."""
         import numpy as np
         m = numpy_vector_module
         t = m.NumpyVectorTest()
@@ -83,6 +85,9 @@ class TestVectorOutputs:
         assert isinstance(result, np.ndarray)
         assert result.shape == (3,)
         assert np.allclose(result, [10.0, 20.0, 30.0])
+        
+        # Array should be writable
+        assert result.flags.writeable
         
         # Modify array - SHOULD affect C++ data since it's a view
         result[0] = 999.0

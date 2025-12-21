@@ -1978,8 +1978,9 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
     to distinguish from the standard list-based vector conversion.
     
     Key features:
-    - For non-const references (&): Returns numpy VIEW on C++ data (no copy)
-    - For const ref/value returns: Copies data to numpy array (Python owns memory)
+    - For non-const references (&): Returns numpy VIEW on C++ data (no copy, writable)
+    - For const references (const &): Returns numpy VIEW on C++ data (no copy, readonly)
+    - For value returns: Wraps data in numpy array (uses move/swap, single copy)
     - For inputs: Accepts numpy arrays, creates temporary C++ vector
     - Supports nested vectors for 2D arrays
     - Uses fast memcpy for efficient data transfer
@@ -2247,18 +2248,22 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             factory_func = self._get_factory_function_name(tt)
             
             # Check if this is a reference return (view opportunity)
-            if cpp_type.is_ref and not cpp_type.is_const:
-                # Non-const reference: Use ArrayView for zero-copy access via factory function
+            if cpp_type.is_ref:
+                # Reference return: Use ArrayView for zero-copy access via factory function
+                # readonly=True for const references, readonly=False for non-const
+                readonly = "True" if cpp_type.is_const else "False"
+                comment = "# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)" if cpp_type.is_const else "# Convert C++ vector reference to numpy array VIEW (zero-copy)"
+                
                 code = Code().add(
                     """
-                    |# Convert C++ vector reference to numpy array VIEW (zero-copy)
+                    |$comment
                     |cdef $ctype* _ptr_$output_py_var = $input_cpp_var.data()
                     |cdef size_t _size_$output_py_var = $input_cpp_var.size()
                     |cdef ArrayView$wrapper_suffix _view_$output_py_var = $factory_func(
                     |    _ptr_$output_py_var,
                     |    _size_$output_py_var,
                     |    owner=self,
-                    |    readonly=False
+                    |    readonly=$readonly
                     |)
                     |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
                     """,
@@ -2268,39 +2273,24 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                         wrapper_suffix=wrapper_suffix,
                         factory_func=factory_func,
                         ctype=ctype,
+                        readonly=readonly,
+                        comment=comment,
                     ),
                 )
                 return code
             else:
-                # Const reference or value return - use owning wrapper (make a copy)
-                # For const ref: copy to avoid lifetime issues
-                # For value return: data is already a copy, just wrap it
-                if cpp_type.is_ref and cpp_type.is_const:
-                    comment = "# Convert C++ const vector reference to numpy array (copy for safety)"
-                    code_block = """
-                    |$comment
-                    |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix($input_cpp_var.size())
-                    |if $input_cpp_var.size() > 0:
-                    |    memcpy(_wrapper_$output_py_var.vec.data(), $input_cpp_var.data(), $input_cpp_var.size() * sizeof($ctype))
-                    |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
+                # Value return - use owning wrapper (data is already a copy via move/swap)
+                code = Code().add(
                     """
-                else:
-                    comment = "# Convert C++ vector to numpy array using owning wrapper (data already copied)"
-                    code_block = """
-                    |$comment
+                    |# Convert C++ vector to numpy array using owning wrapper (data already copied)
                     |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
                     |_wrapper_$output_py_var.set_data($input_cpp_var)
                     |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
-                    """
-                
-                code = Code().add(
-                    code_block,
+                    """,
                     dict(
                         input_cpp_var=input_cpp_var,
                         output_py_var=output_py_var,
                         wrapper_suffix=wrapper_suffix,
-                        comment=comment,
-                        ctype=ctype,
                     ),
                 )
                 return code
