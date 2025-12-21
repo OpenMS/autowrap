@@ -20,5 +20,4 @@ number_conv.pyx
 inherited.pyx
 itertest.pyx
 int_container_class.pyx
-addons/*.pyx
 numpy_vector/*.pyx
