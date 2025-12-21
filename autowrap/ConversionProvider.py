@@ -2173,6 +2173,14 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
             return code, "deref(%s)" % temp_var, cleanup
     
     def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        # For reference returns, use address() to get a pointer and avoid copying
+        cy_res_type = self.converters.cython_type(res_type)  # type: CppType
+        if cy_res_type.is_ref:
+            # Create a copy of the type without the reference flag
+            cy_ptr_type = cy_res_type.copy()
+            cy_ptr_type.is_ref = False
+            base_type_str = cy_ptr_type.toString(with_const)
+            return "cdef %s * _r = address(%s)" % (base_type_str, cy_call_str)
         return "_r = %s" % cy_call_str
     
     def _get_wrapper_class_name(self, cpp_type: CppType) -> str:
@@ -2270,14 +2278,15 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                 # Reference return: Use Cython memory view for zero-copy access
                 # For const references: set readonly flag
                 # Explicitly set .base to self to keep the owner alive (not the memory view)
+                # Note: input_cpp_var is a pointer (from address() in call_method), so dereference it
                 if cpp_type.is_const:
                     code = Code().add(
                         """
                         |# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
-                        |cdef size_t _size_$output_py_var = $input_cpp_var.size()
+                        |cdef size_t _size_$output_py_var = deref($input_cpp_var).size()
                         |cdef numpy.npy_intp[1] _shape_$output_py_var
                         |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
-                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>$input_cpp_var.data())
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>deref($input_cpp_var).data())
                         |$output_py_var.setflags(write=False)
                         |# Set base to self to keep owner alive
                         |Py_INCREF(self)
@@ -2294,10 +2303,10 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                     code = Code().add(
                         """
                         |# Convert C++ vector reference to numpy array VIEW (zero-copy, writable)
-                        |cdef size_t _size_$output_py_var = $input_cpp_var.size()
+                        |cdef size_t _size_$output_py_var = deref($input_cpp_var).size()
                         |cdef numpy.npy_intp[1] _shape_$output_py_var
                         |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
-                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>$input_cpp_var.data())
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>deref($input_cpp_var).data())
                         |# Set base to self to keep owner alive
                         |Py_INCREF(self)
                         |numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)

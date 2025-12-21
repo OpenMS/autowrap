@@ -1,5 +1,13 @@
 *.o
 *.cpp
 *.so
-libcpp_test.pyx
+# All generated .pyx files from autowrap tests
+*_wrapper.pyx
+*_test.pyx
 out.pyx
+enums.pyx
+number_conv.pyx
+inherited.pyx
+itertest.pyx
+int_container_class.pyx
+addons/*.pyx
