@@ -1,7 +1,10 @@
 *.o
 *.cpp
 *.so
-# All generated .pyx files from autowrap tests
+# All generated files are in generated/ subdirectory
+generated/
+
+# Also ignore any generated .pyx files that might end up in the main directory
 *_wrapper.pyx
 *_test.pyx
 out.pyx
@@ -11,3 +14,4 @@ inherited.pyx
 itertest.pyx
 int_container_class.pyx
 addons/*.pyx
+numpy_vector/*.pyx

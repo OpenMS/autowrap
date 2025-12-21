@@ -164,15 +164,7 @@ develop-eggs
 .mr.developer.cfg
 
 # generated py extensions and typestubs in tests
-tests/**/*_wrapper.pyx
-tests/**/*_test.pyx
-tests/**/out.pyx
-tests/test_files/enums.pyx
-tests/test_files/number_conv.pyx
-tests/test_files/inherited.pyx
-tests/test_files/itertest.pyx
-tests/test_files/addons/*.pyx
-tests/int_container_class_wrapped.pyx
+tests/test_files/generated/
 tests/test_files/*.pyi
 
 _codeql_detected_source_root

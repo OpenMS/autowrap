@@ -93,7 +93,7 @@ def sub_libcpp_copy_constructors(libcpp):
 
 
 def test_libcpp():
-    target = os.path.join(test_files, "libcpp_test.pyx")
+    target = os.path.join(test_files, "generated", "libcpp_test.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
         ["libcpp_test.pxd"], root=test_files, target=target, debug=True

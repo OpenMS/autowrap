@@ -25,7 +25,7 @@ test_files = os.path.join(os.path.dirname(__file__), "test_files", "numpy_vector
 def numpy_vector_module():
     """Compile and import the numpy_vector_test module."""
     import numpy
-    target = os.path.join(test_files, "numpy_vector_wrapper.pyx")
+    target = os.path.join(test_files, "..", "generated", "numpy_vector", "numpy_vector_wrapper.pyx")
     
     # Parse the declarations
     decls, instance_map = autowrap.parse(

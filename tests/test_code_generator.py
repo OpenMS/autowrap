@@ -73,7 +73,7 @@ def test_enums():
 
     See tests/test_files/enums.pxd for the full example.
     """
-    target = os.path.join(test_files, "enums.pyx")
+    target = os.path.join(test_files, "generated", "enums.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
         ["enums.pxd"], root=test_files, target=target, debug=True
@@ -112,7 +112,7 @@ def test_enums():
 
 
 def test_number_conv():
-    target = os.path.join(test_files, "number_conv.pyx")
+    target = os.path.join(test_files, "generated", "number_conv.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
         ["number_conv.pxd"], root=test_files, target=target, debug=True
@@ -186,7 +186,7 @@ def test_shared_ptr():
 
 
 def test_inherited():
-    target = os.path.join(test_files, "inherited.pyx")
+    target = os.path.join(test_files, "generated", "inherited.pyx")
     include_dirs = autowrap.parse_and_generate_code(
         ["inherited.pxd"], root=test_files, target=target, debug=True
     )
@@ -207,7 +207,7 @@ def test_inherited():
 
 
 def test_templated():
-    target = os.path.join(test_files, "templated_wrapper.pyx")
+    target = os.path.join(test_files, "generated", "templated_wrapper.pyx")
 
     decls, instance_map = autowrap.parse(["templated.pxd"], root=test_files)
 
@@ -296,7 +296,7 @@ def test_templated():
 
 
 def test_gil_unlock():
-    target = os.path.join(test_files, "gil_testing_wrapper.pyx")
+    target = os.path.join(test_files, "generated", "gil_testing_wrapper.pyx")
     include_dirs = autowrap.parse_and_generate_code(
         ["gil_testing.pxd"], root=test_files, target=target, debug=True
     )
@@ -314,7 +314,7 @@ def test_gil_unlock():
 
 
 def test_automatic_string_conversion():
-    target = os.path.join(test_files, "libcpp_utf8_string_test.pyx")
+    target = os.path.join(test_files, "generated", "libcpp_utf8_string_test.pyx")
     include_dirs = autowrap.parse_and_generate_code(
         ["libcpp_utf8_string_test.pxd"], root=test_files, target=target, debug=True
     )
@@ -352,7 +352,7 @@ def test_automatic_string_conversion():
 
 
 def test_automatic_output_string_conversion():
-    target = os.path.join(test_files, "libcpp_utf8_output_string_test.pyx")
+    target = os.path.join(test_files, "generated", "libcpp_utf8_output_string_test.pyx")
     include_dirs = autowrap.parse_and_generate_code(
         ["libcpp_utf8_output_string_test.pxd"],
         root=test_files,

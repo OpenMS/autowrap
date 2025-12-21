@@ -28,7 +28,7 @@ def wrapped_container_module():
     """Compile and import the wrapped_container_test module."""
     # Note: output file must have different name than input .pxd to avoid
     # Cython "redeclared" errors when both files are in the include path
-    target = os.path.join(test_files, "wrapped_container_wrapper.pyx")
+    target = os.path.join(test_files, "generated", "wrapped_container_wrapper.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
         ["wrapped_container_test.pxd"], root=test_files, target=target, debug=True
