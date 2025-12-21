@@ -164,7 +164,14 @@ develop-eggs
 .mr.developer.cfg
 
 # generated py extensions and typestubs in tests
-tests/test_files/generated/
+tests/test_files/generated/*
+!tests/test_files/generated/.gitkeep
+!tests/test_files/generated/numpy_vector/
+tests/test_files/generated/numpy_vector/*
+!tests/test_files/generated/numpy_vector/.gitkeep
+!tests/test_files/generated/addons/
+tests/test_files/generated/addons/*
+!tests/test_files/generated/addons/.gitkeep
 tests/test_files/*.pyi
 
 _codeql_detected_source_root

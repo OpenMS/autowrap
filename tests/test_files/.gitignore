@@ -2,7 +2,14 @@
 *.cpp
 *.so
 # All generated files are in generated/ subdirectory
-generated/
+generated/*
+!generated/.gitkeep
+!generated/numpy_vector/
+generated/numpy_vector/*
+!generated/numpy_vector/.gitkeep
+!generated/addons/
+generated/addons/*
+!generated/addons/.gitkeep
 
 # Also ignore any generated .pyx files that might end up in the main directory
 *_wrapper.pyx
