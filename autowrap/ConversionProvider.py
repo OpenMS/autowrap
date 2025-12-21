@@ -2254,10 +2254,10 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                     code = Code().add(
                         """
                         |# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
-                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:$input_cpp_var.size()]>$input_cpp_var.data()
+                        |cdef size_t _size_$output_py_var = $input_cpp_var.size()
+                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
                         |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
                         |$output_py_var.setflags(write=False)
-                        |# Memory view keeps 'self' alive via its internal reference
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,
@@ -2269,9 +2269,9 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                     code = Code().add(
                         """
                         |# Convert C++ vector reference to numpy array VIEW (zero-copy, writable)
-                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:$input_cpp_var.size()]>$input_cpp_var.data()
+                        |cdef size_t _size_$output_py_var = $input_cpp_var.size()
+                        |cdef $ctype[:] _view_$output_py_var = <$ctype[:_size_$output_py_var]>$input_cpp_var.data()
                         |cdef object $output_py_var = numpy.asarray(_view_$output_py_var)
-                        |# Memory view keeps 'self' alive via its internal reference
                         """,
                         dict(
                             input_cpp_var=input_cpp_var,
@@ -2282,14 +2282,13 @@ class StdVectorAsNumpyConverter(TypeConverterBase):
                 return code
             else:
                 # Value return - use owning wrapper (data is already a copy via move/swap)
-                # numpy.asarray() automatically sets the wrapper as .base via buffer protocol
+                # numpy.asarray() with buffer protocol automatically sets wrapper as .base
                 code = Code().add(
                     """
                     |# Convert C++ vector to numpy array using owning wrapper (data already copied)
                     |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
                     |_wrapper_$output_py_var.set_data($input_cpp_var)
                     |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
-                    |# Buffer protocol automatically sets wrapper as .base
                     """,
                     dict(
                         input_cpp_var=input_cpp_var,
