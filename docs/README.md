@@ -186,6 +186,9 @@ directives are:
   before calling this method, so that it does not block other Python threads.
   It is advised to release the GIL for long running, expensive calls into
   native code which does not manipulate python objects.
+- `wrap-buffer-protocol`: Expose Python's buffer protocol (`__getbuffer__`) for a wrapper class.
+  Format: `wrap-buffer-protocol: <data_ptr_expr>,<c_type>,<size_expr>` (see `../tests/test_files/buffer/vec_holder.pxd`).
+- `no-pxd-import`: Prevent generating `from <module> cimport <Name>` statements for this class in multi-module builds.
 
 ### Method Directives
 
@@ -246,7 +249,7 @@ Finally, the object is hashable in Python (assuming it has a function `getName()
 
 Docstrings can be added to classes and methods using the `wrap-doc` statement. Multi line docs are supported with
 empty lines and indentation. Note that every line of the docstring needs to begin with # and two spaces, even the empty lines.
-Methods still support single line doctrings directly after the declaration. However, if there is a multi line docstring it is
+Methods still support single line docstrings directly after the declaration. However, if there is a multi line docstring it is
 taken with priority.
 
 ```
@@ -275,6 +278,70 @@ The tests provide several examples on how to wrap tricky C++ constructs, see for
 - [libcpp_test.pxd](../tests/test_files/libcpp_test.pxd) for a set of C++ functions that use abstract base classes
 - [libcpp_utf8_string_test.pxd](../tests/test_files/libcpp_utf8_string_test.pxd) for an example using UTF8 strings
 - [templated.pxd](../tests/test_files/templated.pxd) for an example using templated classes
+- [enums.pxd](../tests/test_files/enums.pxd) for scoped enums and enums with conflicting names across namespaces (using `wrap-as`)
+- [inherited.pxd](../tests/test_files/inherited.pxd) for template inheritance and method-name clash pitfalls with `wrap-inherits`
+- [wrapped_container_test.pxd](../tests/test_files/wrapped_container_test.pxd) and [test_wrapped_containers.py](../tests/test_wrapped_containers.py) for containers of wrapped classes and nested container edge cases
+- [cpp17_stl_test.pxd](../tests/test_files/cpp17_stl_test.pxd) for C++17 STL container support (`optional`, `string_view`, `unordered_*`, `deque`, `list`)
+- [vec_holder.pxd](../tests/test_files/buffer/vec_holder.pxd) for `wrap-buffer-protocol`
+- [ConsumerModule.pxd](../tests/test_files/enum_forward_decl/ConsumerModule.pxd) for a scoped-enum cross-module regression test
+
+Limitations and quirks
+---------------------
+
+Autowrap generates valid, maintainable Cython for many common C++ APIs, but there are
+some important limitations driven by Cython semantics, parser constraints, and a few
+intentional design tradeoffs. This section lists the most common pitfalls and the
+recommended workarounds.
+
+### Overload resolution
+
+- Overloaded **methods and constructors** are supported, implemented as a single Python method that dispatches based on runtime type checks.
+- Overloaded **free functions** are not supported (multiple free functions with the same name will collide). Use `wrap-as` to rename them.
+- Dispatch uses `isinstance(...)` checks derived from converters; some C++ types map to the same Python type and become ambiguous (e.g. `float` vs `double`, and sometimes `bool` vs `int`). Prefer renaming (`wrap-as`) or consolidating such overloads into a single API.
+- Overloaded wrapper methods accept positional arguments only (`*args`); keyword-only overload disambiguation is not available.
+
+### Operators and special methods
+
+- Only a single overload per operator is supported; overloaded `operator[]`, `operator+`, etc. are rejected.
+- In-place operators (`+=`, `&=`, ...) are commonly exposed by declaring helper methods and renaming them to operator names using `wrap-as` (see `../tests/test_files/minimal.pxd`).
+- `operator[]` supports only one key argument. `__setitem__` is generated only if `operator[]` returns a reference type.
+- `wrap-upper-limit` bounds checking is applied only for integral key types.
+
+### References, pointers, constness, and lifetimes
+
+- Return-by-reference (`T&` / `const T&`) cannot be represented as a Cython local variable, so autowrap generally returns a copied value instead of a live view. If you need true reference semantics, use manual wrapper code.
+- Raw pointer returns are treated defensively: `NULL` pointers become `None`, otherwise the pointee is copied into a new wrapper instance.
+- `shared_ptr<const T>` outputs are wrapped by copying into a non-const object so it can be represented in the wrapper type.
+
+### Templates and `wrap-instances` / `wrap-inherits`
+
+- Template classes require explicit `wrap-instances` to generate Python-visible wrapper classes.
+- `wrap-inherits` copies method declarations from base classes, but does not automatically inherit attributes/properties, and does not resolve method-name clashes across multiple bases (see `../tests/test_files/inherited.pxd`).
+- `wrap-instances` and `wrap-inherits` values are parsed from strings; very complex nested template expressions can be hard to express reliably. If you hit parsing issues, introduce intermediate typedefs or simplify instance declarations.
+
+### STL container conversions and nested containers
+
+- Supported core containers include `vector`, `set`, `map`, `pair` and `shared_ptr`, plus C++17-era containers such as `unordered_map`, `unordered_set`, `deque`, `list`, `optional`, and `string_view`.
+- Nested containers involving wrapped classes have partial support:
+  - `vector<vector<Wrapped>>` is supported as input, but output conversion for deeply nested wrapped containers is limited and may require manual wrappers.
+  - Some nested container shapes (especially maps whose values are vectors of complex types) are not implemented and will raise during code generation.
+- Copy-back for non-const reference parameters (`T&`) is implemented for many containers, but not uniformly for every container/element-type combination. If a C++ function mutates a container and you expect the Python input to reflect those changes, verify behavior (and consider manual wrappers if needed).
+
+### PXD parsing and annotation syntax
+
+- Nested classes and nested enums declared inside a `cppclass` are not wrapped; declare them in a separate `cdef extern ... namespace ...` block and use `wrap-attach`.
+- Multiple levels of pointers in argument declarations (e.g. `T**`) are not supported.
+- Multiline directives (e.g. multi-line `wrap-doc`) require strict indentation: every line must start with `#` followed by at least two spaces.
+- The `ref-arg-out` annotation appears in historical fixtures but is not an autowrap directive. Use correct Cython signatures (`T&` vs `T` vs `const T&`) to control whether Python inputs are copied back after the call.
+
+### Multi-module generation constraints
+
+- When generating multiple compilation units, all involved `.pxd` files must reside in a single directory for a given autowrap invocation.
+- `wrap-attach` requires the target class to be in the same generated module context; otherwise attachment fails.
+
+### C++ standard requirements
+
+- C++17 is required for `std::optional` and `std::string_view` support; ensure your build uses `-std=c++17` (or newer).
 
 Further examples
 ----------------
