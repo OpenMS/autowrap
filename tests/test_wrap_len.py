@@ -31,7 +31,7 @@ test_files = os.path.join(os.path.dirname(__file__), "test_files")
 @pytest.fixture(scope="module")
 def wrap_len_module():
     """Compile and import the wrap_len_test module."""
-    target = os.path.join(test_files, "wrap_len_wrapper.pyx")
+    target = os.path.join(test_files, "generated", "wrap_len_wrapper.pyx")
 
     include_dirs = autowrap.parse_and_generate_code(
         ["wrap_len_test.pxd"], root=test_files, target=target, debug=True

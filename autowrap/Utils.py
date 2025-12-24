@@ -78,6 +78,7 @@ def compile_and_import(name, source_files, include_dirs=None, **kws):
         print("\n")
         print("tempdir=", tempdir)
         print("\n")
+    
     for source_file in source_files:
         if source_file[-4:] != ".pyx" and source_file[-4:] != ".cpp":
             raise NameError("Expected pyx and/or cpp files as source files for compilation.")

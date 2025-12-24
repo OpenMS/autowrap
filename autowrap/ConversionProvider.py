@@ -1970,6 +1970,373 @@ class StdVectorConverter(TypeConverterBase):
             return code
 
 
+class StdVectorAsNumpyConverter(TypeConverterBase):
+    """
+    Converter for libcpp_vector_as_np - wraps std::vector<T> as numpy arrays.
+    
+    This converter uses a special type name 'libcpp_vector_as_np' in PXD files
+    to distinguish from the standard list-based vector conversion.
+    
+    Key features:
+    - For references (&): Returns numpy VIEW using Cython memory views (no copy)
+      - For const refs: Sets readonly flag with setflags(write=False)
+      - For non-const refs: Returns writable view
+      - Memory view automatically keeps owner alive
+    - For value returns: Uses ArrayWrapper with buffer protocol (single copy via swap)
+    - For inputs: Accepts numpy arrays, creates temporary C++ vector
+    - Supports nested vectors for 2D arrays
+    - Uses fast memcpy for efficient data transfer
+    
+    Usage in PXD:
+        from libcpp.vector cimport vector as libcpp_vector_as_np
+        
+        cdef extern from "mylib.hpp":
+            cdef cppclass MyClass:
+                libcpp_vector_as_np[double] getData()  # Returns numpy array
+                void processData(libcpp_vector_as_np[double] data)  # Accepts numpy array
+    """
+    
+    # Mapping of C++ types to numpy dtype strings
+    NUMPY_DTYPE_MAP = {
+        "float": "float32",
+        "double": "float64", 
+        "int8_t": "int8",
+        "int16_t": "int16",
+        "int": "int32",
+        "int32_t": "int32",
+        "int64_t": "int64",
+        "long": "int64",
+        "uint8_t": "uint8",
+        "uint16_t": "uint16",
+        "uint32_t": "uint32",
+        "unsigned int": "uint32",
+        "uint64_t": "uint64",
+        "unsigned long": "uint64",
+        "size_t": "uint64",
+        "bool": "bool_",
+    }
+    
+    # Map numpy dtypes to C types for memcpy
+    CTYPE_MAP = {
+        "float32": "float",
+        "float64": "double",
+        "int8": "int8_t",
+        "int16": "int16_t",
+        "int32": "int",
+        "int64": "long",
+        "uint8": "uint8_t",
+        "uint16": "uint16_t",
+        "uint32": "unsigned int",
+        "uint64": "unsigned long",
+        "bool_": "bool",
+    }
+    
+    def get_base_types(self) -> List[str]:
+        return ["libcpp_vector_as_np"]
+    
+    def matches(self, cpp_type: CppType) -> bool:
+        """Match vectors of numeric types and nested vectors."""
+        if not cpp_type.template_args:
+            return False
+        (tt,) = cpp_type.template_args
+        
+        # Check if inner type is a numeric type that numpy supports
+        if tt.base_type in self.NUMPY_DTYPE_MAP:
+            return True
+        
+        # Check if it's a nested vector
+        if tt.base_type == "libcpp_vector_as_np" and tt.template_args:
+            # Recursively check nested vector
+            return self.matches(tt)
+        
+        return False
+    
+    def _get_numpy_dtype(self, cpp_type: CppType) -> str:
+        """Get numpy dtype string for a C++ type."""
+        return self.NUMPY_DTYPE_MAP.get(cpp_type.base_type, "float64")
+    
+    def _is_nested_vector(self, cpp_type: CppType) -> bool:
+        """Check if this is a nested vector."""
+        if not cpp_type.template_args:
+            return False
+        (tt,) = cpp_type.template_args
+        return tt.base_type == "libcpp_vector_as_np"
+    
+    def matching_python_type(self, cpp_type: CppType) -> str:
+        """Return Cython type for function signature.
+        
+        Use proper numpy.ndarray type annotations that Cython understands.
+        This ensures only numpy arrays are accepted, not lists.
+        """
+        (tt,) = cpp_type.template_args
+        
+        if self._is_nested_vector(cpp_type):
+            # For 2D arrays
+            (inner_tt,) = tt.template_args
+            dtype = self._get_numpy_dtype(inner_tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=2]"
+        else:
+            # For 1D arrays
+            dtype = self._get_numpy_dtype(tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=1]"
+    
+    def matching_python_type_full(self, cpp_type: CppType) -> str:
+        """Return type hint for type checkers (for docstrings).
+        
+        This provides proper numpy type hints for documentation and type checking tools.
+        """
+        (tt,) = cpp_type.template_args
+        
+        if self._is_nested_vector(cpp_type):
+            # For 2D arrays, use proper NDArray type hint syntax
+            (inner_tt,) = tt.template_args
+            dtype = self._get_numpy_dtype(inner_tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=2]"
+        else:
+            # For 1D arrays, use proper NDArray type hint syntax
+            dtype = self._get_numpy_dtype(tt)
+            return f"numpy.ndarray[numpy.{dtype}_t, ndim=1]"
+    
+    def type_check_expression(self, cpp_type: CppType, argument_var: str) -> str:
+        """Check if argument is a numpy array (strict - no lists)."""
+        # Only accept numpy arrays, not lists or other array-like objects
+        return f"isinstance({argument_var}, numpy.ndarray)"
+    
+    def input_conversion(
+        self, cpp_type: CppType, argument_var: str, arg_num: int
+    ) -> Tuple[Code, str, Union[Code, str]]:
+        """Convert numpy array to C++ vector for input parameters.
+        
+        The argument is already guaranteed to be a numpy array with the correct type
+        thanks to Cython's type annotation, so we don't need to call asarray().
+        """
+        (tt,) = cpp_type.template_args
+        temp_var = "v%d" % arg_num
+        
+        if self._is_nested_vector(cpp_type):
+            # Handle nested vectors (2D arrays)
+            (inner_tt,) = tt.template_args
+            inner_type = self.converters.cython_type(inner_tt)
+            outer_inner_type = self.converters.cython_type(tt)
+            dtype = self._get_numpy_dtype(inner_tt)
+            
+            code = Code().add(
+                """
+                |# Convert 2D numpy array to nested C++ vector
+                |cdef libcpp_vector[$outer_inner_type] * $temp_var = new libcpp_vector[$outer_inner_type]()
+                |cdef size_t i_$arg_num, j_$arg_num
+                |cdef libcpp_vector[$inner_type] row_$arg_num
+                |for i_$arg_num in range($argument_var.shape[0]):
+                |    row_$arg_num = libcpp_vector[$inner_type]()
+                |    for j_$arg_num in range($argument_var.shape[1]):
+                |        row_$arg_num.push_back(<$inner_type>$argument_var[i_$arg_num, j_$arg_num])
+                |    $temp_var.push_back(row_$arg_num)
+                """,
+                dict(
+                    argument_var=argument_var,
+                    temp_var=temp_var,
+                    inner_type=inner_type,
+                    outer_inner_type=outer_inner_type,
+                    dtype=dtype,
+                    arg_num=arg_num,
+                ),
+            )
+            cleanup = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup
+        else:
+            # Handle simple vectors (1D arrays)
+            # No need for asarray() - Cython already ensures correct type
+            inner_type = self.converters.cython_type(tt)
+            dtype = self._get_numpy_dtype(tt)
+            ctype = self.CTYPE_MAP.get(dtype, "double")
+            
+            code = Code().add(
+                """
+                |# Convert 1D numpy array to C++ vector (fast memcpy)
+                |cdef libcpp_vector[$inner_type] * $temp_var = new libcpp_vector[$inner_type]()
+                |cdef size_t n_$arg_num = $argument_var.shape[0]
+                |$temp_var.resize(n_$arg_num)
+                |if n_$arg_num > 0:
+                |    memcpy($temp_var.data(), <void*>numpy.PyArray_DATA($argument_var), n_$arg_num * sizeof($ctype))
+                """,
+                dict(
+                    argument_var=argument_var,
+                    temp_var=temp_var,
+                    inner_type=inner_type,
+                    dtype=dtype,
+                    arg_num=arg_num,
+                    ctype=ctype,
+                ),
+            )
+            
+            cleanup = "del %s" % temp_var
+            return code, "deref(%s)" % temp_var, cleanup
+    
+    def call_method(self, res_type: CppType, cy_call_str: str, with_const: bool = True) -> str:
+        # For reference returns, use address() to get a pointer and avoid copying
+        cy_res_type = self.converters.cython_type(res_type)  # type: CppType
+        if cy_res_type.is_ref:
+            # Create a copy of the type without the reference flag
+            cy_ptr_type = cy_res_type.copy()
+            cy_ptr_type.is_ref = False
+            base_type_str = cy_ptr_type.toString(with_const)
+            return "cdef %s * _r = address(%s)" % (base_type_str, cy_call_str)
+        return "_r = %s" % cy_call_str
+    
+    def _get_wrapper_class_name(self, cpp_type: CppType) -> str:
+        """Get the appropriate ArrayWrapper class name suffix for a type."""
+        type_map = {
+            "float": "Float",
+            "double": "Double",
+            "int8_t": "Int8",
+            "int16_t": "Int16",
+            "int32_t": "Int32",
+            "int": "Int32",
+            "int64_t": "Int64",
+            "long": "Int64",
+            "uint8_t": "UInt8",
+            "uint16_t": "UInt16",
+            "uint32_t": "UInt32",
+            "unsigned int": "UInt32",
+            "uint64_t": "UInt64",
+            "unsigned long": "UInt64",
+        }
+        return type_map.get(cpp_type.base_type, "Double")
+    
+    def _get_numpy_type_enum(self, cpp_type: CppType) -> str:
+        """Get the numpy type enum for PyArray_SimpleNewFromData."""
+        type_map = {
+            "float": "NPY_FLOAT32",
+            "double": "NPY_FLOAT64",
+            "int8_t": "NPY_INT8",
+            "int16_t": "NPY_INT16",
+            "int32_t": "NPY_INT32",
+            "int": "NPY_INT32",
+            "int64_t": "NPY_INT64",
+            "long": "NPY_INT64",
+            "uint8_t": "NPY_UINT8",
+            "uint16_t": "NPY_UINT16",
+            "uint32_t": "NPY_UINT32",
+            "unsigned int": "NPY_UINT32",
+            "uint64_t": "NPY_UINT64",
+            "unsigned long": "NPY_UINT64",
+            "bool": "NPY_BOOL",
+        }
+        return type_map.get(cpp_type.base_type, "NPY_FLOAT64")
+    
+    def output_conversion(
+        self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
+    ) -> Optional[Code]:
+        """Convert C++ vector to numpy array.
+        
+        Uses Cython memory views for references and ArrayWrapper for value returns:
+        - For references: Create zero-copy view using Cython memory view syntax
+        - For const references: Set readonly flag after creating view
+        - For value returns: Use owning wrapper (data is already a copy)
+        - Always set .base attribute to prevent garbage collection
+        """
+        (tt,) = cpp_type.template_args
+        
+        if self._is_nested_vector(cpp_type):
+            # Handle nested vectors (2D arrays) - always copy for now
+            (inner_tt,) = tt.template_args
+            inner_type = self.converters.cython_type(inner_tt)
+            dtype = self._get_numpy_dtype(inner_tt)
+            ctype = self.CTYPE_MAP.get(dtype, "double")
+            
+            code = Code().add(
+                """
+                |# Convert nested C++ vector to 2D numpy array (copy)
+                |cdef size_t n_rows = $input_cpp_var.size()
+                |cdef size_t n_cols = $input_cpp_var[0].size() if n_rows > 0 else 0
+                |cdef object $output_py_var = numpy.empty((n_rows, n_cols), dtype=numpy.$dtype)
+                |cdef size_t i, j
+                |cdef $ctype* row_ptr
+                |for i in range(n_rows):
+                |    row_ptr = <$ctype*>$input_cpp_var[i].data()
+                |    for j in range(n_cols):
+                |        $output_py_var[i, j] = row_ptr[j]
+                """,
+                dict(
+                    input_cpp_var=input_cpp_var,
+                    output_py_var=output_py_var,
+                    inner_type=inner_type,
+                    dtype=dtype,
+                    ctype=ctype,
+                ),
+            )
+            return code
+        else:
+            # Handle simple vectors (1D arrays)
+            inner_type = self.converters.cython_type(tt)
+            dtype = self._get_numpy_dtype(tt)
+            ctype = self.CTYPE_MAP.get(dtype, "double")
+            wrapper_suffix = self._get_wrapper_class_name(tt)
+            
+            # Check if this is a reference return (view opportunity)
+            if cpp_type.is_ref:
+                # Reference return: Use Cython memory view for zero-copy access
+                # For const references: set readonly flag
+                # Explicitly set .base to self to keep the owner alive (not the memory view)
+                # Note: input_cpp_var is a pointer (from address() in call_method), so dereference it
+                if cpp_type.is_const:
+                    code = Code().add(
+                        """
+                        |# Convert C++ const vector reference to numpy array VIEW (zero-copy, readonly)
+                        |cdef size_t _size_$output_py_var = deref($input_cpp_var).size()
+                        |cdef numpy.npy_intp[1] _shape_$output_py_var
+                        |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>deref($input_cpp_var).data())
+                        |$output_py_var.setflags(write=False)
+                        |# Set base to self to keep owner alive
+                        |Py_INCREF(self)
+                        |numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
+                        """,
+                        dict(
+                            input_cpp_var=input_cpp_var,
+                            output_py_var=output_py_var,
+                            ctype=ctype,
+                            npy_type=self._get_numpy_type_enum(tt),
+                        ),
+                    )
+                else:
+                    code = Code().add(
+                        """
+                        |# Convert C++ vector reference to numpy array VIEW (zero-copy, writable)
+                        |cdef size_t _size_$output_py_var = deref($input_cpp_var).size()
+                        |cdef numpy.npy_intp[1] _shape_$output_py_var
+                        |_shape_$output_py_var[0] = <numpy.npy_intp>_size_$output_py_var
+                        |cdef object $output_py_var = numpy.PyArray_SimpleNewFromData(1, _shape_$output_py_var, numpy.$npy_type, <void*>deref($input_cpp_var).data())
+                        |# Set base to self to keep owner alive
+                        |Py_INCREF(self)
+                        |numpy.PyArray_SetBaseObject(<numpy.ndarray>$output_py_var, <object>self)
+                        """,
+                        dict(
+                            input_cpp_var=input_cpp_var,
+                            output_py_var=output_py_var,
+                            ctype=ctype,
+                            npy_type=self._get_numpy_type_enum(tt),
+                        ),
+                    )
+                return code
+            else:
+                # Value return - use owning wrapper (data is already a copy via move/swap)
+                code = Code().add(
+                    """
+                    |# Convert C++ vector to numpy array using owning wrapper (data already copied)
+                    |cdef ArrayWrapper$wrapper_suffix _wrapper_$output_py_var = ArrayWrapper$wrapper_suffix()
+                    |_wrapper_$output_py_var.set_data($input_cpp_var)
+                    |cdef object $output_py_var = numpy.asarray(_wrapper_$output_py_var)
+                    """,
+                    dict(
+                        input_cpp_var=input_cpp_var,
+                        output_py_var=output_py_var,
+                        wrapper_suffix=wrapper_suffix,
+                    ),
+                )
+                return code
+
+
 class StdStringConverter(TypeConverterBase):
     """
     This converter deals with functions that expect/return a C++ std::string.
@@ -3286,6 +3653,7 @@ def setup_converter_registry(classes_to_wrap, enums_to_wrap, instance_map):
     converters.register(StdStringConverter())
     converters.register(StdStringUnicodeConverter())
     converters.register(StdStringUnicodeOutputConverter())
+    converters.register(StdVectorAsNumpyConverter())
     converters.register(StdVectorConverter())
     converters.register(StdSetConverter())
     converters.register(StdMapConverter())

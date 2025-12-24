@@ -2060,6 +2060,7 @@ class CodeGenerator(object):
                    |from  libcpp.string   cimport string as libcpp_utf8_output_string
                    |from  libcpp.set      cimport set as libcpp_set
                    |from  libcpp.vector   cimport vector as libcpp_vector
+                   |from  libcpp.vector   cimport vector as libcpp_vector_as_np
                    |from  libcpp.pair     cimport pair as libcpp_pair
                    |from  libcpp.map      cimport map  as libcpp_map
                    |from  libcpp.unordered_map cimport unordered_map as libcpp_unordered_map
@@ -2069,7 +2070,7 @@ class CodeGenerator(object):
                    |from  libcpp.optional cimport optional as libcpp_optional
                    |from  libcpp.string_view cimport string_view as libcpp_string_view
                    |from  libcpp          cimport bool
-                   |from  libc.string     cimport const_char
+                   |from  libc.string     cimport const_char, memcpy
                    |from  cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
                    """
@@ -2095,6 +2096,7 @@ class CodeGenerator(object):
                    |import numpy as np
                    |cimport numpy as numpy
                    |import numpy as numpy
+                   |from cpython.ref cimport Py_INCREF
                    """
             )
 
@@ -2107,7 +2109,50 @@ class CodeGenerator(object):
                 code.add(stmt)
 
         self.top_level_code.append(code)
+        
+        # If numpy is enabled, inline the ArrayWrapper/ArrayView classes
+        if self.include_numpy:
+            self.inline_array_wrappers()
+        
         return code
+    
+    def inline_array_wrappers(self):
+        """Inline ArrayWrapper class definitions for buffer protocol support.
+        
+        ArrayWrapper classes are used for value returns where data is already copied.
+        For reference returns, Cython memory views are used instead (no wrapper needed).
+        """
+        # Read the combined ArrayWrappers.pyx file (which has attributes already inline)
+        autowrap_dir = os.path.dirname(os.path.abspath(__file__))
+        array_wrappers_pyx = os.path.join(autowrap_dir, "data_files", "autowrap", "ArrayWrappers.pyx")
+        
+        if not os.path.exists(array_wrappers_pyx):
+            L.warning("ArrayWrappers.pyx not found, skipping inline array wrappers")
+            return
+        
+        with open(array_wrappers_pyx, 'r') as f:
+            pyx_content = f.read()
+        
+        # Remove the first few lines (cython directives and module docstring)
+        # Keep everything from the first import onward
+        lines = pyx_content.split('\n')
+        start_idx = 0
+        for i, line in enumerate(lines):
+            if line.strip().startswith('from cpython.buffer'):
+                start_idx = i
+                break
+        
+        wrapper_code_str = '\n'.join(lines[start_idx:])
+        
+        code = Code()
+        code.add("""
+                |# Inlined ArrayWrapper classes for buffer protocol support (value returns)
+                |# Reference returns use Cython memory views instead
+                """)
+        # Add the wrapper code directly
+        code.add(wrapper_code_str)
+        
+        self.top_level_code.append(code)
 
     def create_includes(self):
         code = Code()
