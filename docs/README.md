@@ -177,11 +177,15 @@ directives are:
   `__dealloc__` and inst attribute (but their presence is still expected).
   This is useful if you cannot use the shared-ptr approach to store a reference
   to the C++ class (as with singletons for example).
-- `wrap-hash`: If the produced class should be hashable, give a hint which
-  method should be used for this. This method will be called on the C++ object
-  and fed into the Python "hash" function. This implies the class also provides
-  a `operator==` function.  Note that the only requirement for a hash function is
-  that equal objects produce equal values.
+- `wrap-hash`: If the produced class should be hashable, specify how to compute
+  the hash. This implies the class also provides an `operator==` function. Note
+  that the only requirement for a hash function is that equal objects produce
+  equal values. There are two modes:
+  - **Expression-based**: Provide a C++ expression (e.g., `getValue()`) that will
+    be called on the C++ object and fed into Python's `hash()` function.
+  - **std::hash-based**: Use `std` to leverage the C++ `std::hash<T>` template
+    specialization for the class. This requires that `std::hash<YourClass>` is
+    specialized in your C++ code.
 - `wrap-with-no-gil`: Autowrap will release the GIL (Global interpreter lock)
   before calling this method, so that it does not block other Python threads.
   It is advised to release the GIL for long running, expensive calls into
@@ -244,6 +248,37 @@ class is the same as the name of the C++ class.
 Additionally, TemplatedClass[U,V] gets additional methods from C[U] and from D without having to re-declare them.
 
 Finally, the object is hashable in Python (assuming it has a function `getName()` that returns a string).
+
+#### wrap-hash Examples
+
+**Expression-based hash** (calls a method and passes result to Python's `hash()`):
+
+```
+    cdef cppclass MyClass:
+        # wrap-hash:
+        #   getValue()
+```
+
+**std::hash-based hash** (uses C++ `std::hash<MyClass>` specialization):
+
+```
+    cdef cppclass MyClass:
+        # wrap-hash:
+        #   std
+```
+
+For the `std` mode to work, you need to provide a `std::hash` specialization in your C++ code:
+
+```cpp
+namespace std {
+    template <>
+    struct hash<MyClass> {
+        size_t operator()(const MyClass& obj) const noexcept {
+            return std::hash<int>{}(obj.getValue());
+        }
+    };
+}
+```
 
 ### Docstrings
 
