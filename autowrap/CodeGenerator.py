@@ -678,7 +678,7 @@ class CodeGenerator(object):
                     """
                             |
                             |    def __hash__(self):
-                            |      # Uses C++ std::hash<$cpp_name> specialization
+                            |      # Uses C++ std::hash<$cy_type> specialization
                             |      cdef cpp_hash[$cy_type] hasher
                             |      return hasher(deref(self.inst.get()))
                             |
@@ -2133,11 +2133,13 @@ class CodeGenerator(object):
                 code.add(stmt)
 
         self.top_level_code.append(code)
-        
+
+        # NOTE: ArrayWrapper inlining is disabled because projects like OpenMS
+        # provide their own ArrayWrapper implementations in addon files.
         # If numpy is enabled, inline the ArrayWrapper/ArrayView classes
-        if self.include_numpy:
-            self.inline_array_wrappers()
-        
+        # if self.include_numpy:
+        #     self.inline_array_wrappers()
+
         return code
     
     def inline_array_wrappers(self):
@@ -2175,8 +2177,10 @@ class CodeGenerator(object):
                 """)
         # Add the wrapper code directly
         code.add(wrapper_code_str)
-        
-        self.top_level_code.append(code)
+
+        # Add to top_level_pyx_code so ArrayWrappers go to pyx only, not pxd
+        # This avoids conflicts when the project already has ArrayWrapper definitions
+        self.top_level_pyx_code.append(code)
 
     def create_includes(self):
         code = Code()
