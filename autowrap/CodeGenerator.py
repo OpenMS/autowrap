@@ -671,8 +671,23 @@ class CodeGenerator(object):
             )
 
         if len(r_class.wrap_hash) != 0:
-            class_code.add(
-                """
+            hash_expr = r_class.wrap_hash[0].strip()
+            # If hash expression is "std" or empty, use std::hash<T>
+            if hash_expr.lower() == "std" or not hash_expr:
+                class_code.add(
+                    """
+                            |
+                            |    def __hash__(self):
+                            |      # Uses C++ std::hash<$cy_type> specialization
+                            |      cdef cpp_hash[$cy_type] hasher
+                            |      return hasher(deref(self.inst.get()))
+                            |
+                            """,
+                    locals(),
+                )
+            else:
+                class_code.add(
+                    """
                             |
                             |    def __hash__(self):
                             |      # The only required property is that objects which compare equal have
@@ -680,9 +695,9 @@ class CodeGenerator(object):
                             |      return hash(deref(self.inst.get()).%s )
                             |
                             """
-                % r_class.wrap_hash[0],
-                locals(),
-            )
+                    % hash_expr,
+                    locals(),
+                )
 
         if len(r_class.wrap_len) != 0:
             class_code.add(
@@ -2087,6 +2102,15 @@ class CodeGenerator(object):
         code.add(
             """
                    |from  libcpp.memory   cimport shared_ptr
+                   """
+        )
+        # Add std::hash declaration for wrap-hash support (named cpp_hash to avoid conflict with Python hash)
+        code.add(
+            """
+                   |cdef extern from "<functional>" namespace "std" nogil:
+                   |    cdef cppclass cpp_hash "std::hash" [T]:
+                   |        cpp_hash() except +
+                   |        size_t operator()(const T&) except +
                    """
         )
         if self.include_numpy:
