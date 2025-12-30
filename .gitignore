@@ -163,19 +163,15 @@ develop-eggs
 #Mr Developer
 .mr.developer.cfg
 
-# generated py extensions
-tests/test_files/gil_testing_wrapper.pyx
-tests/test_files/libcpp_stl_test.pyx
-tests/test_files/libcpp_utf8_string_test.pyx
-tests/test_files/libcpp_utf8_output_string_test.pyx
-tests/test_files/iteratorwrapper.pyx
-tests/test_files/namespaces.pyx
-tests/test_files/number_conv.pyx
-tests/test_files/enums.pyx
-tests/test_files/wrapped_container_wrapper.pyx
-tests/test_files/wrap_len_wrapper.pyx
-
-# generated typestubs
+# generated py extensions and typestubs in tests
+tests/test_files/generated/*
+!tests/test_files/generated/.gitkeep
+!tests/test_files/generated/numpy_vector/
+tests/test_files/generated/numpy_vector/*
+!tests/test_files/generated/numpy_vector/.gitkeep
+!tests/test_files/generated/addons/
+tests/test_files/generated/addons/*
+!tests/test_files/generated/addons/.gitkeep
 tests/test_files/*.pyi
 
 _codeql_detected_source_root
