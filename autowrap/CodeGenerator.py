@@ -678,7 +678,7 @@ class CodeGenerator(object):
                     """
                             |
                             |    def __hash__(self):
-                            |      # Uses C++ std::hash<$cpp_name> specialization
+                            |      # Uses C++ std::hash<$cy_type> specialization
                             |      cdef cpp_hash[$cy_type] hasher
                             |      return hasher(deref(self.inst.get()))
                             |
