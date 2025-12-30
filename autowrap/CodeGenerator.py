@@ -2134,11 +2134,9 @@ class CodeGenerator(object):
 
         self.top_level_code.append(code)
 
-        # NOTE: ArrayWrapper inlining is disabled because projects like OpenMS
-        # provide their own ArrayWrapper implementations in addon files.
         # If numpy is enabled, inline the ArrayWrapper/ArrayView classes
-        # if self.include_numpy:
-        #     self.inline_array_wrappers()
+        if self.include_numpy:
+            self.inline_array_wrappers()
 
         return code
     
