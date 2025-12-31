@@ -53,11 +53,10 @@ jobs:
           python -m build
       
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
           password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
-          packages_dir: ${{ github.workspace }}/dist
+          packages-dir: ${{ github.workspace }}/dist
         
       - name: Create github release
         uses: softprops/action-gh-release@v2
@@ -95,7 +94,7 @@ jobs:
           TUPLE_VER=$(echo $NEXT_VER | sed 's/\./, /g')
           sed -i -e "s/^__version_tuple__ = (.*)/__version_tuple__ = ($TUPLE_VER)/g" autowrap/version.py
           
-      - uses: stefanzweifel/git-auto-commit-action@v4.15.2
+      - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: New release cycle
           file_pattern: CHANGELOG.md HISTORY.md autowrap/version.py
