@@ -42,9 +42,10 @@ def main():
     print("=" * 70)
     
     # Generate the autowrapped code
+    # Using demo_inheritance which has multiple inherited methods to better demonstrate grouping
     pxd_files = [
-        str(project_root / "tests" / "test_files" / "full_lib" / "A.pxd"),
-        str(project_root / "tests" / "test_files" / "full_lib" / "B.pxd"),
+        str(project_root / "tests" / "test_files" / "demo_inheritance" / "A.pxd"),
+        str(project_root / "tests" / "test_files" / "demo_inheritance" / "B.pxd"),
     ]
     
     run_command([
@@ -57,7 +58,8 @@ def main():
     print("=" * 70)
     
     # Create setup.py
-    setup_py_content = '''from setuptools import setup, Extension
+    include_path = str(project_root / "tests" / "test_files" / "demo_inheritance")
+    setup_py_content = f'''from setuptools import setup, Extension
 from Cython.Build import cythonize
 import os
 import pkg_resources
@@ -76,7 +78,7 @@ setup(
     ext_modules=cythonize([ext], language_level="3"),
     zip_safe=False,
 )
-'''.format(include_path=str(project_root / "tests" / "test_files" / "full_lib"))
+'''
     
     with open("setup.py", "w") as f:
         f.write(setup_py_content)
