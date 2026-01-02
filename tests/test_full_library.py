@@ -283,7 +283,8 @@ def test_full_lib(tmpdir):
     # Check doc string
     assert "Inherits from" in moduleB.Bklass.__doc__
     assert "some doc!" in moduleB.Bklass.__doc__
-    assert len(moduleB.Bklass.__doc__) == 93, len(moduleB.Bklass.__doc__)
+    # Length changed due to Sphinx RST syntax (:py:class:`A_second` instead of A_second)
+    assert len(moduleB.Bklass.__doc__) == 101, len(moduleB.Bklass.__doc__)
 
     Bsecond = moduleB.B_second(8)
     Dsecond = moduleCD.D_second(11)
