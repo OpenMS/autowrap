@@ -800,7 +800,7 @@ class CodeGenerator(object):
         inherited_method_bases = getattr(r_class.cpp_decl, 'inherited_method_bases', {})
         class_methods = {}
         inherited_methods = {}
-        
+
         for name, methods in non_iter_methods.items():
             if name == r_class.name:
                 # Constructor always goes first
