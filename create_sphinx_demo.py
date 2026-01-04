@@ -135,6 +135,9 @@ setup(
                         new_lines.append("import sys")
                         new_lines.append("import os")
                         new_lines.append("sys.path.insert(0, os.path.abspath('.'))")
+                        new_lines.append("")
+                        new_lines.append("# Order members by source to preserve class-defined vs inherited grouping")
+                        new_lines.append("autodoc_member_order = 'bysource'")
                         break
         
         with open(conf_py_path, "w") as f:
@@ -162,6 +165,9 @@ html_theme = 'default'
 
 # Add current directory to path for autodoc
 sys.path.insert(0, os.path.abspath('.'))
+
+# Order members by source to preserve class-defined vs inherited grouping
+autodoc_member_order = 'bysource'
 '''
         with open(conf_py_path, "w") as f:
             f.write(conf_content)
