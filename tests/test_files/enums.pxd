@@ -1,4 +1,5 @@
 # cython: language_level=3
+from libcpp.string cimport string as libcpp_string
 #
 # =============================================================================
 # Example: Wrapping C++ Enums in Different Namespaces
@@ -44,6 +45,9 @@ cdef extern from "enums.hpp":
      cdef cppclass Foo:
         # Method accepts Foo_MyEnum (which maps to Foo::MyEnum in C++)
         int enumToInt(Foo_MyEnum e)
+        # Overloaded methods for testing enum-based overload resolution
+        libcpp_string process(Foo_MyEnum e)
+        libcpp_string process(Foo_MyEnum2 e)
 
 cdef extern from "enums.hpp":
      cdef cppclass Foo2:
