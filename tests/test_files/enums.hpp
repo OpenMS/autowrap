@@ -15,6 +15,8 @@
  * =============================================================================
  */
 
+#include <string>
+
 // Class with nested scoped enums
 class Foo
 {
@@ -43,6 +45,11 @@ public:
        }
        return 0; // unreachable, but silences compiler warning
     };
+
+    // Overloaded methods accepting different enum types - tests overload resolution
+    // Python should correctly dispatch based on the enum type passed
+    std::string process(MyEnum e) { return "MyEnum"; }
+    std::string process(MyEnum2 e) { return "MyEnum2"; }
 };
 
 // Separate namespace with an enum of the same name as Foo::MyEnum

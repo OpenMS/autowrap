@@ -110,6 +110,18 @@ def test_enums():
     with pytest.raises(AssertionError):
         foo.enumToInt(myenum2_a)
 
+    # Test 5: Overload resolution works correctly for different enum types
+    # The process() method is overloaded: process(MyEnum) and process(MyEnum2)
+    # Python should dispatch to the correct overload based on enum type
+    assert foo.process(mod.Foo.MyEnum.A) == b"MyEnum"
+    assert foo.process(mod.Foo.MyEnum.B) == b"MyEnum"
+    assert foo.process(mod.Foo.MyEnum2.A) == b"MyEnum2"
+    assert foo.process(mod.Foo.MyEnum2.C) == b"MyEnum2"
+
+    # Test 6: Overloaded method rejects wrong enum type from different namespace
+    with pytest.raises(Exception):
+        foo.process(mod.Foo2.MyEnum.A)
+
 
 def test_number_conv():
     target = os.path.join(test_files, "generated", "number_conv.pyx")
