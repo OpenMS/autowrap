@@ -111,7 +111,8 @@ def test_libcpp():
     assert len(libcpp.LibCppTest.__doc__) == 214
     assert len(libcpp.LibCppTest.twist.__doc__) == 111
     assert len(libcpp.LibCppTest.gett.__doc__) == 72
-    assert len(libcpp.ABS_Impl1.__doc__) == 90
+    # Length changed due to Sphinx RST syntax (:py:class:`AbstractBaseClass` instead of AbstractBaseClass)
+    assert len(libcpp.ABS_Impl1.__doc__) == 98
 
     sub_libcpp_copy_constructors(libcpp)
 
