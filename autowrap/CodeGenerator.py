@@ -2046,7 +2046,8 @@ class CodeGenerator(object):
         Python-level imports for these enum classes.
 
         Note: This is separate from create_foreign_cimports() which handles Cython-level
-        cimports. The _PyEnumName classes are pure Python and need regular imports.
+        cimports. Scoped enum classes are pure Python IntEnum subclasses and need
+        regular imports. Unscoped enums are cdef classes and use cimport instead.
         """
         code = Code()
         L.info("Create foreign enum imports for module %s" % self.target_path)
@@ -2058,13 +2059,17 @@ class CodeGenerator(object):
             if os.path.basename(self.target_path).split(".pyx")[0] != module:
                 for resolved in self.all_decl[module]["decls"]:
                     if resolved.__class__ in (ResolvedEnum,):
-                        if not resolved.wrap_ignore:
-                            # Generate Python import for the _Py prefixed enum class
-                            # This is needed for isinstance() checks in type assertions
-                            py_name = "_Py" + resolved.name
+                        # Only import scoped enums (Python IntEnum classes)
+                        # Unscoped enums are cdef classes and use cimport
+                        if resolved.scoped and not resolved.wrap_ignore:
+                            # Determine the correct Python name based on wrap-attach
+                            if resolved.cpp_decl.annotations.get("wrap-attach"):
+                                py_name = "_Py" + resolved.name
+                            else:
+                                py_name = resolved.name
                             code.add("from $mname import $py_name", locals())
 
-        self.top_level_code.append(code)
+        self.top_level_pyx_code.append(code)
 
     def create_cimports(self):
         self.create_std_cimports()

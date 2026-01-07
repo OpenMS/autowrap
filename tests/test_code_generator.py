@@ -640,3 +640,268 @@ def test_enum_class_forward_declaration(tmpdir):
 
     finally:
         os.chdir(curdir)
+
+
+def test_create_foreign_enum_imports():
+    """
+    Test that create_foreign_enum_imports() generates correct Python imports for
+    scoped enums used across multiple modules.
+
+    This test verifies:
+    1. Scoped enums WITH wrap-attach get '_Py' prefix (e.g., '_PyStatus')
+    2. Scoped enums WITHOUT wrap-attach keep original name (e.g., 'Status')
+    3. Unscoped enums are NOT imported (they use cimport via create_foreign_cimports)
+    4. wrap-ignored enums are skipped
+    5. Imports are added to top_level_pyx_code (for .pyx), not top_level_code (for .pxd)
+
+    Background:
+    -----------
+    When autowrap splits classes across multiple output modules for parallel
+    compilation, scoped enum classes (e.g., _PyPolarity, _PySpectrumType) may be
+    defined in one module but used in isinstance() type assertions in another.
+
+    Scoped enums are implemented as Python IntEnum subclasses and need regular
+    Python imports. Unscoped enums are cdef classes and use Cython cimport.
+    """
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+    from autowrap.DeclResolver import ResolvedEnum
+    from autowrap.PXDParser import EnumDecl
+
+    # Create a temporary directory for generated files
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Create mock EnumDecl objects for testing
+        def make_enum_decl(name, scoped, annotations=None):
+            """Helper to create mock EnumDecl objects."""
+            if annotations is None:
+                annotations = {}
+            decl = EnumDecl(
+                name=name,
+                scoped=scoped,
+                items=[("A", 0), ("B", 1)],
+                annotations=annotations,
+                pxd_path="/fake/path.pxd"
+            )
+            return decl
+
+        # Create mock ResolvedEnum objects
+        def make_resolved_enum(name, scoped, wrap_ignore=False, wrap_attach=None):
+            """Helper to create mock ResolvedEnum objects."""
+            annotations = {"wrap-ignore": wrap_ignore}
+            if wrap_attach:
+                annotations["wrap-attach"] = wrap_attach
+            decl = make_enum_decl(name, scoped, annotations)
+            resolved = ResolvedEnum(decl)
+            resolved.pxd_import_path = "module1"
+            return resolved
+
+        # Test enums in module1 (source module)
+        scoped_with_attach = make_resolved_enum("Status", scoped=True, wrap_attach="SomeClass")
+        scoped_no_attach = make_resolved_enum("Priority", scoped=True, wrap_attach=None)
+        unscoped_enum = make_resolved_enum("OldEnum", scoped=False)
+        ignored_enum = make_resolved_enum("IgnoredEnum", scoped=True, wrap_ignore=True)
+
+        module1_decls = [scoped_with_attach, scoped_no_attach, unscoped_enum, ignored_enum]
+
+        # Set up multi-module scenario
+        # module1 contains the enums, module2 needs to import them
+        master_dict = {
+            "module1": {"decls": module1_decls, "addons": [], "files": []},
+            "module2": {"decls": [], "addons": [], "files": []},
+        }
+
+        # Create CodeGenerator for module2
+        target = os.path.join(test_dir, "module2.pyx")
+        cg = CodeGenerator(
+            [],  # module2 has no decls of its own
+            {},  # empty instance_map
+            pyx_target_path=target,
+            all_decl=master_dict,
+        )
+
+        # Call the method we're testing
+        cg.create_foreign_enum_imports()
+
+        # Get the generated code from top_level_pyx_code (NOT top_level_code)
+        pyx_generated_code = ""
+        for code_block in cg.top_level_pyx_code:
+            pyx_generated_code += code_block.render()
+
+        pxd_generated_code = ""
+        for code_block in cg.top_level_code:
+            pxd_generated_code += code_block.render()
+
+        # Test 1: Scoped enum WITH wrap-attach should use _Py prefix
+        assert "from module1 import _PyStatus" in pyx_generated_code, (
+            f"Expected 'from module1 import _PyStatus' for scoped enum with wrap-attach. "
+            f"Generated pyx code:\n{pyx_generated_code}"
+        )
+
+        # Test 2: Scoped enum WITHOUT wrap-attach should use original name
+        assert "from module1 import Priority" in pyx_generated_code, (
+            f"Expected 'from module1 import Priority' for scoped enum without wrap-attach. "
+            f"Generated pyx code:\n{pyx_generated_code}"
+        )
+
+        # Test 3: Unscoped enum should NOT be imported (uses cimport instead)
+        assert "OldEnum" not in pyx_generated_code, (
+            f"Unscoped enum 'OldEnum' should not be in Python imports (uses cimport). "
+            f"Generated pyx code:\n{pyx_generated_code}"
+        )
+
+        # Test 4: wrap-ignored enum should NOT be imported
+        assert "IgnoredEnum" not in pyx_generated_code, (
+            f"wrap-ignored enum 'IgnoredEnum' should not be in imports. "
+            f"Generated pyx code:\n{pyx_generated_code}"
+        )
+
+        # Test 5: Imports should be in top_level_pyx_code, NOT top_level_code
+        # (top_level_code goes to .pxd, top_level_pyx_code goes to .pyx)
+        assert "_PyStatus" not in pxd_generated_code, (
+            f"Enum Python imports should not be in top_level_code (pxd). "
+            f"Generated pxd code:\n{pxd_generated_code}"
+        )
+        assert "Priority" not in pxd_generated_code or "cimport" in pxd_generated_code, (
+            f"Enum Python imports should not be in top_level_code (pxd). "
+            f"Generated pxd code:\n{pxd_generated_code}"
+        )
+
+        print("Test passed: create_foreign_enum_imports generates correct imports")
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_cross_module_scoped_enum_imports(tmpdir):
+    """
+    Integration test for cross-module scoped enum imports.
+
+    This test verifies that create_foreign_enum_imports() correctly generates
+    Python imports for scoped enums used across module boundaries:
+
+    1. Scoped enum WITH wrap-attach (Task.TaskStatus):
+       - Should generate: from .EnumProvider import _PyTaskStatus
+       - Used in isinstance() checks as _PyTaskStatus
+
+    2. Scoped enum WITHOUT wrap-attach (Priority):
+       - Should generate: from .EnumProvider import Priority
+       - Used in isinstance() checks as Priority
+
+    The test:
+    - Parses two modules: EnumProvider (defines enums) and EnumConsumer (uses enums)
+    - Generates Cython code for both modules
+    - Verifies EnumConsumer.pyx contains correct Python imports for both enum types
+    - Runs Cython compilation to ensure the generated code is valid
+    """
+    import shutil
+    import re
+
+    test_dir = tmpdir.strpath
+    enum_test_files = os.path.join(
+        os.path.dirname(__file__), "test_files", "enum_cross_module"
+    )
+
+    curdir = os.getcwd()
+    os.chdir(test_dir)
+
+    # Copy test files to temp directory
+    for f in ["EnumProvider.hpp", "EnumProvider.pxd", "EnumConsumer.hpp", "EnumConsumer.pxd"]:
+        src = os.path.join(enum_test_files, f)
+        dst = os.path.join(test_dir, f)
+        shutil.copy(src, dst)
+
+    try:
+        mnames = ["EnumProvider", "EnumConsumer"]
+
+        # Step 1: Parse all pxd files
+        pxd_files = ["EnumProvider.pxd", "EnumConsumer.pxd"]
+        full_pxd_files = [os.path.join(test_dir, f) for f in pxd_files]
+        decls, instance_map = autowrap.parse(full_pxd_files, test_dir, num_processes=1)
+
+        # Step 2: Map declarations to their source modules
+        pxd_decl_mapping = {}
+        for de in decls:
+            tmp = pxd_decl_mapping.get(de.cpp_decl.pxd_path, [])
+            tmp.append(de)
+            pxd_decl_mapping[de.cpp_decl.pxd_path] = tmp
+
+        masterDict = {}
+        masterDict[mnames[0]] = {
+            "decls": pxd_decl_mapping.get(full_pxd_files[0], []),
+            "addons": [],
+            "files": [full_pxd_files[0]],
+        }
+        masterDict[mnames[1]] = {
+            "decls": pxd_decl_mapping.get(full_pxd_files[1], []),
+            "addons": [],
+            "files": [full_pxd_files[1]],
+        }
+
+        # Step 3: Generate Cython code for each module
+        converters = []
+        generated_pyx_content = {}
+
+        for modname in mnames:
+            m_filename = "%s.pyx" % modname
+            cimports, manual_code = autowrap.Main.collect_manual_code(masterDict[modname]["addons"])
+            autowrap.Main.register_converters(converters)
+            autowrap_include_dirs = autowrap.generate_code(
+                masterDict[modname]["decls"],
+                instance_map,
+                target=m_filename,
+                debug=True,
+                manual_code=manual_code,
+                extra_cimports=cimports,
+                all_decl=masterDict,
+                add_relative=True,
+            )
+            masterDict[modname]["inc_dirs"] = autowrap_include_dirs
+
+            # Read generated pyx file
+            with open(m_filename, "r") as f:
+                generated_pyx_content[modname] = f.read()
+
+        # Step 4: Verify EnumConsumer.pyx has correct Python imports
+        consumer_pyx = generated_pyx_content.get("EnumConsumer", "")
+
+        # Test 1: Scoped enum WITH wrap-attach should be imported with _Py prefix
+        # Task_TaskStatus has wrap-attach:Task, so it becomes _PyTask_TaskStatus in Python
+        # (the _Py prefix is added to the full Cython enum name)
+        assert "from .EnumProvider import _PyTask_TaskStatus" in consumer_pyx, (
+            f"Expected 'from .EnumProvider import _PyTask_TaskStatus' for scoped enum with wrap-attach.\n"
+            f"EnumConsumer.pyx content:\n{consumer_pyx}"
+        )
+
+        # Test 2: Scoped enum WITHOUT wrap-attach should be imported with original name
+        assert "from .EnumProvider import Priority" in consumer_pyx, (
+            f"Expected 'from .EnumProvider import Priority' for scoped enum without wrap-attach.\n"
+            f"EnumConsumer.pyx content:\n{consumer_pyx}"
+        )
+
+        # Test 3: Verify isinstance checks use the correct enum class names
+        # For wrap-attach enum: isinstance(s, _PyTask_TaskStatus)
+        assert "isinstance(s, _PyTask_TaskStatus)" in consumer_pyx, (
+            f"Expected isinstance check with _PyTask_TaskStatus for wrap-attach enum.\n"
+            f"EnumConsumer.pyx content:\n{consumer_pyx}"
+        )
+
+        # For non-wrap-attach enum: isinstance(p, Priority)
+        assert "isinstance(p, Priority)" in consumer_pyx, (
+            f"Expected isinstance check with Priority for non-wrap-attach enum.\n"
+            f"EnumConsumer.pyx content:\n{consumer_pyx}"
+        )
+
+        # Step 5: Run Cython compilation to verify the generated code is valid
+        for modname in mnames:
+            m_filename = "%s.pyx" % modname
+            autowrap_include_dirs = masterDict[modname]["inc_dirs"]
+            autowrap.Main.run_cython(
+                inc_dirs=autowrap_include_dirs, extra_opts=None, out=m_filename
+            )
+
+        print("Test passed: Cross-module scoped enum imports work correctly")
+
+    finally:
+        os.chdir(curdir)
