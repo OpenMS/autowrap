@@ -431,8 +431,15 @@ class EnumConverter(TypeConverterBase):
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
     ) -> Optional[str]:
-        # TODO check what to do for non-int scoped enums
-        return "%s = <int>%s" % (output_py_var, input_cpp_var)
+        if not self.enum.scoped:
+            return "%s = <int>%s" % (output_py_var, input_cpp_var)
+        else:
+            # For scoped enums, wrap the int value in the Python enum class
+            if self.enum.cpp_decl.annotations.get("wrap-attach"):
+                name = "_Py" + self.enum.name
+            else:
+                name = self.enum.name
+            return "%s = %s(<int>%s)" % (output_py_var, name, input_cpp_var)
 
 
 class CharConverter(TypeConverterBase):
