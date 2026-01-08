@@ -570,14 +570,25 @@ class CodeGenerator(object):
         docstring += special_class_doc % locals()
         inherit_annot = r_class.cpp_decl.annotations.get("wrap-inherits", [])
         if inherit_annot:
+            # Normalize inherit_annot to a list
+            if isinstance(inherit_annot, str):
+                inherit_list = [inherit_annot]
+            elif isinstance(inherit_annot, list):
+                inherit_list = inherit_annot
+            else:
+                raise ValueError(
+                    f"wrap-inherits annotation must be a string or list, got {type(inherit_annot).__name__}"
+                )
             # Generate Sphinx RST links for inherited classes
-            inherit_list = inherit_annot if isinstance(inherit_annot, list) else [inherit_annot]
             inherit_links = []
             for base_class in inherit_list:
+                if not isinstance(base_class, str) or not base_class:
+                    continue  # Skip empty or invalid entries
                 # Extract class name (handle template syntax like "Base[A]")
                 base_name = base_class.split('[')[0].strip()
                 inherit_links.append(":py:class:`%s`" % base_name)
-            docstring += "      -- Inherits from %s\n" % ", ".join(inherit_links)
+            if inherit_links:
+                docstring += "      -- Inherits from %s\n" % ", ".join(inherit_links)
 
         extra_doc = r_class.cpp_decl.annotations.get("wrap-doc", None)
         if extra_doc is not None:
@@ -1850,30 +1861,24 @@ class CodeGenerator(object):
         is_integral = self._is_integral_type(ctype_in)
         size_guard = mdcl.cpp_decl.annotations.get("wrap-upper-limit")
 
-        if is_integral:
-            meth_code.add(
-                """
+        # Generate method signature (same for all key types)
+        meth_code.add(
+            """
                      |def __setitem__(self, $in_t_cy key, $res_t_base value):
                      |    \"\"\"$docstring\"\"\"
                      """,
-                locals(),
-            )
-            if size_guard:
-                meth_code.add(
-                    """
+            locals(),
+        )
+
+        # Apply bounds checking only for integral types with size guard
+        if is_integral and size_guard:
+            meth_code.add(
+                """
                      |    cdef int _idx = $call_arg
                      |    if _idx < 0:
                      |        raise IndexError("invalid index %d" % _idx)
                      |    if _idx >= self.inst.get().$size_guard:
                      |        raise IndexError("invalid index %d" % _idx)
-                     """,
-                    locals(),
-                )
-        else:
-            meth_code.add(
-                """
-                     |def __setitem__(self, $in_t_cy key, $res_t_base value):
-                     |    \"\"\"$docstring\"\"\"
                      """,
                 locals(),
             )
