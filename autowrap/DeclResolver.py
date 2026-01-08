@@ -451,7 +451,7 @@ def _add_inherited_methods(cdcl, super_cld, used_parameters):
     )  # remove constructors
     for method in transformed_methods:
         logger.info("attach to %s: %s" % (cdcl.name, method))
-    cdcl.attach_base_methods(transformed_methods)
+    cdcl.attach_base_methods(transformed_methods, base_class_name=super_cld.name)
     # logger.info("")
 
 

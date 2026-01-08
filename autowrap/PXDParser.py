@@ -411,6 +411,8 @@ class CppClassDecl(BaseDecl):
         self.methods = methods
         self.attributes = attributes
         self.template_parameters = template_parameters
+        # Track which methods are inherited and from which base class
+        self.inherited_method_bases = {}  # method_name -> base_class_name
 
     @classmethod
     def parseTree(cls, node: Cython.Compiler.Nodes.CppClassNode, lines: Collection[str], pxd_path):
@@ -492,11 +494,15 @@ class CppClassDecl(BaseDecl):
             return False
         return any(decl.matches(other_decl) for decl in with_same_name)
 
-    def attach_base_methods(self, dd):
+    def attach_base_methods(self, dd, base_class_name=None):
         for name, decls in dd.items():
             for decl in decls:
                 if not self.has_method(decl):
                     self.methods.setdefault(decl.name, []).append(decl)
+                    if base_class_name is not None:
+                        # Track that this method is inherited (use first base if multiple)
+                        if decl.name not in self.inherited_method_bases:
+                            self.inherited_method_bases[decl.name] = base_class_name
 
 
 class CppAttributeDecl(BaseDecl):
