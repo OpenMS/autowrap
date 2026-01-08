@@ -2038,38 +2038,43 @@ class CodeGenerator(object):
         self.top_level_code.append(code)
 
     def create_foreign_enum_imports(self):
-        """Generate Python imports for enum classes used in type assertions across modules.
+        """Generate Python imports for scoped enum classes from other modules.
 
-        When autowrap splits classes across multiple output modules, enum classes
-        (e.g., _PyPolarity, _PySpectrumType) may be defined in one module but used
-        in type assertions in another module. This method generates the necessary
-        Python-level imports for these enum classes.
+        NOTE: This method is intentionally a no-op.
 
-        Note: This is separate from create_foreign_cimports() which handles Cython-level
-        cimports. Scoped enum classes are pure Python IntEnum subclasses and need
-        regular imports. Unscoped enums are cdef classes and use cimport instead.
+        Background: In multi-module builds (e.g., pyOpenMS splits wrappers across
+        _pyopenms_1.pyx through _pyopenms_8.pyx), scoped enums (enum class) are
+        wrapped as Python IntEnum classes (e.g., _PySpectrumType). When module A
+        uses an enum defined in module B in a type assertion like:
+
+            assert isinstance(in_0, _PySpectrumType)
+
+        the Python class _PySpectrumType must be available.
+
+        Problem: Adding module-level imports like:
+
+            from ._pyopenms_3 import _PySpectrumType
+
+        causes circular import errors. The modules form an import chain during
+        initialization (1 -> 8 -> 7 -> ... -> 2), and when module 2 tries to
+        import from module 3, module 3 hasn't finished initializing yet.
+
+        Solution: Instead of module-level imports, we use globals().get() for
+        late binding in type assertions:
+
+            assert isinstance(in_0, globals().get('_PySpectrumType', int))
+
+        This approach:
+        - Compiles successfully (globals().get() is always valid Python)
+        - Resolves the enum class at runtime after all modules are loaded
+        - Falls back to 'int' which works for IntEnum (inherits from int)
+
+        See EnumConverter.type_check_expression() in ConversionProvider.py for
+        the implementation.
         """
-        code = Code()
-        L.info("Create foreign enum imports for module %s" % self.target_path)
-        for module in self.all_decl:
-            mname = module
-            if sys.version_info >= (3, 0) and self.add_relative:
-                mname = "." + module
-
-            if os.path.basename(self.target_path).split(".pyx")[0] != module:
-                for resolved in self.all_decl[module]["decls"]:
-                    if resolved.__class__ in (ResolvedEnum,):
-                        # Only import scoped enums (Python IntEnum classes)
-                        # Unscoped enums are cdef classes and use cimport
-                        if resolved.scoped and not resolved.wrap_ignore:
-                            # Determine the correct Python name based on wrap-attach
-                            if resolved.cpp_decl.annotations.get("wrap-attach"):
-                                py_name = "_Py" + resolved.name
-                            else:
-                                py_name = resolved.name
-                            code.add("from $mname import $py_name", locals())
-
-        self.top_level_pyx_code.append(code)
+        # No-op: cross-module imports at module load time cause circular imports
+        # The enum classes are resolved at runtime via globals().get()
+        pass
 
     def create_cimports(self):
         self.create_std_cimports()

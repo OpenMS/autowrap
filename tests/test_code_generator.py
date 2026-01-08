@@ -644,15 +644,7 @@ def test_enum_class_forward_declaration(tmpdir):
 
 def test_create_foreign_enum_imports():
     """
-    Test that create_foreign_enum_imports() generates correct Python imports for
-    scoped enums used across multiple modules.
-
-    This test verifies:
-    1. Scoped enums WITH wrap-attach get '_Py' prefix (e.g., '_PyStatus')
-    2. Scoped enums WITHOUT wrap-attach keep original name (e.g., 'Status')
-    3. Unscoped enums are NOT imported (they use cimport via create_foreign_cimports)
-    4. wrap-ignored enums are skipped
-    5. Imports are added to top_level_pyx_code (for .pyx), not top_level_code (for .pxd)
+    Test that create_foreign_enum_imports() is a no-op to avoid circular imports.
 
     Background:
     -----------
@@ -660,8 +652,15 @@ def test_create_foreign_enum_imports():
     compilation, scoped enum classes (e.g., _PyPolarity, _PySpectrumType) may be
     defined in one module but used in isinstance() type assertions in another.
 
-    Scoped enums are implemented as Python IntEnum subclasses and need regular
-    Python imports. Unscoped enums are cdef classes and use Cython cimport.
+    Problem: Adding module-level imports like:
+        from ._pyopenms_3 import _PySpectrumType
+    causes circular import errors because modules import each other during
+    initialization, and module 2 may try to import from module 3 before
+    module 3 has finished initializing.
+
+    Solution: Instead of module-level imports, we use globals().get() for
+    late binding in type assertions (see EnumConverter.type_check_expression).
+    This method is now a no-op.
     """
     import tempfile
     import shutil
@@ -724,51 +723,27 @@ def test_create_foreign_enum_imports():
         # Call the method we're testing
         cg.create_foreign_enum_imports()
 
-        # Get the generated code from top_level_pyx_code (NOT top_level_code)
+        # Get the generated code from top_level_pyx_code
         pyx_generated_code = ""
         for code_block in cg.top_level_pyx_code:
             pyx_generated_code += code_block.render()
 
-        pxd_generated_code = ""
-        for code_block in cg.top_level_code:
-            pxd_generated_code += code_block.render()
-
-        # Test 1: Scoped enum WITH wrap-attach should use _Py prefix
-        assert "from module1 import _PyStatus" in pyx_generated_code, (
-            f"Expected 'from module1 import _PyStatus' for scoped enum with wrap-attach. "
+        # Test: Method should be a no-op - no imports should be generated
+        # This avoids circular import issues in multi-module builds
+        assert "from module1 import" not in pyx_generated_code, (
+            f"create_foreign_enum_imports should be a no-op (to avoid circular imports). "
+            f"Generated pyx code:\n{pyx_generated_code}"
+        )
+        assert "_PyStatus" not in pyx_generated_code, (
+            f"No enum imports should be generated (use globals().get() instead). "
+            f"Generated pyx code:\n{pyx_generated_code}"
+        )
+        assert "Priority" not in pyx_generated_code, (
+            f"No enum imports should be generated (use globals().get() instead). "
             f"Generated pyx code:\n{pyx_generated_code}"
         )
 
-        # Test 2: Scoped enum WITHOUT wrap-attach should use original name
-        assert "from module1 import Priority" in pyx_generated_code, (
-            f"Expected 'from module1 import Priority' for scoped enum without wrap-attach. "
-            f"Generated pyx code:\n{pyx_generated_code}"
-        )
-
-        # Test 3: Unscoped enum should NOT be imported (uses cimport instead)
-        assert "OldEnum" not in pyx_generated_code, (
-            f"Unscoped enum 'OldEnum' should not be in Python imports (uses cimport). "
-            f"Generated pyx code:\n{pyx_generated_code}"
-        )
-
-        # Test 4: wrap-ignored enum should NOT be imported
-        assert "IgnoredEnum" not in pyx_generated_code, (
-            f"wrap-ignored enum 'IgnoredEnum' should not be in imports. "
-            f"Generated pyx code:\n{pyx_generated_code}"
-        )
-
-        # Test 5: Imports should be in top_level_pyx_code, NOT top_level_code
-        # (top_level_code goes to .pxd, top_level_pyx_code goes to .pyx)
-        assert "_PyStatus" not in pxd_generated_code, (
-            f"Enum Python imports should not be in top_level_code (pxd). "
-            f"Generated pxd code:\n{pxd_generated_code}"
-        )
-        assert "Priority" not in pxd_generated_code or "cimport" in pxd_generated_code, (
-            f"Enum Python imports should not be in top_level_code (pxd). "
-            f"Generated pxd code:\n{pxd_generated_code}"
-        )
-
-        print("Test passed: create_foreign_enum_imports generates correct imports")
+        print("Test passed: create_foreign_enum_imports is correctly a no-op")
 
     finally:
         shutil.rmtree(test_dir, ignore_errors=True)
@@ -776,23 +751,21 @@ def test_create_foreign_enum_imports():
 
 def test_cross_module_scoped_enum_imports(tmpdir):
     """
-    Integration test for cross-module scoped enum imports.
+    Integration test for cross-module scoped enum handling using globals().get().
 
-    This test verifies that create_foreign_enum_imports() correctly generates
-    Python imports for scoped enums used across module boundaries:
+    This test verifies that scoped enums work correctly across module boundaries
+    using the globals().get() late-binding pattern instead of module-level imports.
 
     1. Scoped enum WITH wrap-attach (Task.TaskStatus):
-       - Should generate: from .EnumProvider import _PyTask_TaskStatus
-       - Used in isinstance() checks as _PyTask_TaskStatus
+       - isinstance() checks use globals().get('_PyTask_TaskStatus', int)
 
     2. Scoped enum WITHOUT wrap-attach (Priority):
-       - Should generate: from .EnumProvider import Priority
-       - Used in isinstance() checks as Priority
+       - isinstance() checks use globals().get('Priority', int)
 
     The test:
     - Parses two modules: EnumProvider (defines enums) and EnumConsumer (uses enums)
     - Generates Cython code for both modules
-    - Verifies EnumConsumer.pyx contains correct Python imports for both enum types
+    - Verifies EnumConsumer.pyx uses globals().get() for isinstance checks (no imports)
     - Compiles and imports the modules at runtime
     - Runs actual Python tests using enums across module boundaries
     """
@@ -875,28 +848,26 @@ def test_cross_module_scoped_enum_imports(tmpdir):
             with open(m_filename, "r") as f:
                 generated_pyx_content[modname] = f.read()
 
-        # Step 4: Verify EnumConsumer.pyx has correct Python imports
+        # Step 4: Verify EnumConsumer.pyx uses globals().get() pattern (no module-level imports)
         consumer_pyx = generated_pyx_content.get("EnumConsumer", "")
 
-        # Test 1: Scoped enum WITH wrap-attach should be imported with _Py prefix
-        assert "from .EnumProvider import _PyTask_TaskStatus" in consumer_pyx, (
-            f"Expected 'from .EnumProvider import _PyTask_TaskStatus' for scoped enum with wrap-attach.\n"
+        # Test 1: No module-level imports should be generated (avoids circular imports)
+        assert "from .EnumProvider import _PyTask_TaskStatus" not in consumer_pyx, (
+            f"Should NOT have module-level import for _PyTask_TaskStatus (use globals().get() instead).\n"
+            f"EnumConsumer.pyx content:\n{consumer_pyx}"
+        )
+        assert "from .EnumProvider import Priority" not in consumer_pyx, (
+            f"Should NOT have module-level import for Priority (use globals().get() instead).\n"
             f"EnumConsumer.pyx content:\n{consumer_pyx}"
         )
 
-        # Test 2: Scoped enum WITHOUT wrap-attach should be imported with original name
-        assert "from .EnumProvider import Priority" in consumer_pyx, (
-            f"Expected 'from .EnumProvider import Priority' for scoped enum without wrap-attach.\n"
+        # Test 2: Verify isinstance checks use globals().get() for late binding
+        assert "globals().get('_PyTask_TaskStatus'" in consumer_pyx, (
+            f"Expected isinstance check with globals().get('_PyTask_TaskStatus', int) for wrap-attach enum.\n"
             f"EnumConsumer.pyx content:\n{consumer_pyx}"
         )
-
-        # Test 3: Verify isinstance checks use the correct enum class names
-        assert "isinstance(s, _PyTask_TaskStatus)" in consumer_pyx, (
-            f"Expected isinstance check with _PyTask_TaskStatus for wrap-attach enum.\n"
-            f"EnumConsumer.pyx content:\n{consumer_pyx}"
-        )
-        assert "isinstance(p, Priority)" in consumer_pyx, (
-            f"Expected isinstance check with Priority for non-wrap-attach enum.\n"
+        assert "globals().get('Priority'" in consumer_pyx, (
+            f"Expected isinstance check with globals().get('Priority', int) for non-wrap-attach enum.\n"
             f"EnumConsumer.pyx content:\n{consumer_pyx}"
         )
 
