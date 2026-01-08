@@ -278,6 +278,7 @@ class CodeGenerator(object):
         self.setup_cimport_paths()
         self.create_cimports()
         self.create_foreign_cimports()
+        self.create_foreign_enum_imports()
         self.create_includes()
 
         def create_for(
@@ -2073,6 +2074,45 @@ class CodeGenerator(object):
                 L.info("Skip imports from self (own module %s)" % module)
 
         self.top_level_code.append(code)
+
+    def create_foreign_enum_imports(self):
+        """Generate Python imports for scoped enum classes from other modules.
+
+        NOTE: This method is intentionally a no-op.
+
+        Background: In multi-module builds (e.g., pyOpenMS splits wrappers across
+        _pyopenms_1.pyx through _pyopenms_8.pyx), scoped enums (enum class) are
+        wrapped as Python IntEnum classes (e.g., _PySpectrumType). When module A
+        uses an enum defined in module B in a type assertion like:
+
+            assert isinstance(in_0, _PySpectrumType)
+
+        the Python class _PySpectrumType must be available.
+
+        Problem: Adding module-level imports like:
+
+            from ._pyopenms_3 import _PySpectrumType
+
+        causes circular import errors. The modules form an import chain during
+        initialization (1 -> 8 -> 7 -> ... -> 2), and when module 2 tries to
+        import from module 3, module 3 hasn't finished initializing yet.
+
+        Solution: Instead of module-level imports, we use globals().get() for
+        late binding in type assertions:
+
+            assert isinstance(in_0, globals().get('_PySpectrumType', int))
+
+        This approach:
+        - Compiles successfully (globals().get() is always valid Python)
+        - Resolves the enum class at runtime after all modules are loaded
+        - Falls back to 'int' which works for IntEnum (inherits from int)
+
+        See EnumConverter.type_check_expression() in ConversionProvider.py for
+        the implementation.
+        """
+        # No-op: cross-module imports at module load time cause circular imports
+        # The enum classes are resolved at runtime via globals().get()
+        pass
 
     def create_cimports(self):
         self.create_std_cimports()
