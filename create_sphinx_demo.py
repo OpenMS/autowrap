@@ -4,7 +4,7 @@ import os
 import sys
 import shutil
 import subprocess
-import tempfile
+import webbrowser
 from pathlib import Path
 
 def run_command(cmd, cwd=None, check=True):
@@ -50,8 +50,9 @@ def main():
     
     run_command([
         "autowrap",
-        "--out", "moduleB.pyx"
-    ] + pxd_files)
+        "--out", "moduleB.pyx",
+        *pxd_files
+    ])
     
     print("\n" + "=" * 70)
     print("Step 2: Creating setup.py to build the module")
@@ -92,18 +93,7 @@ setup(
     print("\n" + "=" * 70)
     print("Step 4: Setting up Sphinx")
     print("=" * 70)
-    
-    
-    sphinx_config = [
-        "y", 
-        ".", 
-        "_build",  
-        "y",  
-        "n",  
-    ]
-    
 
-    quickstart_input = "\n".join(sphinx_config) + "\n"
     run_command(
         ["sphinx-quickstart", "-q", "--sep", "-p", "Autowrap Demo", 
          "-a", "Test", "-v", "1.0", "--ext-autodoc", "--ext-viewcode", "."],
@@ -119,29 +109,24 @@ setup(
     if conf_py_path.exists():
         with open(conf_py_path, "r") as f:
             conf_content = f.read()
-        
+
         # Add path configuration if not already present
         if "sys.path.insert" not in conf_content:
-            # Find the extensions line and add after it
-            lines = conf_content.split("\n")
-            new_lines = []
-            for i, line in enumerate(lines):
-                new_lines.append(line)
-                # Add after extensions or after imports
-                if "extensions = [" in line or (i > 0 and "import sys" in lines[i-1] and "import os" in line):
-                    if "sys.path.insert" not in conf_content:
-                        new_lines.append("")
-                        new_lines.append("# Add current directory to path for autodoc")
-                        new_lines.append("import sys")
-                        new_lines.append("import os")
-                        new_lines.append("sys.path.insert(0, os.path.abspath('.'))")
-                        new_lines.append("")
-                        new_lines.append("# Order members by source to preserve class-defined vs inherited grouping")
-                        new_lines.append("autodoc_member_order = 'bysource'")
-                        break
-        
+            # Prepend the path configuration at the top
+            path_setup = """import sys
+import os
+
+# Add current directory to path for autodoc
+sys.path.insert(0, os.path.abspath('.'))
+
+# Order members by source to preserve class-defined vs inherited grouping
+autodoc_member_order = 'bysource'
+
+"""
+            conf_content = path_setup + conf_content
+
         with open(conf_py_path, "w") as f:
-            f.write("\n".join(new_lines) if isinstance(new_lines, list) else conf_content)
+            f.write(conf_content)
     else:
         
         conf_content = '''# Configuration file for the Sphinx documentation builder.
@@ -231,19 +216,18 @@ This is the base class that ``Bklass`` inherits from.
     print("\n" + "=" * 70)
     print("SUCCESS! Documentation generated")
     print("=" * 70)
-    print(f"\nHTML documentation is available at:")
+    print("\nHTML documentation is available at:")
     print(f"  {html_path}")
-    print(f"\nTo view it, run:")
+    print("\nTo view it, run:")
     print(f"  open {html_path}  # macOS")
     print(f"  xdg-open {html_path}  # Linux")
     print(f"  start {html_path}  # Windows")
-    
+
     # Try to open automatically
     try:
-        import webbrowser
         webbrowser.open(f"file://{html_path}")
         print("\nOpened in default browser!")
-    except Exception as e:
+    except (OSError, webbrowser.Error) as e:
         print(f"\nCould not open browser automatically: {e}")
         print("Please open the file manually.")
     
