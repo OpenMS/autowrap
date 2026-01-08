@@ -278,6 +278,7 @@ class CodeGenerator(object):
         self.setup_cimport_paths()
         self.create_cimports()
         self.create_foreign_cimports()
+        self.create_foreign_enum_imports()
         self.create_includes()
 
         def create_for(
@@ -2035,6 +2036,40 @@ class CodeGenerator(object):
                 L.info("Skip imports from self (own module %s)" % module)
 
         self.top_level_code.append(code)
+
+    def create_foreign_enum_imports(self):
+        """Generate Python imports for enum classes used in type assertions across modules.
+
+        When autowrap splits classes across multiple output modules, enum classes
+        (e.g., _PyPolarity, _PySpectrumType) may be defined in one module but used
+        in type assertions in another module. This method generates the necessary
+        Python-level imports for these enum classes.
+
+        Note: This is separate from create_foreign_cimports() which handles Cython-level
+        cimports. Scoped enum classes are pure Python IntEnum subclasses and need
+        regular imports. Unscoped enums are cdef classes and use cimport instead.
+        """
+        code = Code()
+        L.info("Create foreign enum imports for module %s" % self.target_path)
+        for module in self.all_decl:
+            mname = module
+            if sys.version_info >= (3, 0) and self.add_relative:
+                mname = "." + module
+
+            if os.path.basename(self.target_path).split(".pyx")[0] != module:
+                for resolved in self.all_decl[module]["decls"]:
+                    if resolved.__class__ in (ResolvedEnum,):
+                        # Only import scoped enums (Python IntEnum classes)
+                        # Unscoped enums are cdef classes and use cimport
+                        if resolved.scoped and not resolved.wrap_ignore:
+                            # Determine the correct Python name based on wrap-attach
+                            if resolved.cpp_decl.annotations.get("wrap-attach"):
+                                py_name = "_Py" + resolved.name
+                            else:
+                                py_name = resolved.name
+                            code.add("from $mname import $py_name", locals())
+
+        self.top_level_pyx_code.append(code)
 
     def create_cimports(self):
         self.create_std_cimports()
