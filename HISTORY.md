@@ -82,3 +82,6 @@ New Features:
   preventing conflicts with user-defined ArrayWrappers in `.pxd` files
 
 
+
+autowrap 0.26.1
+
