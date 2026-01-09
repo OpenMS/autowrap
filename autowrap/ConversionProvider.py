@@ -134,6 +134,17 @@ class TypeConverterBase(object):
     ) -> Optional[Union[Code, str]]:
         raise NotImplementedError()
 
+    def supports_delegation(self) -> bool:
+        """
+        Return True if this converter should be invoked when the type
+        is an element inside a container (e.g., std::vector).
+
+        By default, Cython handles conversion of standard types inside
+        containers automatically. When this returns True, container
+        converters will delegate to this converter instead.
+        """
+        return False
+
     @staticmethod
     def _code_for_instantiate_object_from_iter(cpp_type: CppType, it: str) -> str:
         """
@@ -1668,6 +1679,16 @@ class StdVectorConverter(TypeConverterBase):
         else:
             bottommost_code.content.extend(bottommost_code_callback.content)
 
+    def _has_delegating_converter(self, element_type: CppType) -> bool:
+        """Check if element type has a converter that supports delegation."""
+        if not hasattr(self, "cr"):
+            return False
+        try:
+            converter = self.cr.get(element_type)
+            return converter.supports_delegation()
+        except (NameError, KeyError):
+            return False
+
     def input_conversion(
         self,
         cpp_type: CppType,
@@ -1886,8 +1907,81 @@ class StdVectorConverter(TypeConverterBase):
 
             return code, "deref(%s)" % temp_var, cleanup_code
 
+        elif self._has_delegating_converter(tt):
+            # Case 5: Element type has a converter that supports delegation
+            # Use explicit loop with element converter instead of letting Cython handle it
+            item = "item%s" % arg_num
+            conv_item = "conv_item%s" % arg_num
+            element_converter = self.cr.get(tt)
+
+            # Get element input conversion
+            elem_code, elem_call_as, elem_cleanup = element_converter.input_conversion(
+                tt, item, arg_num
+            )
+
+            code = Code().add(
+                """
+                |cdef libcpp_vector[$inner] * $temp_var = new libcpp_vector[$inner]()
+                """,
+                locals(),
+            )
+
+            # Add element conversion code (may include variable declarations)
+            if hasattr(elem_code, "content") and elem_code.content:
+                # Extract any if-block from elem_code and wrap in loop
+                code.add(
+                    """
+                |for $item in $argument_var:
+                """,
+                    locals(),
+                )
+                code.add(elem_code)
+                code.add(
+                    """
+                |    $temp_var.push_back(<$inner>$item)
+                """,
+                    locals(),
+                )
+            else:
+                code.add(
+                    """
+                |for $item in $argument_var:
+                |    $temp_var.push_back($elem_call_as)
+                """,
+                    locals(),
+                )
+
+            cleanup_code = Code().add("")
+            if cpp_type.topmost_is_ref and not cpp_type.topmost_is_const:
+                it = mangle("it_" + argument_var)
+                out_converter = self.cr.get(tt)
+                elem_out = out_converter.output_conversion(tt, "deref(%s)" % it, conv_item)
+                if elem_out is None:
+                    elem_out_code = "%s = deref(%s)" % (conv_item, it)
+                elif hasattr(elem_out, "render"):
+                    elem_out_code = elem_out.render()
+                else:
+                    elem_out_code = str(elem_out)
+                cleanup_code = Code().add(
+                    """
+                    |replace = []
+                    |cdef libcpp_vector[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |    $elem_out_code
+                    |    replace.append($conv_item)
+                    |    inc($it)
+                    |$argument_var[:] = replace
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = Code().add("del %s" % temp_var)
+
+            return code, "deref(%s)" % temp_var, cleanup_code
+
         else:
-            # Case 5: We wrap a regular type
+            # Case 6: We wrap a regular type
             inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
             code = Code().add(
@@ -1977,6 +2071,35 @@ class StdVectorConverter(TypeConverterBase):
                 |   $item.inst = deref($it)
                 |   $output_py_var.append($item)
                 |   inc($it)
+                """,
+                locals(),
+            )
+            return code
+
+        elif self._has_delegating_converter(tt):
+            # Element type has a converter that supports delegation
+            # Use explicit loop with element converter
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
+            element_converter = self.cr.get(tt)
+
+            # Get element output conversion
+            elem_out = element_converter.output_conversion(tt, "deref(%s)" % it, item)
+            if elem_out is None:
+                elem_out_code = "%s = deref(%s)" % (item, it)
+            elif hasattr(elem_out, "render"):
+                elem_out_code = elem_out.render()
+            else:
+                elem_out_code = str(elem_out)
+
+            code = Code().add(
+                """
+                |$output_py_var = []
+                |cdef libcpp_vector[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |    $elem_out_code
+                |    $output_py_var.append($item)
+                |    inc($it)
                 """,
                 locals(),
             )
@@ -2406,15 +2529,16 @@ class StdStringConverter(TypeConverterBase):
 class StdStringUnicodeConverter(StdStringConverter):
     """
     This converter deals with functions that expect a C++ std::string.
-    Note that this provider will NOT be picked up if it is located inside
-    a container (e.g. std::vector aka libcpp_vector). Please use the usual
-    StdStringConverter to at least get the typing right.
+    It can be used inside containers when delegation is enabled.
     It can only be used in function parameters (i.e. input).
     It can handle both bytes and unicode strings and converts to bytes internally.
     """
 
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_string"]
+
+    def supports_delegation(self) -> bool:
+        return True
 
     def matching_python_type(self, cpp_type: CppType) -> str:
         return ""  # TODO can we use "basestring"?
@@ -2446,9 +2570,7 @@ class StdStringUnicodeConverter(StdStringConverter):
 class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
     """
     This converter deals with functions that return a C++ std::string.
-    Note that this provider will NOT be picked up if it is located inside
-    a container (e.g. std::vector aka libcpp_vector). Please use the usual
-    StdStringConverter to at least get the typing right.
+    It can be used inside containers when delegation is enabled.
     It should only be used in function returns (i.e. output).
     It returns unicode strings to python and therefore expects the C++
     function to return something that is decodable from utf8 (including ascii)
@@ -2456,6 +2578,9 @@ class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
 
     def get_base_types(self) -> List[str]:
         return ["libcpp_utf8_output_string"]
+
+    def supports_delegation(self) -> bool:
+        return True
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
         return "str"  # python3

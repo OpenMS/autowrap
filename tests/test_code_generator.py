@@ -398,6 +398,57 @@ def test_automatic_output_string_conversion():
     assert msg == expected
 
 
+def test_utf8_string_vector_conversion():
+    """Test that UTF-8 strings in vectors are properly converted via delegation."""
+    target = os.path.join(test_files, "generated", "libcpp_utf8_string_vector_test.pyx")
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_utf8_string_vector_test.pxd"],
+        root=test_files,
+        target=target,
+        debug=True,
+    )
+
+    wrapped = autowrap.Utils.compile_and_import(
+        "libcpp_utf8_string_vector_wrapped",
+        [
+            target,
+        ],
+        include_dirs,
+    )
+    h = wrapped.Utf8VectorTest()
+
+    # Test output conversion - vector of UTF-8 strings should become list of str
+    greetings = h.get_greetings()
+    assert isinstance(greetings, list)
+    assert len(greetings) == 4
+    # All elements should be unicode strings (str in Python 3)
+    for s in greetings:
+        assert isinstance(s, str), f"Expected str, got {type(s)}"
+    assert "Hello" in greetings
+    assert "World" in greetings
+    assert "Привет" in greetings  # Russian
+    assert "你好" in greetings  # Chinese
+
+    # Test input conversion - list of str/bytes should be accepted
+    input_strings = ["Test", "Тест", "测试"]  # ASCII, Russian, Chinese
+    result = h.echo(input_strings)
+    assert isinstance(result, list)
+    assert len(result) == 3
+    for s in result:
+        assert isinstance(s, str), f"Expected str, got {type(s)}"
+    assert result == input_strings
+
+    # Test with bytes input
+    input_bytes = [b"Hello", b"World"]
+    result = h.echo(input_bytes)
+    assert isinstance(result, list)
+    assert len(result) == 2
+
+    # Test count function (input only)
+    count = h.count_strings(["a", "b", "c"])
+    assert count == 3
+
+
 def test_wrap_ignore_foreign_cimports():
     """
     Test that wrap-ignored classes are not included in foreign cimports.
