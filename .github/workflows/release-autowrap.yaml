@@ -13,6 +13,9 @@ on:
 jobs:
   build_publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for Trusted Publishing (OIDC)
+      contents: write  # Required for creating releases and committing
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +58,6 @@ jobs:
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_RELEASE_AUTOWRAP }}
           packages-dir: ${{ github.workspace }}/dist
         
       - name: Create github release
