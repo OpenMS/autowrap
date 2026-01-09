@@ -398,6 +398,67 @@ def test_automatic_output_string_conversion():
     assert msg == expected
 
 
+def test_vector_string_utf8_conversion():
+    """
+    Test that std::vector<std::string> correctly handles UTF-8 encoded strings.
+
+    This test verifies that:
+    1. Returning std::vector<std::string> from C++ produces a list of bytes in Python
+    2. UTF-8 encoded strings are preserved correctly through the conversion
+    3. Passing a list of bytes/strings to C++ works with UTF-8 content
+    4. Modifying vectors by reference works with UTF-8 strings
+    """
+    target = os.path.join(test_files, "generated", "libcpp_utf8_string_vector_test.pyx")
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_utf8_string_vector_test.pxd"],
+        root=test_files,
+        target=target,
+        debug=True,
+    )
+
+    wrapped = autowrap.Utils.compile_and_import(
+        "libcpp_utf8_string_vector_wrapped",
+        [
+            target,
+        ],
+        include_dirs,
+    )
+    h = wrapped.Utf8StringVectorTest()
+
+    # Test 1: Get vector of UTF-8 strings from C++
+    greetings = h.get_greetings()
+    assert isinstance(greetings, list)
+    assert len(greetings) == 3
+
+    # Verify each string is bytes and contains correct UTF-8 content
+    # "Grüß Gott" in UTF-8
+    assert greetings[0] == b"Gr\xc3\xbc\xc3\x9f Gott"
+    assert greetings[0].decode("utf-8") == "Grüß Gott"
+
+    # "Jürgen" in UTF-8
+    assert greetings[1] == b"J\xc3\xbcrgen"
+    assert greetings[1].decode("utf-8") == "Jürgen"
+
+    # "日本語" (Japanese) in UTF-8
+    assert greetings[2] == b"\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e"
+    assert greetings[2].decode("utf-8") == "日本語"
+
+    # Test 2: Pass list of UTF-8 bytes to C++
+    utf8_strings = [
+        b"Gr\xc3\xbc\xc3\x9f Gott",  # "Grüß Gott"
+        b"J\xc3\xbcrgen",             # "Jürgen"
+    ]
+    total_len = h.total_length(utf8_strings)
+    assert total_len == len(b"Gr\xc3\xbc\xc3\x9f Gott") + len(b"J\xc3\xbcrgen")
+
+    # Test 3: Modify vector by reference with UTF-8 strings
+    strings = [b"Hello"]
+    h.append_greeting(strings)
+    assert len(strings) == 2
+    assert strings[1] == b"Hall\xc3\xb6chen"
+    assert strings[1].decode("utf-8") == "Hallöchen"
+
+
 def test_wrap_ignore_foreign_cimports():
     """
     Test that wrap-ignored classes are not included in foreign cimports.
