@@ -402,10 +402,16 @@ def test_vector_string_utf8_conversion():
     """
     Test that std::vector<std::string> correctly handles UTF-8 encoded strings.
 
+    Note: We use libcpp_string (not libcpp_utf8_string or libcpp_utf8_output_string)
+    because the UTF-8 converters explicitly do NOT work inside containers like
+    std::vector. See StdStringUnicodeConverter and StdStringUnicodeOutputConverter
+    in ConversionProvider.py which state: "this provider will NOT be picked up if
+    it is located inside a container (e.g. std::vector aka libcpp_vector)".
+
     This test verifies that:
     1. Returning std::vector<std::string> from C++ produces a list of bytes in Python
     2. UTF-8 encoded strings are preserved correctly through the conversion
-    3. Passing a list of bytes/strings to C++ works with UTF-8 content
+    3. Passing a list of bytes to C++ works with UTF-8 content
     4. Modifying vectors by reference works with UTF-8 strings
     """
     target = os.path.join(test_files, "generated", "libcpp_utf8_string_vector_test.pyx")
