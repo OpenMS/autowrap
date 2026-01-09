@@ -16,3 +16,13 @@ cdef extern from "EnumConsumer.hpp":
         bool isCompleted(Task_TaskStatus s)
         Priority getDefaultPriority()
         Task_TaskStatus getDefaultStatus()
+
+    # StatusTracker: Tests cross-module getter→setter roundtrip
+    # This class has getter AND setter for enums from EnumProvider,
+    # testing that tracker.setStatus(tracker.getStatus()) works.
+    cdef cppclass StatusTracker:
+        StatusTracker()
+        void setStatus(Task_TaskStatus s)
+        Task_TaskStatus getStatus()
+        void setPriority(Priority p)
+        Priority getPriority()

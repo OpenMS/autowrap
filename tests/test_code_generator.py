@@ -861,13 +861,14 @@ def test_cross_module_scoped_enum_imports(tmpdir):
             f"EnumConsumer.pyx content:\n{consumer_pyx}"
         )
 
-        # Test 2: Verify isinstance checks use globals().get() for late binding
-        assert "globals().get('_PyTask_TaskStatus'" in consumer_pyx, (
-            f"Expected isinstance check with globals().get('_PyTask_TaskStatus', int) for wrap-attach enum.\n"
+        # Test 2: Verify isinstance checks use _get_scoped_enum_class() helper for late binding
+        # The helper looks up enums via registry and sys.modules for cross-module support
+        assert "_get_scoped_enum_class('_PyTask_TaskStatus')" in consumer_pyx, (
+            f"Expected isinstance check with _get_scoped_enum_class('_PyTask_TaskStatus') for wrap-attach enum.\n"
             f"EnumConsumer.pyx content:\n{consumer_pyx}"
         )
-        assert "globals().get('Priority'" in consumer_pyx, (
-            f"Expected isinstance check with globals().get('Priority', int) for non-wrap-attach enum.\n"
+        assert "_get_scoped_enum_class('Priority')" in consumer_pyx, (
+            f"Expected isinstance check with _get_scoped_enum_class('Priority') for non-wrap-attach enum.\n"
             f"EnumConsumer.pyx content:\n{consumer_pyx}"
         )
 
@@ -975,6 +976,27 @@ setup(
                 assert False, "Should have raised AssertionError for wrong enum type"
             except AssertionError as e:
                 assert "wrong type" in str(e)
+
+            # Runtime Test 8: Cross-module getter→setter roundtrip (the pyOpenMS scenario)
+            # This tests that a class in module B can use getX()/setX() with an enum from module A
+            # where setX(getX()) works correctly - this was the missing test case.
+            tracker = EnumConsumer.StatusTracker()
+
+            # Test with class-attached enum (Task::TaskStatus)
+            assert tracker.getStatus() == EnumProvider.Task.TaskStatus.PENDING
+            tracker.setStatus(EnumProvider.Task.TaskStatus.RUNNING)
+            assert tracker.getStatus() == EnumProvider.Task.TaskStatus.RUNNING
+            # THE KEY TEST: getter→setter roundtrip across module boundaries
+            tracker.setStatus(tracker.getStatus())  # This is what failed in pyOpenMS!
+            assert tracker.getStatus() == EnumProvider.Task.TaskStatus.RUNNING
+
+            # Test with standalone enum (Priority)
+            assert tracker.getPriority() == EnumProvider.Priority.LOW
+            tracker.setPriority(EnumProvider.Priority.HIGH)
+            assert tracker.getPriority() == EnumProvider.Priority.HIGH
+            # THE KEY TEST: getter→setter roundtrip across module boundaries
+            tracker.setPriority(tracker.getPriority())  # This is what failed in pyOpenMS!
+            assert tracker.getPriority() == EnumProvider.Priority.HIGH
 
             print("Test passed: Cross-module scoped enum imports work correctly at runtime!")
 
