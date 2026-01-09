@@ -132,31 +132,41 @@ class TypeConverterBase(object):
     def output_conversion(
         self, cpp_type: CppType, input_cpp_var: str, output_py_var: str
     ) -> Optional[Union[Code, str]]:
+        """
+        Generate code that converts a C++ value to a Python value.
+        
+        Parameters:
+            cpp_type (CppType): The C++ type of the value to convert.
+            input_cpp_var (str): Name of the C++ variable holding the value to be converted.
+            output_py_var (str): Name of the Python variable that should receive the converted value.
+        
+        Returns:
+            A code snippet (as `Code` or `str`) that assigns or produces a Python representation of `input_cpp_var` into `output_py_var`, or `None` if no conversion is necessary.
+        """
         raise NotImplementedError()
 
     def supports_delegation(self) -> bool:
         """
-        Return True if this converter should be invoked when the type
-        is an element inside a container (e.g., std::vector).
-
-        By default, Cython handles conversion of standard types inside
-        containers automatically. When this returns True, container
-        converters will delegate to this converter instead.
+        Indicates whether this converter should be used for elements contained within container types.
+        
+        When `True`, container converters (for example, std::vector) will delegate per-element conversion to this converter instead of relying on the container's default/automatic conversion handling.
+        
+        Returns:
+            bool: `True` if elements should be delegated to this converter, `False` otherwise.
         """
         return False
 
     @staticmethod
     def _code_for_instantiate_object_from_iter(cpp_type: CppType, it: str) -> str:
         """
-        Code for new object instantiation from iterator (double deref for iterator-ptr)
-
-        Note that if cpp_type is a pointer and the iterator therefore refers to
-        an STL object of std::vector< _FooObject* >, then we need the base type
-        to instantiate a new object and dereference twice.
-
-        Example output:
-            shared_ptr[ _FooObject ] (new _FooObject (*foo_iter)  )
-            shared_ptr[ _FooObject ] (new _FooObject (**foo_iter_ptr)  )
+        Create C++ expression code that constructs a shared_ptr to a new instance created from an iterator.
+        
+        Parameters:
+            cpp_type (CppType): The target C++ type to instantiate. If `cpp_type` is a reference, its base type is used; if it is a pointer, the iterator is assumed to yield pointers and the generated expression will dereference twice.
+            it (str): Expression referring to the iterator value (as a string) to be dereferenced when constructing the new object.
+        
+        Returns:
+            str: A C++ code snippet that calls `new` and wraps the result in `shared_ptr[...]`, using `deref(it)` or `deref(deref(it))` as appropriate.
         """
 
         if cpp_type.is_ref:
@@ -1562,6 +1572,34 @@ class StdVectorConverter(TypeConverterBase):
         *a,
         **kw
     ):
+        """
+        Recursively generates and assembles code snippets for converting nested containers (typically nested std::vector) from Python to C++.
+        
+        This helper performs a single level of recursion for nested container element conversion: it invokes the appropriate element converter for the inner element type, incorporates that converter's pre-call (topmost) and post-call (bottommost/cleanup) code into the caller's code blocks, and appends the necessary loop and push_back mechanics to build the outer container from inner results. It mutates the provided Code objects to accumulate pre-call code (code/topmost_code) and post-call cleanup code (cleanup_code/bottommost_code) for the overall conversion and does not return a value.
+        
+        Parameters:
+            cpp_type: CppType
+                The full CppType of the container being converted (used to decide reference/const semantics for post-call behavior).
+            tt: CppType
+                The element CppType for this recursion level (the type to be handled by the invoked converter).
+            arg_num: str
+                Base argument identifier (used to name temporaries for this recursion level).
+            item: str
+                Name of the Python-side iteration variable for the current recursion level; becomes the argument passed to the inner converter.
+            topmost_code: Code or None
+                Code block that should receive top-level (pre-call) snippets. If None, this function treats itself as the topmost recursion and writes into `code`.
+            bottommost_code: Code or None
+                Code block that should receive bottom-level (post-call) snippets. If None, this function treats itself as the outermost recursion for cleanup placement.
+            code: Code
+                Code block used to accumulate the main pre-call construction (e.g., outer loop and inner loop bodies).
+            cleanup_code: Code
+                Code block used to accumulate post-call cleanup and any result-copying logic.
+            recursion_cnt: int
+                Current recursion depth (0 for outermost). Used to name intermediate temporaries used for multi-level replacement and cleanup.
+            *a, **kw:
+                Formatting/templating context forwarded to Code.add calls (contains mapping keys such as argument_var, temp_var, it, etc.).
+        
+        """
         converter = self.cr.get(tt)
         py_type = converter.matching_python_type(tt)
         rec_arg_num = "%s_rec" % arg_num
@@ -1680,7 +1718,15 @@ class StdVectorConverter(TypeConverterBase):
             bottommost_code.content.extend(bottommost_code_callback.content)
 
     def _has_delegating_converter(self, element_type: CppType) -> bool:
-        """Check if element type has a converter that supports delegation."""
+        """
+        Determine whether the registered converter for the given element type opts into delegation.
+        
+        Parameters:
+            element_type (CppType): The C++ type to look up in the converter registry.
+        
+        Returns:
+            bool: `True` if a converter is registered for `element_type` and its `supports_delegation()` returns `True`, `False` otherwise.
+        """
         if not hasattr(self, "cr"):
             return False
         try:
@@ -1698,13 +1744,30 @@ class StdVectorConverter(TypeConverterBase):
         bottommost_code: Optional[Code] = None,
         recursion_cnt: int = 0,
     ) -> Tuple[Code, str, Code]:
-        """Do the input conversion for a std::vector<T>
-
-        In this case, the template argument is tt (or "inner").
-
-        It is possible to nest or recurse multiple vectors (like in
-        std::vector< std::vector< T > > which is detected since the template
-        argument of tt itself is not None).
+        """
+        Convert a Python sequence argument into a C++ libcpp_vector suitable for passing to C++.
+        
+        This generates the Cython pre-call code, the expression to use in the C++ call, and the post-call cleanup for converting a Python iterable (argument_var) into a temporary libcpp_vector corresponding to cpp_type (a std::vector<T>). The method handles:
+        - element types that are enums, wrapped C++ classes, shared_ptr<T>, nested std::vector<T> recursion, and element converters that support delegation;
+        - producing top-level declarations when recursion requires them;
+        - producing a cleanup step that writes back to the original Python container when the parameter is a non-const reference.
+        
+        Parameters:
+            cpp_type (CppType): The std::vector type to convert (template argument T is inspected).
+            argument_var (str): Name of the Python variable containing the input sequence.
+            arg_num (int): Numerical index used to create unique temporary/local identifiers.
+            topmost_code (Optional[Code]): Optional Code object to which declarations that must appear at function top-level are appended when recursing.
+            bottommost_code (Optional[Code]): Optional Code object used to append cleanup code at the bottom-level when recursing.
+            recursion_cnt (int): Current recursion depth for nested vector conversion; 0 for the top level.
+        
+        Returns:
+            Tuple[Code, str, Code]: A 3-tuple of (pre-call code, call-expression, cleanup code):
+                - pre-call Code: Cython code that prepares and fills a temporary libcpp_vector corresponding to cpp_type.
+                - call-expression (str): Expression to pass to the generated C++ call (typically the temp vector or deref(temp)).
+                - cleanup Code: Code to run after the call to perform any necessary write-back or cleanup (e.g., replace original Python contents for non-const ref parameters, or delete temporaries).
+        
+        Raises:
+            Exception: If recursion for the given nested template structure is not implemented or required resources are missing (for example, when nested recursion is requested but a ConverterRegistry instance is not available on self).
         """
         # If we are inside a recursion, we expect the top-most and bottom most code to be present...
         if recursion_cnt > 1:
@@ -2010,6 +2073,25 @@ class StdVectorConverter(TypeConverterBase):
         return "_r = %s" % (cy_call_str)
 
     def output_conversion(self, cpp_type: CppType, input_cpp_var: str, output_py_var: str) -> Code:
+        """
+        Convert a C++ libcpp_vector value into a Python list, handling special element types.
+        
+        This generates Cython code that fills the Python variable named by `output_py_var`
+        from the C++ container `input_cpp_var`, with special handling for:
+        - enum element types (produces ints),
+        - wrapped C++ classes (produces Python wrapper instances),
+        - shared_ptr elements wrapping a single base type (produces wrapper instances),
+        - element converters that support delegation (calls the element converter's output_conversion),
+        and a fallback that lets Cython perform a direct container-to-list conversion for plain STL element types.
+        
+        Parameters:
+            cpp_type (CppType): The C++ libcpp_vector type (must have one template arg).
+            input_cpp_var (str): Name of the C++ variable containing the libcpp_vector to convert.
+            output_py_var (str): Name of the Python variable to assign the resulting list to.
+        
+        Returns:
+            Code: A Code object containing the generated Cython code that produces `output_py_var`.
+        """
         (tt,) = cpp_type.template_args
         inner = self.converters.cython_type(tt)
 
@@ -2535,12 +2617,33 @@ class StdStringUnicodeConverter(StdStringConverter):
     """
 
     def get_base_types(self) -> List[str]:
+        """
+        Base C++ type names handled by this converter.
+        
+        Returns:
+            base_types (List[str]): A list containing the single base type name "libcpp_utf8_string".
+        """
         return ["libcpp_utf8_string"]
 
     def supports_delegation(self) -> bool:
+        """
+        Indicates that this converter allows its conversion logic to be applied to elements inside container converters.
+        
+        Returns:
+            `true` if the converter supports delegation to element-wise conversion inside containers, `false` otherwise.
+        """
         return True
 
     def matching_python_type(self, cpp_type: CppType) -> str:
+        """
+        Return the simple Python type name used for runtime checks for the given C++ type.
+        
+        Parameters:
+            cpp_type (CppType): The C++ type being queried.
+        
+        Returns:
+            A string containing the Python runtime type name (e.g., "bytes", "str", "int"), or an empty string when no single Python type is appropriate.
+        """
         return ""  # TODO can we use "basestring"?
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
@@ -2577,12 +2680,33 @@ class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
     """
 
     def get_base_types(self) -> List[str]:
+        """
+        Provide the base type names that this converter can handle.
+        
+        Returns:
+            List[str]: A list containing the base type name "libcpp_utf8_output_string".
+        """
         return ["libcpp_utf8_output_string"]
 
     def supports_delegation(self) -> bool:
+        """
+        Indicates that this converter allows its conversion logic to be applied to elements inside container converters.
+        
+        Returns:
+            `true` if the converter supports delegation to element-wise conversion inside containers, `false` otherwise.
+        """
         return True
 
     def matching_python_type_full(self, cpp_type: CppType) -> str:
+        """
+        Return the full Python type annotation used for C++ UTF-8 output strings.
+        
+        Parameters:
+            cpp_type (CppType): The C++ type representation (ignored; output is always `str`).
+        
+        Returns:
+            str: The Python type annotation `"str"`.
+        """
         return "str"  # python3
 
     def output_conversion(
