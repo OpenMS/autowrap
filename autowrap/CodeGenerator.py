@@ -279,6 +279,7 @@ class CodeGenerator(object):
         self.create_cimports()
         self.create_foreign_cimports()
         self.create_foreign_enum_imports()
+        self.create_scoped_enum_helpers()
         self.create_includes()
 
         def create_for(
@@ -520,6 +521,10 @@ class CodeGenerator(object):
                         |       ...
                         """
             )
+
+        # Register scoped enums in the module registry for cross-module lookup
+        if decl.scoped:
+            code.add("_scoped_enum_registry['$name'] = $name", name=name)
 
         # TODO check if we need to add an import or custom type to type stubs for enums
         out_codes[decl.name] = code
@@ -2088,36 +2093,86 @@ class CodeGenerator(object):
         Background: In multi-module builds (e.g., pyOpenMS splits wrappers across
         _pyopenms_1.pyx through _pyopenms_8.pyx), scoped enums (enum class) are
         wrapped as Python IntEnum classes (e.g., _PySpectrumType). When module A
-        uses an enum defined in module B in a type assertion like:
-
-            assert isinstance(in_0, _PySpectrumType)
-
-        the Python class _PySpectrumType must be available.
+        uses an enum defined in module B, the Python class must be accessible.
 
         Problem: Adding module-level imports like:
 
             from ._pyopenms_3 import _PySpectrumType
 
-        causes circular import errors. The modules form an import chain during
-        initialization (1 -> 8 -> 7 -> ... -> 2), and when module 2 tries to
-        import from module 3, module 3 hasn't finished initializing yet.
+        causes circular import errors during module initialization.
 
-        Solution: Instead of module-level imports, we use globals().get() for
-        late binding in type assertions:
-
-            assert isinstance(in_0, globals().get('_PySpectrumType', int))
+        Solution: Each module has:
+        1. A local registry (_scoped_enum_registry) that stores enums defined in that module
+        2. A lookup function (_get_scoped_enum_class) that:
+           - First checks the local registry (fast path for same-module enums)
+           - Then searches all loaded pyopenms modules via sys.modules
+           - Caches results for subsequent lookups
 
         This approach:
-        - Compiles successfully (globals().get() is always valid Python)
-        - Resolves the enum class at runtime after all modules are loaded
-        - Falls back to 'int' which works for IntEnum (inherits from int)
+        - Avoids circular imports (no module-level cross-imports)
+        - Provides fast lookup for same-module enums (local dict lookup)
+        - Works across modules by searching sys.modules at runtime
+        - Maintains proper type checking and enum wrapping
 
-        See EnumConverter.type_check_expression() in ConversionProvider.py for
-        the implementation.
+        See EnumConverter in ConversionProvider.py and create_default_cimports()
+        for the implementation details.
         """
-        # No-op: cross-module imports at module load time cause circular imports
-        # The enum classes are resolved at runtime via globals().get()
+        # No-op: cross-module enum lookup is handled by _get_scoped_enum_class()
         pass
+
+    def create_scoped_enum_helpers(self):
+        """Generate helper functions for scoped enum lookup.
+
+        This adds a registry and lookup function to the pyx file (not pxd) that
+        enables cross-module scoped enum resolution in multi-module builds.
+
+        The generated code includes:
+        1. _scoped_enum_registry: A dict mapping enum names to their Python classes
+        2. _get_scoped_enum_class(): A function that looks up enum classes by name,
+           first checking the local registry, then searching all loaded modules.
+
+        This is added to top_level_pyx_code so it only appears in .pyx files,
+        not .pxd files (which cannot contain def statements).
+        """
+        code = Code()
+        code.add(
+            """
+                   |# Registry for scoped enum classes defined in this module
+                   |_scoped_enum_registry = {}
+                   |
+                   |def _get_scoped_enum_class(name, fallback=None):
+                   |    '''Look up a scoped enum class by name, searching across all pyopenms modules.
+                   |
+                   |    In multi-module builds (e.g., pyOpenMS), scoped enums may be defined in one
+                   |    module but used in another. This function provides cross-module lookup by:
+                   |    1. First checking the local module registry (fastest path)
+                   |    2. Then searching all loaded pyopenms modules via sys.modules
+                   |
+                   |    Args:
+                   |        name: The enum class name (e.g., '_PySpectrumType')
+                   |        fallback: Value to return if enum not found. Defaults to int for type checks,
+                   |                  or can be set to a callable like (lambda x: x) for conversions.
+                   |
+                   |    Returns the enum class if found, or the fallback value if not found.
+                   |    '''
+                   |    if fallback is None:
+                   |        fallback = int
+                   |    # Fast path: check local registry first
+                   |    if name in _scoped_enum_registry:
+                   |        return _scoped_enum_registry[name]
+                   |    # Slow path: search all loaded pyopenms modules
+                   |    for mod_name, mod in list(_sys.modules.items()):
+                   |        if mod is not None and (mod_name.startswith('pyopenms.') or mod_name == 'pyopenms'):
+                   |            enum_cls = getattr(mod, name, None)
+                   |            if enum_cls is not None:
+                   |                # Cache for future lookups
+                   |                _scoped_enum_registry[name] = enum_cls
+                   |                return enum_cls
+                   |    # Fallback
+                   |    return fallback
+                   """
+        )
+        self.top_level_pyx_code.append(code)
 
     def create_cimports(self):
         self.create_std_cimports()
@@ -2151,6 +2206,7 @@ class CodeGenerator(object):
                    |#cython: c_string_encoding=ascii
                    |#cython: embedsignature=False
                    |from  enum            import IntEnum as _PyEnum
+                   |import sys as _sys
                    |from  cpython         cimport Py_buffer
                    |from  cpython         cimport bool as pybool_t
                    |from  libcpp.string   cimport string as libcpp_string

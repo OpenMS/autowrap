@@ -419,20 +419,16 @@ class EnumConverter(TypeConverterBase):
             #
             # Problem: Scoped enums (enum class) are wrapped as Python IntEnum classes
             # (e.g., _PySpectrumType). When module A uses an enum defined in module B,
-            # the isinstance check needs access to that Python class. Two issues arise:
+            # the isinstance check needs access to that Python class.
             #
-            # 1. Compile-time: Cython needs the name to be declared/imported
-            # 2. Runtime: Module-level imports cause circular import errors because
-            #    all modules import from each other during initialization
-            #
-            # Solution: Use globals().get() for late binding. This:
-            # - Allows compilation (globals().get() is always valid Python syntax)
-            # - Resolves the enum class at runtime after all modules are loaded
+            # Solution: Use _get_scoped_enum_class() for cross-module lookup. This:
+            # - First checks the local module's registry (fast path for same-module enums)
+            # - Then searches all loaded pyopenms modules via sys.modules
             # - Falls back to 'int' which works for IntEnum values (IntEnum inherits from int)
             #
-            # See also: CodeGenerator.create_foreign_enum_imports() which documents
-            # why module-level imports are avoided.
-            return "isinstance(%s, globals().get('%s', int))" % (argument_var, name)
+            # See also: CodeGenerator.create_default_cimports() where the lookup function
+            # and registry are defined.
+            return "isinstance(%s, _get_scoped_enum_class('%s'))" % (argument_var, name)
 
     def input_conversion(
         self, cpp_type: CppType, argument_var: str, arg_num: int
@@ -453,13 +449,13 @@ class EnumConverter(TypeConverterBase):
             return "%s = <int>%s" % (output_py_var, input_cpp_var)
         else:
             # For scoped enums, wrap the int value in the Python enum class
-            # Use globals().get() for late binding to avoid circular import issues
+            # Use _get_scoped_enum_class() for cross-module lookup
             # in multi-module builds (see type_check_expression for details)
             if self.enum.cpp_decl.annotations.get("wrap-attach"):
                 name = "_Py" + self.enum.name
             else:
                 name = self.enum.name
-            return "%s = globals().get('%s', lambda x: x)(<int>%s)" % (output_py_var, name, input_cpp_var)
+            return "%s = _get_scoped_enum_class('%s', lambda x: x)(<int>%s)" % (output_py_var, name, input_cpp_var)
 
 
 class CharConverter(TypeConverterBase):
