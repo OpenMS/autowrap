@@ -2105,7 +2105,7 @@ class CodeGenerator(object):
         1. A local registry (_scoped_enum_registry) that stores enums defined in that module
         2. A lookup function (_get_scoped_enum_class) that:
            - First checks the local registry (fast path for same-module enums)
-           - Then searches all loaded pyopenms modules via sys.modules
+           - Then searches all sibling modules in the same package via sys.modules
            - Caches results for subsequent lookups
 
         This approach:
@@ -2141,12 +2141,12 @@ class CodeGenerator(object):
                    |_scoped_enum_registry = {}
                    |
                    |def _get_scoped_enum_class(name, fallback=None):
-                   |    '''Look up a scoped enum class by name, searching across all pyopenms modules.
+                   |    '''Look up a scoped enum class by name, searching across sibling modules.
                    |
-                   |    In multi-module builds (e.g., pyOpenMS), scoped enums may be defined in one
-                   |    module but used in another. This function provides cross-module lookup by:
+                   |    In multi-module builds, scoped enums may be defined in one module but used
+                   |    in another. This function provides cross-module lookup by:
                    |    1. First checking the local module registry (fastest path)
-                   |    2. Then searching all loaded pyopenms modules via sys.modules
+                   |    2. Then searching all sibling modules in the same package via sys.modules
                    |
                    |    Args:
                    |        name: The enum class name (e.g., '_PySpectrumType')
@@ -2160,14 +2160,19 @@ class CodeGenerator(object):
                    |    # Fast path: check local registry first
                    |    if name in _scoped_enum_registry:
                    |        return _scoped_enum_registry[name]
-                   |    # Slow path: search all loaded pyopenms modules
-                   |    for mod_name, mod in list(_sys.modules.items()):
-                   |        if mod is not None and (mod_name.startswith('pyopenms.') or mod_name == 'pyopenms'):
-                   |            enum_cls = getattr(mod, name, None)
-                   |            if enum_cls is not None:
-                   |                # Cache for future lookups
-                   |                _scoped_enum_registry[name] = enum_cls
-                   |                return enum_cls
+                   |    # Slow path: search sibling modules in the same package
+                   |    # Determine our package prefix (e.g., 'mypackage.' from 'mypackage._module_4')
+                   |    _current_module = _sys.modules.get(__name__)
+                   |    if _current_module is not None:
+                   |        _pkg = getattr(_current_module, '__package__', None) or __name__.rsplit('.', 1)[0]
+                   |        _pkg_prefix = _pkg + '.'
+                   |        for mod_name, mod in list(_sys.modules.items()):
+                   |            if mod is not None and (mod_name.startswith(_pkg_prefix) or mod_name == _pkg):
+                   |                enum_cls = getattr(mod, name, None)
+                   |                if enum_cls is not None:
+                   |                    # Cache for future lookups
+                   |                    _scoped_enum_registry[name] = enum_cls
+                   |                    return enum_cls
                    |    # Fallback
                    |    return fallback
                    """
