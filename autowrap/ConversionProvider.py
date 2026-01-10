@@ -2950,10 +2950,19 @@ class StdUnorderedMapConverter(TypeConverterBase):
         loop_key = mangle("_loop_key_" + argument_var)
         loop_value = mangle("_loop_value_" + argument_var)
 
+        value_conv_code = None
+        key_conv_code = None
+
         if cy_tt_value.is_enum:
             value_conv = "<%s> %s" % (cy_tt_value, loop_value)
         elif tt_value.base_type in self.converters.names_of_wrapper_classes:
             value_conv = "deref((<%s>%s).inst.get())" % (tt_value.base_type, loop_value)
+        elif self._has_delegating_converter(tt_value):
+            # Delegate to value converter
+            value_converter = self.cr.get(tt_value)
+            v_code, v_call_as, v_cleanup = value_converter.input_conversion(tt_value, loop_value, 0)
+            value_conv_code = v_code
+            value_conv = "<%s> %s" % (cy_tt_value, loop_value)
         else:
             value_conv = "<%s> %s" % (cy_tt_value, loop_value)
 
@@ -2961,6 +2970,12 @@ class StdUnorderedMapConverter(TypeConverterBase):
             key_conv = "<%s> %s" % (cy_tt_key, loop_key)
         elif tt_key.base_type in self.converters.names_of_wrapper_classes:
             key_conv = "deref(<%s *> (<%s> %s).inst.get())" % (cy_tt_key, tt_key, loop_key)
+        elif self._has_delegating_converter(tt_key):
+            # Delegate to key converter
+            key_converter = self.cr.get(tt_key)
+            k_code, k_call_as, k_cleanup = key_converter.input_conversion(tt_key, loop_key, 0)
+            key_conv_code = k_code
+            key_conv = "<%s> %s" % (cy_tt_key, loop_key)
         else:
             key_conv = "<%s> %s" % (cy_tt_key, loop_key)
 
@@ -2970,6 +2985,15 @@ class StdUnorderedMapConverter(TypeConverterBase):
             + libcpp_unordered_map[$cy_tt_key, $cy_tt_value]()
 
             |for $loop_key, $loop_value in $argument_var.items():
+            """,
+            locals(),
+        )
+        if key_conv_code is not None:
+            code.add(key_conv_code)
+        if value_conv_code is not None:
+            code.add(value_conv_code)
+        code.add(
+            """
             |    deref($temp_var)[ $key_conv ] = $value_conv
             """,
             locals(),
