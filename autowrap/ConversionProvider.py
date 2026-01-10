@@ -1214,6 +1214,62 @@ class StdMapConverter(TypeConverterBase):
             )
             return code
         else:
+            # Check for delegating converters for key and/or value
+            key_has_delegation = self._has_delegating_converter(tt_key)
+            value_has_delegation = self._has_delegating_converter(tt_value)
+
+            if key_has_delegation or value_has_delegation:
+                item_key = mangle("itemk_" + output_py_var)
+                item_val = mangle("itemv_" + output_py_var)
+
+                # Build key conversion
+                if key_has_delegation:
+                    key_converter = self.cr.get(tt_key)
+                    elem_out = key_converter.output_conversion(
+                        tt_key, "(deref(%s)).first" % it, item_key
+                    )
+                    if elem_out is None:
+                        key_out_code = "%s = (deref(%s)).first" % (item_key, it)
+                    elif hasattr(elem_out, "render"):
+                        key_out_code = elem_out.render()
+                    else:
+                        key_out_code = str(elem_out)
+                    key_expr = item_key
+                else:
+                    key_out_code = ""
+                    key_expr = key_conv
+
+                # Build value conversion
+                if value_has_delegation:
+                    value_converter = self.cr.get(tt_value)
+                    elem_out = value_converter.output_conversion(
+                        tt_value, "(deref(%s)).second" % it, item_val
+                    )
+                    if elem_out is None:
+                        value_out_code = "%s = (deref(%s)).second" % (item_val, it)
+                    elif hasattr(elem_out, "render"):
+                        value_out_code = elem_out.render()
+                    else:
+                        value_out_code = str(elem_out)
+                    value_expr = item_val
+                else:
+                    value_out_code = ""
+                    value_expr = "<%s>(deref(%s).second)" % (cy_tt_value, it)
+
+                code = Code().add(
+                    """
+                    |$output_py_var = dict()
+                    |cdef libcpp_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                    |while $it != $input_cpp_var.end():
+                    |    $key_out_code
+                    |    $value_out_code
+                    |    $output_py_var[$key_expr] = $value_expr
+                    |    inc($it)
+                    """,
+                    locals(),
+                )
+                return code
+
             value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
             code = Code().add(
                 """
@@ -1226,6 +1282,16 @@ class StdMapConverter(TypeConverterBase):
                 locals(),
             )
             return code
+
+    def _has_delegating_converter(self, element_type: CppType) -> bool:
+        """Check if element type has a converter that supports delegation."""
+        if not hasattr(self, "cr"):
+            return False
+        try:
+            converter = self.cr.get(element_type)
+            return converter.supports_delegation()
+        except (NameError, KeyError):
+            return False
 
 
 class StdSetConverter(TypeConverterBase):
@@ -1259,6 +1325,16 @@ class StdSetConverter(TypeConverterBase):
             )
             .render()
         )
+
+    def _has_delegating_converter(self, element_type: CppType) -> bool:
+        """Check if element type has a converter that supports delegation."""
+        if not hasattr(self, "cr"):
+            return False
+        try:
+            converter = self.cr.get(element_type)
+            return converter.supports_delegation()
+        except (NameError, KeyError):
+            return False
 
     def input_conversion(
         self, cpp_type: CppType, argument_var: str, arg_num: int
@@ -1337,6 +1413,76 @@ class StdSetConverter(TypeConverterBase):
             else:
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif self._has_delegating_converter(tt):
+            # Element type has a converter that supports delegation
+            item = "item%d" % arg_num
+            element_converter = self.cr.get(tt)
+
+            elem_code, elem_call_as, elem_cleanup = element_converter.input_conversion(
+                tt, item, arg_num
+            )
+
+            code = Code().add(
+                """
+                |cdef libcpp_set[$inner] * $temp_var = new libcpp_set[$inner]()
+                """,
+                locals(),
+            )
+
+            if hasattr(elem_code, "content") and elem_code.content:
+                code.add(
+                    """
+                |for $item in $argument_var:
+                """,
+                    locals(),
+                )
+                code.add(elem_code)
+                code.add(
+                    """
+                |    $temp_var.insert(<$inner>$item)
+                """,
+                    locals(),
+                )
+            else:
+                code.add(
+                    """
+                |for $item in $argument_var:
+                |    $temp_var.insert($elem_call_as)
+                """,
+                    locals(),
+                )
+
+            cleanup_code = Code().add("")
+            if cpp_type.is_ref and not cpp_type.is_const:
+                conv_item = "conv_item%d" % arg_num
+                out_converter = self.cr.get(tt)
+                elem_out = out_converter.output_conversion(tt, "deref(%s)" % it, conv_item)
+                if elem_out is None:
+                    elem_out_code = "%s = deref(%s)" % (conv_item, it)
+                elif hasattr(elem_out, "render"):
+                    elem_out_code = elem_out.render()
+                else:
+                    elem_out_code = str(elem_out)
+                cleanup_code = Code().add(
+                    """
+                    |replace = set()
+                    |cdef libcpp_set[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |    $elem_out_code
+                    |    replace.add($conv_item)
+                    |    inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = Code().add("del %s" % temp_var)
+
+            return code, "deref(%s)" % temp_var, cleanup_code
+
         else:
             inner = self.converters.cython_type(tt)
             # cython cares for conversion of stl containers with std types:
@@ -1401,6 +1547,34 @@ class StdSetConverter(TypeConverterBase):
                 locals(),
             )
             return code
+
+        elif self._has_delegating_converter(tt):
+            # Element type has a converter that supports delegation
+            it = mangle("it_" + input_cpp_var)
+            item = mangle("item_" + output_py_var)
+            element_converter = self.cr.get(tt)
+
+            elem_out = element_converter.output_conversion(tt, "deref(%s)" % it, item)
+            if elem_out is None:
+                elem_out_code = "%s = deref(%s)" % (item, it)
+            elif hasattr(elem_out, "render"):
+                elem_out_code = elem_out.render()
+            else:
+                elem_out_code = str(elem_out)
+
+            code = Code().add(
+                """
+                |$output_py_var = set()
+                |cdef libcpp_set[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |    $elem_out_code
+                |    $output_py_var.add($item)
+                |    inc($it)
+                """,
+                locals(),
+            )
+            return code
+
         else:
             # cython cares for conversion of stl containers with std types:
             code = Code().add(
@@ -2728,6 +2902,16 @@ class StdUnorderedMapConverter(TypeConverterBase):
             inner_conv_2.matching_python_type_full(tt_value),
         )
 
+    def _has_delegating_converter(self, element_type: CppType) -> bool:
+        """Check if element type has a converter that supports delegation."""
+        if not hasattr(self, "cr"):
+            return False
+        try:
+            converter = self.cr.get(element_type)
+            return converter.supports_delegation()
+        except (NameError, KeyError):
+            return False
+
     def type_check_expression(self, cpp_type, arg_var):
         tt_key, tt_value = cpp_type.template_args
         inner_conv_1 = self.converters.get(tt_key)
@@ -2976,8 +3160,63 @@ class StdUnorderedMapConverter(TypeConverterBase):
             )
             return code
 
-        # Neither key nor value is wrapped
+        # Neither key nor value is wrapped - check for delegating converters
         else:
+            key_has_delegation = self._has_delegating_converter(tt_key)
+            value_has_delegation = self._has_delegating_converter(tt_value)
+
+            if key_has_delegation or value_has_delegation:
+                item_key = mangle("itemk_" + output_py_var)
+                item_val = mangle("itemv_" + output_py_var)
+
+                # Build key conversion
+                if key_has_delegation:
+                    key_converter = self.cr.get(tt_key)
+                    elem_out = key_converter.output_conversion(
+                        tt_key, "(deref(%s)).first" % it, item_key
+                    )
+                    if elem_out is None:
+                        key_out_code = "%s = (deref(%s)).first" % (item_key, it)
+                    elif hasattr(elem_out, "render"):
+                        key_out_code = elem_out.render()
+                    else:
+                        key_out_code = str(elem_out)
+                    key_expr = item_key
+                else:
+                    key_out_code = ""
+                    key_expr = "<%s>(deref(%s).first)" % (cy_tt_key, it)
+
+                # Build value conversion
+                if value_has_delegation:
+                    value_converter = self.cr.get(tt_value)
+                    elem_out = value_converter.output_conversion(
+                        tt_value, "(deref(%s)).second" % it, item_val
+                    )
+                    if elem_out is None:
+                        value_out_code = "%s = (deref(%s)).second" % (item_val, it)
+                    elif hasattr(elem_out, "render"):
+                        value_out_code = elem_out.render()
+                    else:
+                        value_out_code = str(elem_out)
+                    value_expr = item_val
+                else:
+                    value_out_code = ""
+                    value_expr = "<%s>(deref(%s).second)" % (cy_tt_value, it)
+
+                code = Code().add(
+                    """
+                    |$output_py_var = dict()
+                    |cdef libcpp_unordered_map[$cy_tt_key, $cy_tt_value].iterator $it = $input_cpp_var.begin()
+                    |while $it != $input_cpp_var.end():
+                    |    $key_out_code
+                    |    $value_out_code
+                    |    $output_py_var[$key_expr] = $value_expr
+                    |    inc($it)
+                    """,
+                    locals(),
+                )
+                return code
+
             key_conv = "<%s>(deref(%s).first)" % (cy_tt_key, it)
             value_conv = "<%s>(deref(%s).second)" % (cy_tt_value, it)
             code = Code().add(
@@ -3026,6 +3265,16 @@ class StdUnorderedSetConverter(TypeConverterBase):
         (tt,) = cpp_type.template_args
         inner_conv = self.converters.get(tt)
         return "Set[%s]" % inner_conv.matching_python_type_full(tt)
+
+    def _has_delegating_converter(self, element_type: CppType) -> bool:
+        """Check if element type has a converter that supports delegation."""
+        if not hasattr(self, "cr"):
+            return False
+        try:
+            converter = self.cr.get(element_type)
+            return converter.supports_delegation()
+        except (NameError, KeyError):
+            return False
 
     def type_check_expression(self, cpp_type, arg_var):
         (tt,) = cpp_type.template_args
@@ -3116,6 +3365,76 @@ class StdUnorderedSetConverter(TypeConverterBase):
             else:
                 cleanup_code = "del %s" % temp_var
             return code, "deref(%s)" % temp_var, cleanup_code
+
+        elif self._has_delegating_converter(tt):
+            # Element type has a converter that supports delegation
+            item = "item%d" % arg_num
+            element_converter = self.cr.get(tt)
+
+            elem_code, elem_call_as, elem_cleanup = element_converter.input_conversion(
+                tt, item, arg_num
+            )
+
+            code = Code().add(
+                """
+                |cdef libcpp_unordered_set[$inner] * $temp_var = new libcpp_unordered_set[$inner]()
+                """,
+                locals(),
+            )
+
+            if hasattr(elem_code, "content") and elem_code.content:
+                code.add(
+                    """
+                |for $item in $argument_var:
+                """,
+                    locals(),
+                )
+                code.add(elem_code)
+                code.add(
+                    """
+                |    $temp_var.insert(<$inner>$item)
+                """,
+                    locals(),
+                )
+            else:
+                code.add(
+                    """
+                |for $item in $argument_var:
+                |    $temp_var.insert($elem_call_as)
+                """,
+                    locals(),
+                )
+
+            cleanup_code = Code().add("")
+            if cpp_type.is_ref and not cpp_type.is_const:
+                conv_item = "conv_item%d" % arg_num
+                out_converter = self.cr.get(tt)
+                elem_out = out_converter.output_conversion(tt, "deref(%s)" % it, conv_item)
+                if elem_out is None:
+                    elem_out_code = "%s = deref(%s)" % (conv_item, it)
+                elif hasattr(elem_out, "render"):
+                    elem_out_code = elem_out.render()
+                else:
+                    elem_out_code = str(elem_out)
+                cleanup_code = Code().add(
+                    """
+                    |replace = set()
+                    |cdef libcpp_unordered_set[$inner].iterator $it = $temp_var.begin()
+                    |while $it != $temp_var.end():
+                    |    $elem_out_code
+                    |    replace.add($conv_item)
+                    |    inc($it)
+                    |$argument_var.clear()
+                    |$argument_var.update(replace)
+                    |del $temp_var
+                    """,
+                    locals(),
+                )
+            else:
+                cleanup_code = Code().add("del %s" % temp_var)
+
+            return code, "deref(%s)" % temp_var, cleanup_code
+
         else:
             # Primitive types - need explicit iteration
             item = "item%d" % arg_num
@@ -3184,6 +3503,33 @@ class StdUnorderedSetConverter(TypeConverterBase):
                 locals(),
             )
             return code
+
+        elif self._has_delegating_converter(tt):
+            # Element type has a converter that supports delegation
+            item = mangle("item_" + output_py_var)
+            element_converter = self.cr.get(tt)
+
+            elem_out = element_converter.output_conversion(tt, "deref(%s)" % it, item)
+            if elem_out is None:
+                elem_out_code = "%s = deref(%s)" % (item, it)
+            elif hasattr(elem_out, "render"):
+                elem_out_code = elem_out.render()
+            else:
+                elem_out_code = str(elem_out)
+
+            code = Code().add(
+                """
+                |$output_py_var = set()
+                |cdef libcpp_unordered_set[$inner].iterator $it = $input_cpp_var.begin()
+                |while $it != $input_cpp_var.end():
+                |    $elem_out_code
+                |    $output_py_var.add($item)
+                |    inc($it)
+                """,
+                locals(),
+            )
+            return code
+
         else:
             # Primitive types - need explicit iteration
             code = Code().add(
