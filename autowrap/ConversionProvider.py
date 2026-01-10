@@ -142,6 +142,11 @@ class TypeConverterBase(object):
         By default, Cython handles conversion of standard types inside
         containers automatically. When this returns True, container
         converters will delegate to this converter instead.
+
+        Note: Delegation currently only works for single-level nesting.
+        For example, vector<T> where T supports delegation will work,
+        but vector<vector<T>> will NOT invoke T's converter - Cython
+        handles the conversion automatically in nested cases.
         """
         return False
 
@@ -2532,6 +2537,10 @@ class StdStringUnicodeConverter(StdStringConverter):
     It can be used inside containers when delegation is enabled.
     It can only be used in function parameters (i.e. input).
     It can handle both bytes and unicode strings and converts to bytes internally.
+
+    Note: Delegation only works for single-level containers (e.g., vector<libcpp_utf8_string>).
+    Nested containers like vector<vector<libcpp_utf8_string>> or map<string, vector<libcpp_utf8_string>>
+    are NOT supported - Cython will handle conversion automatically without UTF-8 encoding.
     """
 
     def get_base_types(self) -> List[str]:
@@ -2574,6 +2583,10 @@ class StdStringUnicodeOutputConverter(StdStringUnicodeConverter):
     It should only be used in function returns (i.e. output).
     It returns unicode strings to python and therefore expects the C++
     function to return something that is decodable from utf8 (including ascii)
+
+    Note: Delegation only works for single-level containers (e.g., vector<libcpp_utf8_output_string>).
+    Nested containers like vector<vector<libcpp_utf8_output_string>> are NOT supported -
+    Cython will handle conversion automatically without UTF-8 decoding.
     """
 
     def get_base_types(self) -> List[str]:
