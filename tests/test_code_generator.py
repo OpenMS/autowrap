@@ -519,17 +519,18 @@ def test_utf8_containers_delegation():
     us_echo = h.echo_unordered_set({"A", "Б", "丙"})
     assert us_echo == {"A", "Б", "丙"}
 
-    # === Unordered map tests ===
+    # === Unordered map tests (both keys and values as UTF-8) ===
     um = h.get_unordered_map()
     assert isinstance(um, dict)
+    assert all(isinstance(k, str) for k in um.keys()), "Unordered map keys should be str"
     assert all(isinstance(v, str) for v in um.values()), "Unordered map values should be str"
-    assert um[b"key1"] == "Значение1"
-    assert um[b"key2"] == "值2"
-    assert um[b"key3"] == "قيمة3"  # Arabic
+    assert um["key1"] == "Значение1"
+    assert um["key2"] == "值2"
+    assert um["key3"] == "قيمة3"  # Arabic
 
-    um_echo = h.echo_unordered_map({b"a": "Альфа", b"b": "贝塔"})
-    assert um_echo[b"a"] == "Альфа"
-    assert um_echo[b"b"] == "贝塔"
+    um_echo = h.echo_unordered_map({"a": "Альфа", "b": "贝塔"})
+    assert um_echo["a"] == "Альфа"
+    assert um_echo["b"] == "贝塔"
 
 
 def test_wrap_ignore_foreign_cimports():

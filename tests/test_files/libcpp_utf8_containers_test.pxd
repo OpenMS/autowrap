@@ -39,8 +39,8 @@ cdef extern from "libcpp_utf8_containers_test.hpp":
             libcpp_unordered_set[libcpp_utf8_string]
         )
 
-        # Unordered map
-        libcpp_unordered_map[libcpp_string, libcpp_utf8_output_string] get_unordered_map()
-        libcpp_unordered_map[libcpp_string, libcpp_utf8_output_string] echo_unordered_map(
-            libcpp_unordered_map[libcpp_string, libcpp_utf8_string]
+        # Unordered map - both keys and values as UTF-8
+        libcpp_unordered_map[libcpp_utf8_output_string, libcpp_utf8_output_string] get_unordered_map()
+        libcpp_unordered_map[libcpp_utf8_output_string, libcpp_utf8_output_string] echo_unordered_map(
+            libcpp_unordered_map[libcpp_utf8_string, libcpp_utf8_string]
         )
