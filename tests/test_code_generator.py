@@ -488,17 +488,18 @@ def test_utf8_containers_delegation():
     s_echo = h.echo_set({"One", "Один", "一"})
     assert s_echo == {"One", "Один", "一"}
 
-    # === Map tests (UTF-8 values) ===
+    # === Map tests (UTF-8 keys and values) ===
     m = h.get_map()
     assert isinstance(m, dict)
+    assert all(isinstance(k, str) for k in m.keys()), "Map keys should be str"
     assert all(isinstance(v, str) for v in m.values()), "Map values should be str"
-    assert m[b"greeting"] == "Привет"
-    assert m[b"farewell"] == "再见"
-    assert m[b"thanks"] == "شكرا"   # Arabic
+    assert m["greeting"] == "Привет"
+    assert m["farewell"] == "再见"
+    assert m["thanks"] == "شكرا"   # Arabic
 
-    m_echo = h.echo_map({b"key1": "Значение", b"key2": "值"})
-    assert m_echo[b"key1"] == "Значение"
-    assert m_echo[b"key2"] == "值"
+    m_echo = h.echo_map({"key1": "Значение", "key2": "值"})
+    assert m_echo["key1"] == "Значение"
+    assert m_echo["key2"] == "值"
 
     # === Map with UTF-8 keys ===
     m_keys = h.get_map_utf8_keys()

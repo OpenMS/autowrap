@@ -25,9 +25,9 @@ cdef extern from "libcpp_utf8_containers_test.hpp":
         )
 
         # Map - both keys and values as UTF-8
-        libcpp_map[libcpp_string, libcpp_utf8_output_string] get_map()
-        libcpp_map[libcpp_string, libcpp_utf8_output_string] echo_map(
-            libcpp_map[libcpp_string, libcpp_utf8_string]
+        libcpp_map[libcpp_utf8_output_string, libcpp_utf8_output_string] get_map()
+        libcpp_map[libcpp_utf8_output_string, libcpp_utf8_output_string] echo_map(
+            libcpp_map[libcpp_utf8_string, libcpp_utf8_string]
         )
 
         # Map with UTF-8 keys
