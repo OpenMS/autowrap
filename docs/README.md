@@ -280,6 +280,34 @@ namespace std {
 }
 ```
 
+### Static Methods
+
+Static methods can be declared in two ways:
+
+**1. Using the `@staticmethod` decorator inside a class:**
+
+```cython
+cdef extern from "myclass.hpp":
+    cdef cppclass MyClass:
+        @staticmethod
+        int computeValue() nogil except +
+```
+
+**2. Using `wrap-attach` for free functions:**
+
+```cython
+cdef extern from "myclass.hpp" namespace "MyClass":
+    int staticFunction(int x) # wrap-attach:MyClass
+```
+
+**Important Warning:** Autowrap does **not** parse C++ headers to verify that your PXD declarations match the actual C++ code. If you declare a method without `@staticmethod` in your PXD file but the C++ method is actually `static`, the generated wrapper will compile but may behave incorrectly at runtime. Similarly, declaring a non-static C++ method with `@staticmethod` will cause compilation errors.
+
+Always verify that:
+- Methods marked with `@staticmethod` in PXD correspond to `static` methods in C++
+- Methods without `@staticmethod` in PXD correspond to non-static (instance) methods in C++
+
+See [templated.pxd](../tests/test_files/templated.pxd) for an example using the `@staticmethod` decorator, and [minimal.pxd](../tests/test_files/minimal.pxd) for an example using `wrap-attach` for static functions.
+
 ### Docstrings
 
 Docstrings can be added to classes and methods using the `wrap-doc` statement. Multi line docs are supported with
@@ -361,6 +389,13 @@ recommended workarounds.
   - `vector<vector<Wrapped>>` is supported as input, but output conversion for deeply nested wrapped containers is limited and may require manual wrappers.
   - Some nested container shapes (especially maps whose values are vectors of complex types) are not implemented and will raise during code generation.
 - Copy-back for non-const reference parameters (`T&`) is implemented for many containers, but not uniformly for every container/element-type combination. If a C++ function mutates a container and you expect the Python input to reflect those changes, verify behavior (and consider manual wrappers if needed).
+
+### Static method declarations (no validation)
+
+- **Autowrap does not validate static/non-static declarations against C++ source code.** The `@staticmethod` decorator in PXD files is taken at face value without verifying the actual C++ method signature.
+- If a C++ `static` method is declared without `@staticmethod` in the PXD, the generated code will attempt to call it via an instance (`self.inst.get().method()`). This may compile (C++ allows calling static methods via instances) but can produce confusing behavior.
+- If a non-static C++ method is incorrectly declared with `@staticmethod`, the generated code will fail to compile because it attempts to call an instance method via the class name.
+- **Recommendation:** Always manually verify that `@staticmethod` decorators in your PXD files accurately match the `static` keyword in your C++ headers.
 
 ### PXD parsing and annotation syntax
 
