@@ -76,6 +76,10 @@ __doc__ = """
     There are a few additional hints you can give to the wrapper, for classes these are:
         - wrap-ignore: will not create a wrapper for this class (e.g. abstract
                        base class that needs to be known to Cython but cannot be wrapped)
+        - wrap-view: generate a companion ${ClassName}View class that provides
+                     in-place access to members. The view class allows direct
+                     modification of nested objects without copies. Methods
+                     returning T& (mutable reference) return views instead of copies.
         - wrap-manual-memory: will allow the user to provide manual memory
                               management of self.inst, therefore the class will
                               not provide the automated __dealloc__ and inst
@@ -173,6 +177,7 @@ class ResolvedClass(object):
     cpp_decl: PXDParser.CppClassDecl
     ns: AnyStr
     wrap_ignore: bool
+    wrap_view: bool
     no_pxd_import: bool
     wrap_manual_memory: Union[bool, List[AnyStr]]
     wrap_hash: List[AnyStr]
@@ -193,6 +198,7 @@ class ResolvedClass(object):
         self.ns = get_namespace(decl.pxd_path, DEFAULT_NAMESPACE)
 
         self.wrap_ignore = decl.annotations.get("wrap-ignore", False)
+        self.wrap_view = decl.annotations.get("wrap-view", False)
         self.no_pxd_import = decl.annotations.get("no-pxd-import", False)
         self.wrap_manual_memory = decl.annotations.get("wrap-manual-memory", [])
         # fix previous code where we had a bool ...
@@ -560,8 +566,14 @@ def _resolve_class_decl(class_decl, typedef_mapping, i_mapping):
         for mname, mdcls in class_decl.methods.items():
             for mdcl in mdcls:
                 ignore = mdcl.annotations.get("wrap-ignore", False)
+                # Keep wrap-ignore methods that return mutable references (T&)
+                # since these are useful for wrap-view generation even when
+                # the main class method is ignored. Filter out other wrap-ignore methods.
                 if ignore:
-                    continue
+                    result_type = mdcl.result_type
+                    if not (result_type.is_ref and not result_type.is_const):
+                        # Not a mutable reference return - skip as before
+                        continue
                 if mdcl.name == class_decl.name:
                     r_method = _resolve_constructor(cinst_name, mdcl, i_mapping, local_mapping)
                 else:

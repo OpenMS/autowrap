@@ -159,6 +159,11 @@ and for methods by putting them on the same line. The currently supported
 directives are:
 
 - `wrap-ignore`: Will not create a wrapper for this function or class (e.g. abstract base class that needs to be known to Cython but cannot be wrapped)
+- `wrap-view`: Generate a companion `${ClassName}View` class that provides in-place access to members. The main wrapper class returns copies (safe, but modifications don't affect the original). The view class holds a reference to the parent and allows direct modification:
+  - Public attributes become view properties (getters return views of nested objects, setters modify in-place)
+  - Methods returning `T&` (mutable reference) return views instead of copies
+  - Views keep the parent object alive via shared_ptr
+  - Use `obj.view()` on the main class to get a view instance
 - `wrap-iter-begin`: For begin iterators
 - `wrap-iter-end`: For end iterators
 - `wrap-attach`: Attach to a specific class (can be used for static functions or nested classes)
@@ -279,6 +284,34 @@ namespace std {
     };
 }
 ```
+
+#### wrap-view Example
+
+The `wrap-view` directive generates a companion view class for in-place member modification:
+
+```cython
+    cdef cppclass Inner:
+        # wrap-view
+        int value
+
+    cdef cppclass Outer:
+        # wrap-view
+        Inner & getInner()   # Mutable reference getter
+        Inner inner_member   # Public attribute
+```
+
+This generates `Inner`, `InnerView`, `Outer`, and `OuterView` classes. Usage:
+
+```python
+>>> outer = Outer()
+>>> outer.inner_member.value = 42  # Modifies a COPY - original unchanged!
+>>> view = outer.view()
+>>> view.inner_member.value = 42   # Modifies IN-PLACE - original changed!
+>>> inner_view = view.getInner()   # Returns InnerView, not copy
+>>> inner_view.value = 100         # In-place modification
+```
+
+The view keeps the parent alive - you can safely store and use views as long as needed.
 
 ### Docstrings
 

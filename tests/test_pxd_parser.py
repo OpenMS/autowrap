@@ -642,3 +642,43 @@ cdef extern from "*":
     # Verify wrap-instances content
     expected_instances = ["LinearInterpolation := LinearInterpolation[double, double]"]
     assert cdcl.annotations["wrap-instances"] == expected_instances
+
+
+def test_wrap_view_annotation():
+    """Test that wrap-view annotation is parsed correctly as a boolean."""
+    (cdcl,) = autowrap.PXDParser.parse_str(
+        """
+cdef extern from "*":
+    cdef cppclass MyClass:
+        # wrap-view
+        int value
+        MyClass & getRef()
+    """
+    )
+
+    # Verify wrap-view annotation was parsed as boolean True
+    assert "wrap-view" in cdcl.annotations
+    assert cdcl.annotations["wrap-view"] is True
+
+
+def test_wrap_view_with_other_annotations():
+    """Test that wrap-view can be combined with other annotations."""
+    (cdcl,) = autowrap.PXDParser.parse_str(
+        """
+cdef extern from "*":
+    cdef cppclass MyClass:
+        # wrap-view
+        # wrap-doc:
+        #  A class with view support
+        #
+        # wrap-hash:
+        #  getValue()
+        int getValue()
+    """
+    )
+
+    # Verify all annotations were parsed
+    assert cdcl.annotations["wrap-view"] is True
+    assert "wrap-doc" in cdcl.annotations
+    assert "wrap-hash" in cdcl.annotations
+    assert cdcl.annotations["wrap-hash"] == ["getValue()"]

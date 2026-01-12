@@ -282,6 +282,15 @@ class CodeGenerator(object):
         self.create_scoped_enum_helpers()
         self.create_includes()
 
+        # Pre-compute which classes have wrap-view enabled
+        # This is needed before class generation so that forward references work
+        # (e.g., Container.getItem() returns Item& where Item has wrap-view)
+        self.classes_with_views = set()
+        for resolved in self.resolved:
+            if isinstance(resolved, ResolvedClass) and not resolved.wrap_ignore:
+                if resolved.wrap_view:
+                    self.classes_with_views.add(resolved.name)
+
         def create_for(
             clazz: Type[ResolvedDecl],
             method: Callable[[ResolvedDecl, Union[CodeDict, Tuple[CodeDict, CodeDict]]], None],
@@ -819,17 +828,21 @@ class CodeGenerator(object):
         inherited_methods = {}
 
         for name, methods in non_iter_methods.items():
+            # Filter out wrap-ignore methods for main class generation
+            non_ignored_methods = [m for m in methods if not m.wrap_ignore]
+            if not non_ignored_methods:
+                continue
             if name == r_class.name:
                 # Constructor always goes first
-                codes, stub_code = self.create_wrapper_for_constructor(r_class, methods)
+                codes, stub_code = self.create_wrapper_for_constructor(r_class, non_ignored_methods)
                 cons_created = True
                 typestub_code.add(stub_code)
                 for ci in codes:
                     class_code.add(ci)
             elif name in inherited_method_bases:
-                inherited_methods[name] = methods
+                inherited_methods[name] = non_ignored_methods
             else:
-                class_methods[name] = methods
+                class_methods[name] = non_ignored_methods
 
         # Generate class-defined methods first (sorted alphabetically)
         for name, methods in sorted(class_methods.items()):
@@ -870,6 +883,10 @@ class CodeGenerator(object):
         if extra_methods_code:
             class_code.add(extra_methods_code)
 
+        # Generate view class if wrap-view annotation is present
+        if r_class.wrap_view:
+            self._create_view_class(r_class, class_code, class_pxd_code, typestub_code, out_codes)
+
         for class_name in r_class.cpp_decl.annotations.get("wrap-attach", []):
             code = Code()
             display_name = r_class.cpp_decl.annotations.get("wrap-as", [r_class.name])[0]
@@ -877,6 +894,491 @@ class CodeGenerator(object):
             tmp = self.class_codes_extra.get(class_name, [])
             tmp.append(code)
             self.class_codes_extra[class_name] = tmp
+
+    def _create_view_class(
+        self,
+        r_class: ResolvedClass,
+        main_class_code: Code,
+        main_class_pxd_code: Code,
+        main_typestub_code: Code,
+        out_codes: CodeDict,
+    ) -> None:
+        """Generate a companion View class for in-place member access.
+
+        The view class holds a shared_ptr to the parent object, keeping it alive
+        while the view exists. This allows direct modification of members without
+        creating copies.
+
+        Args:
+            r_class: The resolved class to generate a view for
+            main_class_code: Code object for the main class (to add view() method)
+            main_class_pxd_code: PXD code for the main class
+            main_typestub_code: Type stub code for the main class
+            out_codes: Dictionary to store generated code
+        """
+        cname = r_class.name
+        cy_type = self.cr.cython_type(cname)
+        view_name = cname + "View"
+
+        L.info("  create view class %s for %s" % (view_name, cname))
+
+        # Add view() method to the main class
+        main_class_code.add(
+            """
+                        |
+                        |    def view(self):
+                        |        \"\"\"
+                        |        Return a view for in-place member modification.
+                        |
+                        |        The view holds a reference to this object and allows direct
+                        |        modification of members without creating copies. The view
+                        |        keeps this object alive as long as the view exists.
+                        |
+                        |        Returns:
+                        |            $view_name: A view instance for in-place access
+                        |        \"\"\"
+                        |        cdef $view_name v = $view_name.__new__($view_name)
+                        |        v._ptr = self.inst.get()
+                        |        v._parent = self
+                        |        return v
+                        |
+                        """,
+            locals(),
+        )
+
+        # Add view() to type stubs
+        main_typestub_code.add(
+            """
+                        |    def view(self) -> $view_name: ...
+                        """,
+            locals(),
+        )
+
+        # Create the view class
+        view_pxd_code = Code()
+        view_code = Code()
+        view_typestub_code = Code()
+
+        # View class docstring
+        view_docstring = (
+            "View class for in-place modification of %s members.\n\n"
+            "        This class holds a reference to a %s instance and provides\n"
+            "        direct access to its members without creating copies. Changes\n"
+            "        made through the view are reflected in the original object.\n\n"
+            "        The view keeps the parent object alive via shared_ptr."
+        ) % (cname, cname)
+
+        # Generate PXD declaration for view class
+        if self.write_pxd:
+            view_pxd_code.add(
+                """
+                            |
+                            |cdef class $view_name:
+                            |    \"\"\"
+                            |    $view_docstring
+                            |    \"\"\"
+                            |    cdef $cy_type* _ptr
+                            |    cdef object _parent
+                            |
+                            """,
+                locals(),
+            )
+
+        # Generate PYX implementation for view class
+        pxd_comment = (
+            "# see .pxd file for cdef of _ptr and _parent"
+            if self.write_pxd
+            else "cdef %s* _ptr\n    cdef object _parent" % cy_type
+        )
+
+        view_code.add(
+            """
+                        |
+                        |cdef class $view_name:
+                        |    \"\"\"
+                        |    $view_docstring
+                        |    \"\"\"
+                        |
+                        |    $pxd_comment
+                        |
+                        |    def __repr__(self):
+                        |        return "<%s view of %s at 0x%x>" % (
+                        |            type(self).__name__,
+                        |            "$cname",
+                        |            <uintptr_t>self._ptr
+                        |        )
+                        |
+                        |    @property
+                        |    def _is_valid(self):
+                        |        \"\"\"Check if the view is still valid (parent not deallocated).\"\"\"
+                        |        return self._ptr != NULL
+                        |
+                        """,
+            locals(),
+        )
+
+        # Generate type stub for view class
+        view_typestub_code.add(
+            """
+                        |
+                        |class $view_name:
+                        |    \"\"\"
+                        |    $view_docstring
+                        |    \"\"\"
+                        |    @property
+                        |    def _is_valid(self) -> bool: ...
+                        """,
+            locals(),
+        )
+
+        # Generate view properties for each attribute
+        for attribute in r_class.attributes:
+            if not attribute.wrap_ignore:
+                try:
+                    pyx_code, stub_code = self._create_view_property_for_attribute(
+                        attribute, cname, cy_type
+                    )
+                    view_code.add(pyx_code)
+                    view_typestub_code.add(stub_code)
+                except Exception as e:
+                    L.warning(
+                        f"Failed to create view property for attribute "
+                        f"{attribute.cpp_decl.name}: {e}"
+                    )
+
+        # Generate view methods for methods returning mutable references
+        for method_name, methods in r_class.methods.items():
+            # Skip constructors (same name as class)
+            if method_name == cname:
+                continue
+            for method in methods:
+                # For view classes, we still generate methods for T& returns
+                # even if wrap-ignore is set (since T& returns don't work on
+                # main classes but DO work on view classes through pointers)
+                # Check if this method returns a mutable reference to a view-enabled class
+                if self._should_generate_view_method(method):
+                    try:
+                        pyx_code, stub_code = self._create_view_method(
+                            r_class, method, cname, cy_type
+                        )
+                        view_code.add(pyx_code)
+                        view_typestub_code.add(stub_code)
+                    except Exception as e:
+                        L.warning(
+                            f"Failed to create view method for "
+                            f"{method.name}: {e}"
+                        )
+
+        # Store the view class codes
+        self.class_pxd_codes[view_name] = view_pxd_code
+        out_codes[view_name] = view_code
+        self.typestub_codes[view_name] = view_typestub_code
+        # Note: classes_with_views is pre-computed in create_pyx_file()
+
+    def _create_view_property_for_attribute(
+        self, attribute, parent_class_name: str, parent_cy_type
+    ) -> Tuple[Code, Code]:
+        """Generate a view property for an attribute.
+
+        For view classes, properties provide in-place access to the parent's members.
+        - Primitive types: direct read/write access
+        - Wrapped class types with wrap-view: return nested view
+        - Wrapped class types without wrap-view: return copy (like main class)
+
+        Args:
+            attribute: The ResolvedAttribute to create a property for
+            parent_class_name: Name of the parent class (for nested views)
+            parent_cy_type: Cython type of the parent class
+
+        Returns:
+            Tuple of (pyx_code, stub_code) for the property
+        """
+        code = Code()
+        stubs = Code()
+        name = attribute.name
+        wrap_as = attribute.cpp_decl.annotations.get("wrap-as", name)
+
+        # Check if this is a constant (read-only) attribute
+        if attribute.type_.is_const:
+            wrap_constant = True
+        else:
+            wrap_constant = attribute.cpp_decl.annotations.get("wrap-constant", False)
+
+        t = attribute.type_
+        converter = self.cr.get(t)
+        py_type = converter.matching_python_type(t)
+        py_typing_type = converter.matching_python_type_full(t)
+
+        # Check if the attribute type is a wrapped class with wrap-view
+        attr_base_type = t.base_type
+        attr_has_view = (
+            hasattr(self, 'classes_with_views') and
+            attr_base_type in self.classes_with_views
+        )
+
+        code.add(
+            """
+            |
+            |property $wrap_as:
+            |    \"\"\"In-place access to $name attribute.\"\"\"
+            """,
+            locals(),
+        )
+
+        stubs.add(
+            """
+                |
+                |$name: $py_typing_type
+                """,
+            locals(),
+        )
+
+        # Generate setter
+        if wrap_constant:
+            code.add(
+                """
+                |    def __set__(self, $py_type $name):
+                |       raise AttributeError("Cannot set constant")
+                """,
+                locals(),
+            )
+        else:
+            conv_code, call_as, cleanup = converter.input_conversion(t, name, 0)
+
+            code.add(
+                """
+                |    def __set__(self, $py_type $name):
+                """,
+                locals(),
+            )
+
+            indented = Code()
+            indented.add(conv_code)
+            code.add(indented)
+
+            # Use _ptr instead of inst for view classes
+            code.add(
+                """
+                |        self._ptr.$name = $call_as
+                """,
+                locals(),
+            )
+
+            indented = Code()
+            if isinstance(cleanup, (str, bytes)):
+                cleanup = "    %s" % cleanup
+            indented.add(cleanup)
+            code.add(indented)
+
+        # Generate getter
+        if attr_has_view and not t.is_ptr:
+            # Return a nested view for wrapped classes with wrap-view
+            view_type = attr_base_type + "View"
+            nested_cy_type = self.cr.cython_type(attr_base_type)
+
+            code.add(
+                """
+                |
+                |    def __get__(self):
+                |        # Return a view of the nested object for in-place access
+                |        cdef $view_type v = $view_type.__new__($view_type)
+                |        v._ptr = &self._ptr.$name
+                |        v._parent = self._parent  # Propagate parent reference to keep alive
+                |        return v
+                """,
+                locals(),
+            )
+        else:
+            # Return a copy (same behavior as main class) for:
+            # - Primitive types
+            # - Wrapped classes without wrap-view
+            # - Pointer types
+            to_py_code = converter.output_conversion(t, "_r", "py_result")
+            access_stmt = converter.call_method(t, "self._ptr.%s" % name, False)
+
+            if isinstance(to_py_code, (str, bytes)):
+                to_py_code = "    %s" % to_py_code
+
+            if isinstance(access_stmt, (str, bytes)):
+                access_stmt = "    %s" % access_stmt
+
+            if t.is_ptr:
+                code.add(
+                    """
+                    |
+                    |    def __get__(self):
+                    |        if self._ptr.%s is NULL:
+                    |             raise Exception("Cannot access pointer that is NULL")
+                    """
+                    % name,
+                    locals(),
+                )
+            else:
+                code.add(
+                    """
+                    |
+                    |    def __get__(self):
+                    """,
+                    locals(),
+                )
+
+            indented = Code()
+            indented.add(access_stmt)
+            indented.add(to_py_code)
+            code.add(indented)
+            code.add("        return py_result")
+
+        return code, stubs
+
+    def _should_generate_view_method(self, method) -> bool:
+        """Check if a method should have a view-returning version generated.
+
+        A view method is generated when:
+        1. The return type is a mutable reference (T&, not const T&)
+        2. The referenced type has wrap-view enabled
+
+        Args:
+            method: The ResolvedMethod to check
+
+        Returns:
+            True if a view method should be generated
+        """
+        res_t = method.result_type
+
+        # Must be a reference return
+        if not res_t.is_ref:
+            return False
+
+        # Must not be const
+        if res_t.is_const:
+            return False
+
+        # The base type must have wrap-view enabled
+        base_type = res_t.base_type
+        if not hasattr(self, 'classes_with_views'):
+            return False
+
+        return base_type in self.classes_with_views
+
+    def _create_view_method(
+        self, r_class, method, parent_class_name: str, parent_cy_type
+    ) -> Tuple[Code, Code]:
+        """Generate a view-returning method for the view class.
+
+        For methods that return T& (mutable reference) where T has wrap-view,
+        generate a method that returns a view instead of a copy.
+
+        Args:
+            r_class: The resolved class containing the method
+            method: The ResolvedMethod to create a view method for
+            parent_class_name: Name of the parent class
+            parent_cy_type: Cython type of the parent class
+
+        Returns:
+            Tuple of (pyx_code, stub_code) for the method
+        """
+        code = Code()
+        stubs = Code()
+
+        py_name = method.cpp_decl.annotations.get("wrap-as", method.name)
+        cpp_name = method.cpp_decl.name
+        res_t = method.result_type
+        return_base_type = res_t.base_type
+        view_type = return_base_type + "View"
+        return_cy_type = self.cr.cython_type(return_base_type)
+
+        # Build argument list
+        arg_names = []
+        arg_types = []
+        arg_conversions = Code()
+        call_args = []
+
+        for arg_name, arg_type in method.arguments:
+            converter = self.cr.get(arg_type)
+            py_type = converter.matching_python_type(arg_type)
+            arg_names.append(arg_name)
+            arg_types.append(py_type)
+
+            # Generate input conversion
+            conv_code, call_as, cleanup = converter.input_conversion(
+                arg_type, arg_name, len(call_args)
+            )
+            if conv_code:
+                arg_conversions.add(conv_code)
+            call_args.append(call_as)
+
+        # Build function signature
+        if arg_names:
+            args_str = ", ".join(
+                f"{py_type} {name}" for name, py_type in zip(arg_names, arg_types)
+            )
+            signature = f"def {py_name}(self, {args_str}):"
+        else:
+            signature = f"def {py_name}(self):"
+
+        call_args_str = ", ".join(call_args)
+
+        # Generate docstring
+        orig_signature = str(method)
+        docstring = f"View-returning wrapper for {cpp_name}.\n\n"
+        docstring += f"        Returns a view for in-place modification instead of a copy.\n"
+        docstring += f"        Original C++ signature: {orig_signature}"
+
+        # Note: No leading indentation here - the Code class adds 4 spaces
+        # when this Code object is added to the parent view_code
+        code.add(
+            """
+            |
+            |$signature
+            |    \"\"\"
+            |    $docstring
+            |    \"\"\"
+            """,
+            locals(),
+        )
+
+        # Add input conversions
+        if arg_conversions.content:
+            code.add(arg_conversions)
+
+        # Generate the view-returning code
+        # Note: C++ returns T&, we take address to get pointer
+        code.add(
+            """
+            |    # Call C++ method and wrap result in view
+            |    cdef $view_type v = $view_type.__new__($view_type)
+            |    v._ptr = &self._ptr.$cpp_name($call_args_str)
+            |    v._parent = self._parent  # Propagate parent reference
+            |    return v
+            """,
+            locals(),
+        )
+
+        # Generate type stub
+        # Build stub argument list
+        stub_args = []
+        for arg_name, arg_type in method.arguments:
+            converter = self.cr.get(arg_type)
+            py_typing_type = converter.matching_python_type_full(arg_type)
+            stub_args.append(f"{arg_name}: {py_typing_type}")
+
+        if stub_args:
+            stub_args_str = ", ".join(stub_args)
+            stubs.add(
+                """
+                |def $py_name(self, $stub_args_str) -> $view_type: ...
+                """,
+                locals(),
+            )
+        else:
+            stubs.add(
+                """
+                |def $py_name(self) -> $view_type: ...
+                """,
+                locals(),
+            )
+
+        return code, stubs
 
     def _create_iter_methods(self, iterators, instance_mapping, local_mapping):
         """
@@ -2230,6 +2732,7 @@ class CodeGenerator(object):
                    |from  libcpp.string_view cimport string_view as libcpp_string_view
                    |from  libcpp          cimport bool
                    |from  libc.string     cimport const_char, memcpy
+                   |from  libc.stdint     cimport uintptr_t
                    |from  cython.operator cimport dereference as deref,
                    + preincrement as inc, address as address
                    """
