@@ -215,6 +215,40 @@ class TestWrapViewLifetime:
         assert inner_view._is_valid
         assert inner_view.value == 100
 
+    def test_deep_view_survives_intermediate_and_root_deletion(self, wrap_view_module):
+        """Test that deep views work after intermediate views and root are deleted."""
+        import gc
+
+        # Create container and get deep view
+        container = wrap_view_module.Container()
+        container_view = container.view()
+        outer_view = container_view.getOuter()
+        inner_view = outer_view.getInner()
+
+        # Set initial value
+        inner_view.value = 42
+        assert inner_view.value == 42
+
+        # Delete intermediate views - inner_view should still work
+        del outer_view
+        del container_view
+        gc.collect()
+
+        assert inner_view._is_valid
+        assert inner_view.value == 42
+        inner_view.value = 100
+        assert inner_view.value == 100
+
+        # Verify modification visible via container
+        assert container.getNestedValue() == 100
+
+        # Delete container - inner_view should STILL work (it holds the ref)
+        del container
+        gc.collect()
+
+        assert inner_view._is_valid
+        assert inner_view.value == 100
+
 
 class TestWrapViewDeepNesting:
     """Tests for deeply nested views."""
