@@ -518,8 +518,10 @@ cdef extern from "A.h":
 def test_annotation_typical_error_detection():
     # tests typical error for key:value decls in comments
     # with " " behind ":", eg "wrap-as: xyz" instead of "wrap-as:xyz":
-    try:
-        (cdcl,) = autowrap.PXDParser.parse_str(
+    import pytest
+
+    with pytest.raises(ValueError) as exc_info:
+        autowrap.PXDParser.parse_str(
             """
 
 cdef extern from "*":
@@ -527,10 +529,12 @@ cdef extern from "*":
         void fun() # wrap-as: xyz
         """
         )
-    except:
-        pass
-    else:
-        assert False, "expected exception"
+    # Verify the error message is helpful - check the chained exception
+    cause = exc_info.value.__cause__
+    assert cause is not None, "Expected a chained exception with helpful message"
+    error_msg = str(cause)
+    assert "wrap-as" in error_msg
+    assert "no space after the colon" in error_msg
 
     # annotation below is ok now !
     (cdcl,) = autowrap.PXDParser.parse_str(

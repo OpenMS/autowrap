@@ -186,12 +186,12 @@ def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str
                         continue
                     if ":" in f:
                         key, value = f.split(":", 1)
-                        assert (
-                            value.strip()
-                        ), "empty value (or excess space?) for key '%s' in line '%s'" % (
-                            key,
-                            line.rstrip(),
-                        )
+                        if not value.strip():
+                            raise ValueError(
+                                f"Empty value for key '{key}' in line '{line.rstrip()}'. "
+                                f"Note: There should be no space after the colon in annotations "
+                                f"(use '{key}:value' not '{key}: value')."
+                            )
                         result[key] = value
                     elif f.find("wrap-") != -1:
                         key, value = f, True
@@ -201,7 +201,7 @@ def parse_line_annotations(node: Cython.Compiler.Nodes.Node, lines: Sequence[str
                         value = " " + f_
                         result[key] += value
         except Exception as e:
-            raise ValueError("Cannot parse '{}'".format(line)) from e
+            raise ValueError("Cannot parse '{}': {}".format(line.rstrip(), e)) from e
     # check for multi line annotations after method declaration
     try:
         additional_annotations = _parse_multiline_annotations(lines[end:])
