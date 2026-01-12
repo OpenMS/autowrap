@@ -1009,3 +1009,380 @@ setup(
 
     finally:
         os.chdir(curdir)
+
+
+def test_wrap_view_generates_view_class():
+    """Test that wrap-view annotation generates a companion View class.
+
+    Verifies:
+    1. A View class is generated for the wrapped class
+    2. The main class has a view() method
+    3. The View class has the expected structure
+    """
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+    from autowrap.DeclResolver import ResolvedClass
+
+    # Create a temporary directory for generated files
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Parse a class with wrap-view annotation
+        decls, instance_map = autowrap.DeclResolver.resolve_decls_from_string(
+            """
+cdef extern from "test.hpp":
+    cdef cppclass TestClass:
+        # wrap-view
+        int value
+        TestClass()
+            """
+        )
+
+        # Find our test class
+        test_class = None
+        for d in decls:
+            if isinstance(d, ResolvedClass) and d.name == "TestClass":
+                test_class = d
+                break
+
+        assert test_class is not None, "TestClass not found in decls"
+        assert test_class.wrap_view is True, "wrap_view should be True"
+
+        # Generate code
+        target = os.path.join(test_dir, "test_view.pyx")
+        cg = CodeGenerator(
+            decls,
+            instance_map,
+            pyx_target_path=target,
+        )
+        # Trigger code generation
+        cg.create_pyx_file()
+
+        # Check that the view class was generated
+        assert "TestClassView" in cg.class_codes, (
+            f"TestClassView should be in class_codes. Got keys: {list(cg.class_codes.keys())}"
+        )
+
+        # Render the main class code and check for view() method
+        main_class_code = cg.class_codes.get("TestClass")
+        assert main_class_code is not None, "TestClass code not found"
+        main_code_str = main_class_code.render()
+        assert "def view(self):" in main_code_str, (
+            f"view() method should be in main class. Code:\n{main_code_str}"
+        )
+        assert "TestClassView" in main_code_str, (
+            f"TestClassView should be referenced in main class. Code:\n{main_code_str}"
+        )
+
+        # Render the view class code and check structure
+        view_class_code = cg.class_codes.get("TestClassView")
+        assert view_class_code is not None, "TestClassView code not found"
+        view_code_str = view_class_code.render()
+
+        # Verify view class has expected structure
+        assert "cdef class TestClassView:" in view_code_str, (
+            f"View class declaration not found. Code:\n{view_code_str}"
+        )
+        assert "_ptr" in view_code_str, (
+            f"_ptr should be in view class. Code:\n{view_code_str}"
+        )
+        assert "_parent" in view_code_str, (
+            f"_parent should be in view class. Code:\n{view_code_str}"
+        )
+        assert "_is_valid" in view_code_str, (
+            f"_is_valid property should be in view class. Code:\n{view_code_str}"
+        )
+        assert "__repr__" in view_code_str, (
+            f"__repr__ method should be in view class. Code:\n{view_code_str}"
+        )
+
+        print("Test passed: wrap-view generates View class correctly!")
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_wrap_view_not_generated_without_annotation():
+    """Test that View class is NOT generated when wrap-view is absent."""
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+    from autowrap.DeclResolver import ResolvedClass
+
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Parse a class WITHOUT wrap-view annotation
+        decls, instance_map = autowrap.DeclResolver.resolve_decls_from_string(
+            """
+cdef extern from "test.hpp":
+    cdef cppclass NormalClass:
+        int value
+        NormalClass()
+            """
+        )
+
+        # Generate code
+        target = os.path.join(test_dir, "test_no_view.pyx")
+        cg = CodeGenerator(
+            decls,
+            instance_map,
+            pyx_target_path=target,
+        )
+        # Trigger code generation
+        cg.create_pyx_file()
+
+        # Check that NO view class was generated
+        assert "NormalClassView" not in cg.class_codes, (
+            f"NormalClassView should NOT be in class_codes when wrap-view is absent. "
+            f"Got keys: {list(cg.class_codes.keys())}"
+        )
+
+        # Verify main class does NOT have view() method
+        main_class_code = cg.class_codes.get("NormalClass")
+        if main_class_code:
+            main_code_str = main_class_code.render()
+            assert "def view(self):" not in main_code_str, (
+                f"view() method should NOT be in class without wrap-view. Code:\n{main_code_str}"
+            )
+
+        print("Test passed: No View class generated without wrap-view annotation!")
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_wrap_view_generates_properties_for_attributes():
+    """Test that view class has properties for each attribute."""
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+    from autowrap.DeclResolver import ResolvedClass
+
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Parse a class with wrap-view and multiple attributes
+        decls, instance_map = autowrap.DeclResolver.resolve_decls_from_string(
+            """
+cdef extern from "test.hpp":
+    cdef cppclass TestClass:
+        # wrap-view
+        int int_value
+        double double_value
+        TestClass()
+            """
+        )
+
+        # Generate code
+        target = os.path.join(test_dir, "test_view_props.pyx")
+        cg = CodeGenerator(
+            decls,
+            instance_map,
+            pyx_target_path=target,
+        )
+        cg.create_pyx_file()
+
+        # Get view class code
+        view_class_code = cg.class_codes.get("TestClassView")
+        assert view_class_code is not None, "TestClassView code not found"
+        view_code_str = view_class_code.render()
+
+        # Verify properties are generated for each attribute
+        assert "property int_value:" in view_code_str, (
+            f"int_value property not found in view class. Code:\n{view_code_str}"
+        )
+        assert "property double_value:" in view_code_str, (
+            f"double_value property not found in view class. Code:\n{view_code_str}"
+        )
+
+        # Verify properties use _ptr (not inst)
+        assert "_ptr.int_value" in view_code_str, (
+            f"Property should access _ptr.int_value. Code:\n{view_code_str}"
+        )
+        assert "_ptr.double_value" in view_code_str, (
+            f"Property should access _ptr.double_value. Code:\n{view_code_str}"
+        )
+
+        # Verify both getter and setter are generated
+        assert "def __get__(self):" in view_code_str, (
+            f"Getter not found in view class. Code:\n{view_code_str}"
+        )
+        assert "def __set__(self" in view_code_str, (
+            f"Setter not found in view class. Code:\n{view_code_str}"
+        )
+
+        print("Test passed: View class has properties for attributes!")
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_wrap_view_constant_attribute():
+    """Test that constant attributes have read-only properties in view class."""
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Parse a class with a constant attribute
+        decls, instance_map = autowrap.DeclResolver.resolve_decls_from_string(
+            """
+cdef extern from "test.hpp":
+    cdef cppclass TestClass:
+        # wrap-view
+        const int const_value
+        int mutable_value
+        TestClass()
+            """
+        )
+
+        # Generate code
+        target = os.path.join(test_dir, "test_view_const.pyx")
+        cg = CodeGenerator(
+            decls,
+            instance_map,
+            pyx_target_path=target,
+        )
+        cg.create_pyx_file()
+
+        # Get view class code
+        view_class_code = cg.class_codes.get("TestClassView")
+        view_code_str = view_class_code.render()
+
+        # Find the const_value property section
+        assert "property const_value:" in view_code_str, (
+            f"const_value property not found. Code:\n{view_code_str}"
+        )
+
+        # The const property should raise AttributeError on set
+        assert 'raise AttributeError("Cannot set constant")' in view_code_str, (
+            f"Const attribute should raise AttributeError on set. Code:\n{view_code_str}"
+        )
+
+        print("Test passed: Constant attributes are read-only in view class!")
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_wrap_view_generates_view_methods_for_mutable_refs():
+    """Test that view class has view-returning methods for T& returns."""
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+    from autowrap.DeclResolver import ResolvedClass
+
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Parse classes where one returns a mutable reference to another
+        decls, instance_map = autowrap.DeclResolver.resolve_decls_from_string(
+            """
+cdef extern from "test.hpp":
+    cdef cppclass Inner:
+        # wrap-view
+        int value
+        Inner()
+
+    cdef cppclass Outer:
+        # wrap-view
+        Inner & getInner()
+        const Inner & getConstInner()
+        Inner getInnerCopy()
+        Outer()
+            """
+        )
+
+        # Generate code
+        target = os.path.join(test_dir, "test_view_methods.pyx")
+        cg = CodeGenerator(
+            decls,
+            instance_map,
+            pyx_target_path=target,
+        )
+        cg.create_pyx_file()
+
+        # Get OuterView class code
+        outer_view_code = cg.class_codes.get("OuterView")
+        assert outer_view_code is not None, "OuterView code not found"
+        outer_view_str = outer_view_code.render()
+
+        # getInner() returns T& - should generate view-returning method
+        assert "def getInner(self):" in outer_view_str, (
+            f"getInner view method not found. Code:\n{outer_view_str}"
+        )
+
+        # Should return InnerView, not Inner
+        assert "InnerView" in outer_view_str, (
+            f"InnerView should be returned by getInner. Code:\n{outer_view_str}"
+        )
+
+        # Should use _ptr access and propagate _parent reference
+        assert "_ptr" in outer_view_str and "_parent" in outer_view_str, (
+            f"View method should use _ptr and _parent. Code:\n{outer_view_str}"
+        )
+
+        # getConstInner() returns const T& - should NOT be in view methods
+        # (const refs don't need view treatment, they're read-only)
+        # Note: It might still have the regular copy method
+
+        # getInnerCopy() returns T (value) - should NOT have view method
+        # (value returns are copies anyway)
+
+        print("Test passed: View methods generated for mutable reference returns!")
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_wrap_view_method_with_arguments():
+    """Test that view methods correctly handle arguments."""
+    import tempfile
+    import shutil
+    from autowrap.CodeGenerator import CodeGenerator
+
+    test_dir = tempfile.mkdtemp()
+    try:
+        # Parse classes with a method that takes arguments
+        decls, instance_map = autowrap.DeclResolver.resolve_decls_from_string(
+            """
+cdef extern from "test.hpp":
+    cdef cppclass Item:
+        # wrap-view
+        int id
+        Item()
+
+    cdef cppclass Container:
+        # wrap-view
+        Item & getItem(int index)
+        Container()
+            """
+        )
+
+        # Generate code
+        target = os.path.join(test_dir, "test_view_args.pyx")
+        cg = CodeGenerator(
+            decls,
+            instance_map,
+            pyx_target_path=target,
+        )
+        cg.create_pyx_file()
+
+        # Get ContainerView class code
+        container_view_code = cg.class_codes.get("ContainerView")
+        assert container_view_code is not None, "ContainerView code not found"
+        container_view_str = container_view_code.render()
+
+        # getItem should have the index argument
+        assert "def getItem(self, int index):" in container_view_str, (
+            f"getItem should have index argument. Code:\n{container_view_str}"
+        )
+
+        # Should pass index to the C++ call (may include type cast like (<int>index))
+        assert ".getItem(" in container_view_str and "index" in container_view_str, (
+            f"getItem should pass index to C++ method. Code:\n{container_view_str}"
+        )
+
+        print("Test passed: View methods correctly handle arguments!")
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
