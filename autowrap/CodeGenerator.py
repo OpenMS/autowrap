@@ -285,8 +285,9 @@ class CodeGenerator(object):
         # Pre-compute which classes have wrap-view enabled
         # This is needed before class generation so that forward references work
         # (e.g., Container.getItem() returns Item& where Item has wrap-view)
-        self.classes_with_views = set()
-        for resolved in self.resolved:
+        # Use all_resolved to support cross-module wrap-view detection
+        self.classes_with_views: set = set()
+        for resolved in self.all_resolved:
             if isinstance(resolved, ResolvedClass) and not resolved.wrap_ignore:
                 if resolved.wrap_view:
                     self.classes_with_views.add(resolved.name)
@@ -1041,10 +1042,10 @@ class CodeGenerator(object):
                     view_code.add(pyx_code)
                     view_typestub_code.add(stub_code)
                 except Exception as e:
-                    L.warning(
+                    raise Exception(
                         f"Failed to create view property for attribute "
-                        f"{attribute.cpp_decl.name}: {e}"
-                    )
+                        f"{attribute.cpp_decl.name}"
+                    ) from e
 
         # Generate view methods for methods returning mutable references
         for method_name, methods in r_class.methods.items():
@@ -1064,10 +1065,9 @@ class CodeGenerator(object):
                         view_code.add(pyx_code)
                         view_typestub_code.add(stub_code)
                     except Exception as e:
-                        L.warning(
-                            f"Failed to create view method for "
-                            f"{method.name}: {e}"
-                        )
+                        raise Exception(
+                            f"Failed to create view method for {method.name}"
+                        ) from e
 
         # Store the view class codes
         self.class_pxd_codes[view_name] = view_pxd_code
@@ -1125,10 +1125,14 @@ class CodeGenerator(object):
             locals(),
         )
 
+        # For type stubs, use View type if attribute has wrap-view enabled
+        stub_type = py_typing_type
+        if attr_has_view and not t.is_ptr:
+            stub_type = attr_base_type + "View"
         stubs.add(
             """
                 |
-                |$name: $py_typing_type
+                |$wrap_as: $stub_type
                 """,
             locals(),
         )

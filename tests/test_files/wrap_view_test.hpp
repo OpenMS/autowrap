@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 /**
  * Inner class that will have a View generated.
@@ -51,6 +52,9 @@ public:
 
     // Mutable reference with argument
     Inner& getItemAt(int index) {
+        if (index < 0) {
+            throw std::out_of_range("index must be non-negative");
+        }
         if (index >= static_cast<int>(items_.size())) {
             items_.resize(index + 1);
         }
