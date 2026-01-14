@@ -60,7 +60,7 @@ After the workflow completes:
 If you need to release manually without the workflow:
 
 ```bash
-# Ensure you're on the correct branch
+# Ensure you're on the main branch (master)
 git checkout master
 git pull
 
