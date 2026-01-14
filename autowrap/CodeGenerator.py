@@ -2246,6 +2246,7 @@ class CodeGenerator(object):
         code.add(
             """
                    |from  libcpp.memory   cimport shared_ptr
+                   |from  libcpp.utility  cimport move
                    """
         )
         # Add std::hash declaration for wrap-hash support (named cpp_hash to avoid conflict with Python hash)
