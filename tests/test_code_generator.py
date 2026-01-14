@@ -398,6 +398,142 @@ def test_automatic_output_string_conversion():
     assert msg == expected
 
 
+def test_utf8_string_vector_conversion():
+    """Test that UTF-8 strings in vectors are properly converted via delegation."""
+    target = os.path.join(test_files, "generated", "libcpp_utf8_string_vector_test.pyx")
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_utf8_string_vector_test.pxd"],
+        root=test_files,
+        target=target,
+        debug=True,
+    )
+
+    wrapped = autowrap.Utils.compile_and_import(
+        "libcpp_utf8_string_vector_wrapped",
+        [
+            target,
+        ],
+        include_dirs,
+    )
+    h = wrapped.Utf8VectorTest()
+
+    # Test output conversion - vector of UTF-8 strings should become list of str
+    greetings = h.get_greetings()
+    assert isinstance(greetings, list)
+    assert len(greetings) == 4
+    # All elements should be unicode strings (str in Python 3)
+    for s in greetings:
+        assert isinstance(s, str), f"Expected str, got {type(s)}"
+    assert "Hello" in greetings
+    assert "World" in greetings
+    assert "Привет" in greetings  # Russian
+    assert "你好" in greetings  # Chinese
+
+    # Test input conversion - list of str/bytes should be accepted
+    input_strings = ["Test", "Тест", "测试"]  # ASCII, Russian, Chinese
+    result = h.echo(input_strings)
+    assert isinstance(result, list)
+    assert len(result) == 3
+    for s in result:
+        assert isinstance(s, str), f"Expected str, got {type(s)}"
+    assert result == input_strings
+
+    # Test with bytes input
+    input_bytes = [b"Hello", b"World"]
+    result = h.echo(input_bytes)
+    assert isinstance(result, list)
+    assert len(result) == 2
+
+    # Test count function (input only)
+    count = h.count_strings(["a", "b", "c"])
+    assert count == 3
+
+
+def test_utf8_containers_delegation():
+    """Test UTF-8 delegation works for all container types: vector, set, map, unordered variants."""
+    target = os.path.join(test_files, "generated", "libcpp_utf8_containers_test.pyx")
+    include_dirs = autowrap.parse_and_generate_code(
+        ["libcpp_utf8_containers_test.pxd"],
+        root=test_files,
+        target=target,
+        debug=True,
+    )
+
+    wrapped = autowrap.Utils.compile_and_import(
+        "libcpp_utf8_containers_wrapped",
+        [target],
+        include_dirs,
+    )
+    h = wrapped.Utf8ContainersTest()
+
+    # === Vector tests ===
+    vec = h.get_vector()
+    assert isinstance(vec, list)
+    assert all(isinstance(s, str) for s in vec), "Vector elements should be str"
+    assert "Hello" in vec
+    assert "Привет" in vec  # Russian
+    assert "你好" in vec    # Chinese
+
+    vec_echo = h.echo_vector(["Test", "Тест", "测试"])
+    assert vec_echo == ["Test", "Тест", "测试"]
+
+    # === Set tests ===
+    s = h.get_set()
+    assert isinstance(s, set)
+    assert all(isinstance(elem, str) for elem in s), "Set elements should be str"
+    assert "Alpha" in s
+    assert "Бета" in s   # Russian
+    assert "伽马" in s   # Chinese
+
+    s_echo = h.echo_set({"One", "Один", "一"})
+    assert s_echo == {"One", "Один", "一"}
+
+    # === Map tests (UTF-8 keys and values) ===
+    m = h.get_map()
+    assert isinstance(m, dict)
+    assert all(isinstance(k, str) for k in m.keys()), "Map keys should be str"
+    assert all(isinstance(v, str) for v in m.values()), "Map values should be str"
+    assert m["greeting"] == "Привет"
+    assert m["farewell"] == "再见"
+    assert m["thanks"] == "شكرا"   # Arabic
+
+    m_echo = h.echo_map({"key1": "Значение", "key2": "值"})
+    assert m_echo["key1"] == "Значение"
+    assert m_echo["key2"] == "值"
+
+    # === Map with UTF-8 keys ===
+    m_keys = h.get_map_utf8_keys()
+    assert isinstance(m_keys, dict)
+    assert all(isinstance(k, str) for k in m_keys.keys()), "Map keys should be str"
+    assert m_keys["один"] == 1   # Russian
+    assert m_keys["二"] == 2     # Chinese
+    assert m_keys["três"] == 3   # Portuguese
+
+    # === Unordered set tests ===
+    us = h.get_unordered_set()
+    assert isinstance(us, set)
+    assert all(isinstance(elem, str) for elem in us), "Unordered set elements should be str"
+    assert "Set1" in us
+    assert "Набор2" in us  # Russian
+    assert "集合3" in us   # Chinese
+
+    us_echo = h.echo_unordered_set({"A", "Б", "丙"})
+    assert us_echo == {"A", "Б", "丙"}
+
+    # === Unordered map tests (both keys and values as UTF-8) ===
+    um = h.get_unordered_map()
+    assert isinstance(um, dict)
+    assert all(isinstance(k, str) for k in um.keys()), "Unordered map keys should be str"
+    assert all(isinstance(v, str) for v in um.values()), "Unordered map values should be str"
+    assert um["key1"] == "Значение1"
+    assert um["key2"] == "值2"
+    assert um["key3"] == "قيمة3"  # Arabic
+
+    um_echo = h.echo_unordered_map({"a": "Альфа", "b": "贝塔"})
+    assert um_echo["a"] == "Альфа"
+    assert um_echo["b"] == "贝塔"
+
+
 def test_wrap_ignore_foreign_cimports():
     """
     Test that wrap-ignored classes are not included in foreign cimports.
