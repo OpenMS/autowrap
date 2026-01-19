@@ -837,3 +837,33 @@ cdef extern from "A.h":
     assert method.with_nogil
     (method,) = instance.methods.get("Cheap")
     assert not method.with_nogil
+
+
+def test_wrap_view_annotation():
+    """Test that wrap-view annotation is resolved correctly on ResolvedClass."""
+    (instance,), map_I = DeclResolver.resolve_decls_from_string(
+        """
+cdef extern from "A.h":
+    cdef cppclass A:
+        # wrap-view
+        int value
+        A & getRef()
+
+    """
+    )
+    assert instance.name == "A"
+    assert instance.wrap_view is True
+
+
+def test_wrap_view_default_false():
+    """Test that wrap_view defaults to False when not specified."""
+    (instance,), map_I = DeclResolver.resolve_decls_from_string(
+        """
+cdef extern from "A.h":
+    cdef cppclass A:
+        int value
+
+    """
+    )
+    assert instance.name == "A"
+    assert instance.wrap_view is False

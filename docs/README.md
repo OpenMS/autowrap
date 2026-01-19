@@ -159,6 +159,11 @@ and for methods by putting them on the same line. The currently supported
 directives are:
 
 - `wrap-ignore`: Will not create a wrapper for this function or class (e.g. abstract base class that needs to be known to Cython but cannot be wrapped)
+- `wrap-view`: Generate a companion `${ClassName}View` class that provides in-place access to members. The main wrapper class returns copies (safe, but modifications don't affect the original). The view class holds a reference to the parent and allows direct modification:
+  - Public attributes become view properties (getters return views of nested objects, setters modify in-place)
+  - Methods returning `T&` (mutable reference) return views instead of copies (note: these methods need `wrap-ignore` on main class due to Cython limitations with reference returns)
+  - Views keep the parent object alive - chaining and storing views is safe
+  - Use `obj.view()` on the main class to get a view instance
 - `wrap-iter-begin`: For begin iterators
 - `wrap-iter-end`: For end iterators
 - `wrap-attach`: Attach to a specific class (can be used for static functions or nested classes)
@@ -278,6 +283,56 @@ namespace std {
         }
     };
 }
+```
+
+#### wrap-view Example
+
+The `wrap-view` directive generates a companion view class for in-place member modification:
+
+```cython
+    cdef cppclass Inner:
+        # wrap-view
+        int value
+
+    cdef cppclass Outer:
+        # wrap-view
+        Inner inner_member            # Public attribute
+        Inner & getInner()            # wrap-ignore (T& returns need this)
+        const Inner & getConstInner() # wrap-ignore (const T& also needs this)
+```
+
+**Note:** Methods returning `T&` or `const T&` must be marked `wrap-ignore` on the main
+class because Cython cannot properly handle reference return types. However, these methods
+are still generated on the view class where they work correctly via pointer access.
+
+This generates `Inner`, `InnerView`, `Outer`, and `OuterView` classes. Usage:
+
+```python
+>>> outer = Outer()
+>>> outer.inner_member.value = 42  # Modifies a COPY - original unchanged!
+>>> view = outer.view()
+>>> view.inner_member.value = 42   # Modifies IN-PLACE - original changed!
+>>> inner_view = view.getInner()   # Returns InnerView, not copy
+>>> inner_view.value = 100         # In-place modification
+```
+
+**Chaining:** Views can be chained in a single expression:
+
+```python
+>>> container.view().getOuter().getInner().value = 999
+```
+
+**Lifetime:** Views keep the root object alive. You can safely:
+- Store views and use them later
+- Delete intermediate views in a chain
+- Even delete the original object - views hold a reference to keep it alive
+
+```python
+>>> def get_deep_view():
+...     c = Container()
+...     return c.view().getOuter().getInner()
+>>> view = get_deep_view()  # Container went out of scope but view keeps it alive
+>>> view.value = 42         # Still works!
 ```
 
 ### Docstrings
