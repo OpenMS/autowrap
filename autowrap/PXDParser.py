@@ -66,9 +66,12 @@ included classes and methods.
 def _check_type_constness(ctype: Nodes.CBaseTypeNode) -> bool:
     """Regardless of Cython version, checks whether the passed Cython type is const"""
     try:
-        return isinstance(ctype, Nodes.CConstTypeNode)
+        return isinstance(ctype, Nodes.CQualifierTypeNode) and ctype.is_const
     except AttributeError:
-        return isinstance(ctype, Nodes.CConstOrVolatileTypeNode) and ctype.is_const
+        try:
+            return isinstance(ctype, Nodes.CConstOrVolatileTypeNode) and ctype.is_const
+        except AttributeError:
+            return isinstance(ctype, Nodes.CConstTypeNode)
 
 
 def parse_class_annotations(node, lines: Collection[str]) -> AnnotDict:
